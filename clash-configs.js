@@ -884,9 +884,9 @@ function createPayloadRules(payload, name) {
 function createProxyGroup(name, addProxies, testUrl, countryOrRegionGroupNames, gfw) {
     addProxies = addProxies ? (Array.isArray(addProxies) ? addProxies : [addProxies]) : [];
     if (gfw) {
-        proxies = [...addProxies, ...countryOrRegionGroupNames, "DIRECT", "自动选择(最低延迟)", "负载均衡", ];
+        proxies = [...addProxies, ...countryOrRegionGroupNames, "DIRECT", "自动选择(最低延迟)", "负载均衡", "手动选择所有节点"];
     } else {
-        proxies = [...addProxies, "DIRECT", "自动选择(最低延迟)", "负载均衡", ...countryOrRegionGroupNames];
+        proxies = [...addProxies, "DIRECT", "自动选择(最低延迟)", "负载均衡", ...countryOrRegionGroupNames, "手动选择所有节点"];
     }
     return {
         "name": name,
@@ -926,15 +926,15 @@ function filterHighQualityProxies(proxies) {
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
  */
 const COUNTRY_OR_REGION_KEYWORDS = [
-    ["日本", "JP", "Japan"],
-    ["韩国", "KR", "Korea"],
-    ["美国", "US", "United States"],
-    ["新加坡", "SG", "Singapore"],
     ["香港", "HK", "Hong", "ASYNCHRONOUS", "AnyPath®"],
-    ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "DE", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
+    ["台湾", "Taiwan"],
+    ["日本", "JP", "Japan"],
+    ["美国", "American", "United States"],
+    ["新加坡", "SG", "Singapore"],
+    ["韩国", "KR", "Korea"],
+    ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
     ["加拿大", "CA", "Canada"],
     ["澳大利亚", "AU", "Australia"],
-    ["台湾", "TW", "Taiwan"],
     ["俄罗斯", "RU", "Russia"],
 ];
 
@@ -969,7 +969,6 @@ function filterCountryOrRegionProxies(proxies) {
             result.push("NULL");
         }
     }
-    
     return result;
 }
 
@@ -1070,7 +1069,7 @@ function buildBaseProxyGroups(testUrl, highQualityProxies, countryOrRegionProxie
 }
 
 
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网"
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试"
 ];
 
 /**
@@ -1090,6 +1089,23 @@ function filterNotProxies(proxies) {
     });
     return proxies;
 }
+
+function filterProxies(proxies) {
+    if (!proxies || !Array.isArray(proxies)) {
+        return [];
+    }
+    const result = [];
+    const len = proxies.length;
+    
+    for (let i = 0; i < len; i++) {
+        const proxy = proxies[i];
+        const proxyName = proxy.name || "";
+        result.push(proxyName);
+    }
+    
+    return result;
+}
+
 /**
  * 主函数：生成完整的Clash配置
  * @param {Object} config "输入配置
@@ -1219,6 +1235,17 @@ function main(config) {
     // 构建基本代理组
     const baseProxyGroups = buildBaseProxyGroups(testUrl, highQualityProxies, countryOrRegionProxiesGroups, countryOrRegionGroupNames);
     
+    // 筛选所有节点
+    const filteredProxies = filterProxies(proxies)
+    baseProxyGroups.push({
+        "name": "手动选择所有节点",
+        "type": "select",
+        "proxies": [
+            ...(filteredProxies.length > 0 ? filteredProxies : []),
+            "DIRECT"
+        ]
+    });
+
     const configLen = PROXY_RULES.length;
     for (let i = 0; i < configLen; i++) {
         const { name, gfw, urls, payload, extraProxies } = PROXY_RULES[i];
