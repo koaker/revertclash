@@ -91,6 +91,10 @@ const HIGH_QUALITY_KEYWORDS = [
     // 在此添加更多关键词...
 ];
 
+const LOW_QUALITY_KEYWORDS = [
+    "无限", "x0."
+];
+
 /**
  * 代理规则配置
  * name: 规则名称
@@ -881,12 +885,18 @@ function createPayloadRules(payload, name) {
  * @param {string} testUrl "测试链接
  * @returns {Object} 代理组配置
  */
-function createProxyGroup(name, addProxies, testUrl, countryOrRegionGroupNames, gfw) {
+function createProxyGroup(name, addProxies, testUrl, gfw, baseProxyGroups) {
     addProxies = addProxies ? (Array.isArray(addProxies) ? addProxies : [addProxies]) : [];
+    GroupNames = [];
+
+    for (let i = 0; i < baseProxyGroups.length; i++) {
+        const group = baseProxyGroups[i];
+        GroupNames.push(group.name);
+    }
     if (gfw) {
-        proxies = [...addProxies, ...countryOrRegionGroupNames, "DIRECT", "自动选择(最低延迟)", "负载均衡", "手动选择所有节点"];
+        proxies = [...addProxies, ...GroupNames, "DIRECT"];
     } else {
-        proxies = [...addProxies, "DIRECT", "自动选择(最低延迟)", "负载均衡", ...countryOrRegionGroupNames, "手动选择所有节点"];
+        proxies = [...addProxies, "DIRECT", ...GroupNames];
     }
     return {
         "name": name,
@@ -926,6 +936,7 @@ function filterHighQualityProxies(proxies) {
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
  */
 const COUNTRY_OR_REGION_KEYWORDS = [
+    // 国家或地区
     ["香港", "HK", "Hong", "ASYNCHRONOUS", "AnyPath®"],
     ["台湾", "Taiwan"],
     ["日本", "JP", "Japan"],
@@ -971,24 +982,112 @@ function filterCountryOrRegionProxies(proxies) {
     }
     return result;
 }
-
+// 预编译低质量节点匹配的正则表达式
+const LOW_QUALITY_REGEX = new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i");
+function filterLowQualityProxies(proxies) {
+    if (!proxies || !Array.isArray(proxies)) {
+        return [];
+    }
+    
+    const result = [];
+    const len = proxies.length;
+    
+    const regex = LOW_QUALITY_REGEX; // 缓存引用
+    
+    for (let i = 0; i < len; i++) {
+        const proxy = proxies[i];
+        const proxyName = proxy.name || "";
+        if (regex.test(proxyName)) {
+            result.push(proxyName);
+        }
+    }
+    
+    return result;
+}
 /**
  * 构建基本代理组
  * @param {string} testUrl "测试URL
  * @param {Array} highQualityProxies "高质量节点列表
  * @returns {Array} 基本代理组配置
  */
-function buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, countryOrRegionGroupNames) {
+function buildBaseProxyGroups(testUrl, proxies) {
     // 筛选所有节点
     const filteredProxies = filterProxies(proxies)
 
     // 筛选高质量节点
     const highQualityProxies = filterHighQualityProxies(proxies);
 
+    // 筛选低质量下载节点
+    const lowQualityProxies = filterLowQualityProxies(proxies);
+    // 筛选国家或者地区节点 
+    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(proxies);
+    const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
 
+
+    const finalBaseProxyGroups = [];
+    
+    for (let i = 0; i < countryOrRegionLen; i++) {
+        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+        if (countryOrRegionProxies[0] === "NULL") {
+            continue;
+        }
+        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        
+        
+        finalBaseProxyGroups.push({
+            "name": groupName,
+            "type": "select",
+            "proxies": [
+                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
+                "DIRECT",
+            ]
+        });
+    }
+    for (let i = 0; i < countryOrRegionLen; i++) {
+        
+        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+        if (countryOrRegionProxies[0] === "NULL") {
+            continue;
+        }
+
+        const groupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        
+        
+        finalBaseProxyGroups.push({
+            "name": groupName,
+            "type": "url-test",
+            "tolerance": CONFIG.tolerance,
+            "url": testUrl,
+            "interval": CONFIG.testInterval,
+            "proxies": [
+                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
+                "DIRECT",
+            ]
+        });
+    }
+
+    // 将最基本的放在最后
     const baseProxyGroups = [
         // 基本代理组
+        {
+            "name": "手动选择所有节点",
+            "type": "select",
+            "proxies": [
+                ...(filteredProxies.length > 0 ? filteredProxies : []),
+                "DIRECT"
+            ]
+        },
+        {
+            "name": "低质量下载节点",
+            "type": "select",
+            "proxies": [
+                ...(lowQualityProxies.length > 0 ? lowQualityProxies : []),
+                "DIRECT"
+            ]
+        },
         {
             "name": "规则外",
             "type": "select",
@@ -1036,57 +1135,9 @@ function buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, co
             "interval": CONFIG.testInterval
         },
     ];
-    
-    for (let i = 0; i < countryOrRegionLen; i++) {
-        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
 
-        if (countryOrRegionProxies[0] === "NULL") {
-            continue;
-        }
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
-        
-        
-        baseProxyGroups.push({
-            "name": groupName,
-            "type": "select",
-            "proxies": [
-                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
-                "DIRECT",
-            ]
-        });
-    }
-    for (let i = 0; i < countryOrRegionLen; i++) {
-        
-        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
-
-        if (countryOrRegionProxies[0] === "NULL") {
-            continue;
-        }
-
-        const groupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
-        
-        
-        baseProxyGroups.push({
-            "name": groupName,
-            "type": "url-test",
-            "tolerance": CONFIG.tolerance,
-            "url": testUrl,
-            "interval": CONFIG.testInterval,
-            "proxies": [
-                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
-                "DIRECT",
-            ]
-        });
-    }
-    baseProxyGroups.push({
-        "name": "手动选择所有节点",
-        "type": "select",
-        "proxies": [
-            ...(filteredProxies.length > 0 ? filteredProxies : []),
-            "DIRECT"
-        ]
-    });
-    return baseProxyGroups;
+    finalBaseProxyGroups.push(...baseProxyGroups);
+    return finalBaseProxyGroups;
 }
 
 
@@ -1152,13 +1203,10 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
 function main(config) {
     let { proxies } = config;
     const testUrl = CONFIG.testUrl;
-
+    // 过滤不是正常节点的节点
     proxies = filterNotProxies(proxies)
 
-    // 筛选国家或者地区节点 
-    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(proxies);
-    // 国家或者地区组名称
-    const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
+    
     // 初始化规则和代理组
     const rules = USER_RULES.slice();
     const proxyGroups = [];
@@ -1253,13 +1301,13 @@ function main(config) {
     };
 
     // 构建基本代理组
-    const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, countryOrRegionGroupNames);
+    const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies);
 
     const configLen = PROXY_RULES.length;
     for (let i = 0; i < configLen; i++) {
         const { name, gfw, urls, payload, extraProxies } = PROXY_RULES[i];
 
-        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, countryOrRegionGroupNames, gfw));
+        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups));
 
         // 处理规则
         if (payload) {
