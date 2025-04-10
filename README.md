@@ -31,6 +31,24 @@ npm install
 4.clash verge使用：
 - 将clash-config.js 中除了module.exports = { main };的函数全部复制导入到clash verge中
 
+## 🚀 使用方法
+1. 启动 HTTP 服务器：
+```bash
+cd revertclash-app
+node src/index.js
+```
+
+2. 启动主程序，查看对文件的效果：
+```bash
+node process-config.js
+```
+
+### HTTP API 接口
+
+- `GET /config`: 获取处理后的配置文件
+
+默认订阅链接：http://localhost:3000/config
+
 ## ⚙️ 配置选项
 
 在 `clash-configs.js` 中，你可以自定义以下配置：
@@ -61,24 +79,6 @@ const USER_RULES = [
     // 添加更多规则...
 ];
 ```
-
-## 🚀 使用方法
-1. 启动 HTTP 服务器：
-```bash
-cd revertclash-app
-node src/index.js
-```
-
-2. 启动主程序，查看对文件的效果：
-```bash
-node process-config.js
-```
-
-### HTTP API 接口
-
-- `GET /config`: 获取处理后的配置文件
-
-默认订阅链接：http://localhost:3000/config
 ## 🌐 预定义规则集
 
 项目内置了多个规则集，包括：
