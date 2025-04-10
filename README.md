@@ -112,8 +112,5 @@ const HIGH_QUALITY_KEYWORDS = [
 
 ## 🔗 相关链接
 
-- [Clash](https://github.com/Dreamacro/clash)
-- [ClashX](https://github.com/yichengchen/clashX)
-
  * author : Phantasia https://github.com/MarchPhantasia clash-config.js
  * editer : spocel https://github.com/spocel other 
