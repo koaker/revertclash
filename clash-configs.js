@@ -70,7 +70,6 @@ const SAVED_RULES = [
     "RULE-SET,proxy,国外网站",
     "MATCH,规则外"
 ]
-
 /**
  * 高质量节点关键词列表
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
@@ -93,6 +92,9 @@ const HIGH_QUALITY_KEYWORDS = [
 
 const LOW_QUALITY_KEYWORDS = [
     "无限", "x0."
+];
+
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试"
 ];
 
 /**
@@ -789,8 +791,11 @@ const DNS_CONFIG = {
 
 // ==================== 系统实现区（一般不需要修改） ====================
 
-// 预编译高质量节点匹配的正则表达式
-const HIGH_QUALITY_REGEX = new RegExp(HIGH_QUALITY_KEYWORDS.join("|"), "i");
+const REGEX_CACHE = {
+    highQuality: new RegExp(HIGH_QUALITY_KEYWORDS.join("|"), "i"),
+    lowQuality: new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i"),
+    notProxy: new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i")
+};
 
 // 构建DNS配置对象
 const dns = buildDnsConfig(DNS_CONFIG);
@@ -906,31 +911,46 @@ function createProxyGroup(name, addProxies, testUrl, gfw, baseProxyGroups) {
     }
 }
 
-/**
- * 筛选高质量节点 "使用正则表达式优化性能
- * @param {Array} proxies "所有代理节点
- * @returns {Array} 符合条件的高质量节点名称列表
- */
-function filterHighQualityProxies(proxies) {
+function filterByRules(proxies, rules = null, inverse = false) {
     if (!proxies || !Array.isArray(proxies)) {
         return [];
     }
     
     const result = [];
     const len = proxies.length;
-    const regex = HIGH_QUALITY_REGEX; // 缓存引用
     
     for (let i = 0; i < len; i++) {
         const proxy = proxies[i];
         const proxyName = proxy.name || "";
-        if (regex.test(proxyName)) {
+        if (!rules) {
             result.push(proxyName);
+            
+        } else {
+            if (inverse ? !rules.test(proxyName): rules.test(proxyName)) {
+                result.push(proxyName);
+            }
         }
     }
     
     return result;
 }
-
+/**
+ * 删除非节点 "使用正则表达式优化性能
+ * @param {Array} proxies "所有代理节点
+ * @returns {Array} 符合条件的节点名称列表
+ */
+function filterNotProxies(proxies) {
+    if (!proxies || !Array.isArray(proxies)) {
+        return [];
+    }
+    
+    const countryRegex = REGEX_CACHE.notProxy;
+    proxies = proxies.filter(proxy => {
+        const proxyName = proxy.name || "";
+        return !countryRegex.test(proxyName);
+    });
+    return proxies;
+}
 /**
  * 国家或者地区节点关键词列表
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
@@ -982,28 +1002,9 @@ function filterCountryOrRegionProxies(proxies) {
     }
     return result;
 }
-// 预编译低质量节点匹配的正则表达式
-const LOW_QUALITY_REGEX = new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i");
-function filterLowQualityProxies(proxies) {
-    if (!proxies || !Array.isArray(proxies)) {
-        return [];
-    }
-    
-    const result = [];
-    const len = proxies.length;
-    
-    const regex = LOW_QUALITY_REGEX; // 缓存引用
-    
-    for (let i = 0; i < len; i++) {
-        const proxy = proxies[i];
-        const proxyName = proxy.name || "";
-        if (regex.test(proxyName)) {
-            result.push(proxyName);
-        }
-    }
-    
-    return result;
-}
+
+
+
 /**
  * 构建基本代理组
  * @param {string} testUrl "测试URL
@@ -1012,13 +1013,13 @@ function filterLowQualityProxies(proxies) {
  */
 function buildBaseProxyGroups(testUrl, proxies) {
     // 筛选所有节点
-    const filteredProxies = filterProxies(proxies)
+    const filteredProxies = filterByRules(proxies, null)
 
     // 筛选高质量节点
-    const highQualityProxies = filterHighQualityProxies(proxies);
+    const highQualityProxies = filterByRules(proxies, REGEX_CACHE.highQuality);
 
     // 筛选低质量下载节点
-    const lowQualityProxies = filterLowQualityProxies(proxies);
+    const lowQualityProxies = filterByRules(proxies, REGEX_CACHE.lowQuality);
     // 筛选国家或者地区节点 
     const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(proxies);
     const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
@@ -1140,43 +1141,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
     return finalBaseProxyGroups;
 }
 
-
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试"
-];
-
-/**
- * 删除非节点 "使用正则表达式优化性能
- * @param {Array} proxies "所有代理节点
- * @returns {Array} 符合条件的节点名称列表
- */
-function filterNotProxies(proxies) {
-    if (!proxies || !Array.isArray(proxies)) {
-        return [];
-    }
-    
-    const countryRegex = new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i");
-    proxies = proxies.filter(proxy => {
-        const proxyName = proxy.name || "";
-        return !countryRegex.test(proxyName);
-    });
-    return proxies;
-}
-
-function filterProxies(proxies) {
-    if (!proxies || !Array.isArray(proxies)) {
-        return [];
-    }
-    const result = [];
-    const len = proxies.length;
-    
-    for (let i = 0; i < len; i++) {
-        const proxy = proxies[i];
-        const proxyName = proxy.name || "";
-        result.push(proxyName);
-    }
-    
-    return result;
-}
 /* 获得国家或者区域组的名称并处理输出 输入国家区域组 输出名称组*/
 function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
     const countryOrRegionGroupNames = [];
