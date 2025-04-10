@@ -6,6 +6,7 @@ const URL = require('url');
 
 // 配置文件路径
 const CONFIG_FILE = path.join(__dirname, '..', 'clash-urls.txt');
+const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
 const OUTPUT_FILE = path.join(__dirname, '..', 'merged-config.yaml');
 
 // Clash Verge的请求头
@@ -245,24 +246,62 @@ async function mergeConfigs(configs) {
     return mergedConfig;
 }
 
+async function readLocalConfigs() {
+    try {
+        const files = await fs.readdir(CONFIGS_DIR);
+        const configs = [];
+        
+        for (const file of files) {
+            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+                try {
+                    const filePath = path.join(CONFIGS_DIR, file);
+                    const content = await fs.readFile(filePath, 'utf8');
+                    const config = YAML.parse(content);
+                    
+                    if (config && Array.isArray(config.proxies)) {
+                        console.log(`成功读取本地配置: ${file}`);
+                        configs.push(config);
+                    }
+                } catch (err) {
+                    console.error(`读取本地配置失败 ${file}:`, err.message);
+                }
+            }
+        }
+        
+        return configs;
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            console.log('configs目录为空');
+        } else {
+            console.error('读取本地配置目录失败:', err.message);
+        }
+        return [];
+    }
+}
+
 async function processConfigs() {
     console.log('开始处理配置...');
     
-    const urls = await readUrls();
-    if (urls.length === 0) {
-        console.log('没有找到有效的配置URL，请在clash-urls.txt中添加订阅链接');
-        return;
-    }
-
-    console.log(`发现 ${urls.length} 个配置URL`);
-    
     const configs = [];
-    for (const url of urls) {
-        console.log(`正在下载配置: ${url}`);
-        const config = await downloadConfig(url);
-        if (config) {
-            configs.push(config);
+    
+    // 读取本地配置文件
+    const localConfigs = await readLocalConfigs();
+    configs.push(...localConfigs);
+    
+    // 读取URL订阅
+    const urls = await readUrls();
+    if (urls.length > 0) {
+        console.log(`发现 ${urls.length} 个配置URL`);
+        
+        for (const url of urls) {
+            console.log(`正在下载配置: ${url}`);
+            const config = await downloadConfig(url);
+            if (config) {
+                configs.push(config);
+            }
         }
+    } else {
+        console.log('没有找到有效的配置URL');
     }
 
     try {

@@ -7,3 +7,8 @@ processed-config.yaml
 Hellokugou.yaml
 revertclash-app/clash-urls.txt
 revertclash-app/merged-config.yaml
+
+merged-config.yaml
+*.yaml
+revertclash-app/*.yaml
+revertclash-app/config/*.yaml
