@@ -952,7 +952,7 @@ function filterCountryOrRegionProxies(proxies) {
     const len = proxies.length;
     const outerLength = COUNTRY_OR_REGION_KEYWORDS.length;
     for (let i = 0; i < outerLength; i++) {
-        const countryRegex = new RegExp(COUNTRY_OR_REGION_KEYWORDS[i].join("|"), "i");
+        const countryRegex = new RegExp(COUNTRY_OR_REGION_KEYWORDS[i].join("|"));
         
         const innerResult = [];
         for (let j = 0; j < len; j++) {
@@ -966,7 +966,7 @@ function filterCountryOrRegionProxies(proxies) {
         if (innerResult.length > 0) {
             result.push(innerResult);
         } else {
-            result.push("NULL");
+            result.push(["NULL"]);
         }
     }
     return result;
@@ -985,8 +985,8 @@ function buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, co
     // 筛选高质量节点
     const highQualityProxies = filterHighQualityProxies(proxies);
 
-
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
+
     const baseProxyGroups = [
         // 基本代理组
         {
@@ -1038,27 +1038,33 @@ function buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, co
     ];
     
     for (let i = 0; i < countryOrRegionLen; i++) {
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
-        if (COUNTRY_OR_REGION_KEYWORDS[i][0] === "NULL") {
+        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+        if (countryOrRegionProxies[0] === "NULL") {
             continue;
         }
-        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        
         
         baseProxyGroups.push({
             "name": groupName,
             "type": "select",
             "proxies": [
                 ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
-                "DIRECT"
+                "DIRECT",
             ]
         });
     }
     for (let i = 0; i < countryOrRegionLen; i++) {
-        const groupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
-        if (COUNTRY_OR_REGION_KEYWORDS[i][0] === "NULL") {
+        
+        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+        if (countryOrRegionProxies[0] === "NULL") {
             continue;
         }
-        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+        const groupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        
         
         baseProxyGroups.push({
             "name": groupName,
@@ -1067,8 +1073,8 @@ function buildBaseProxyGroups(testUrl, proxies, countryOrRegionProxiesGroups, co
             "url": testUrl,
             "interval": CONFIG.testInterval,
             "proxies": [
+                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
                 "DIRECT",
-                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : [])
             ]
         });
     }
@@ -1125,8 +1131,10 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
     const countryOrRegionGroupNames = [];
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
 
+    
     for (let i = 0; i < countryOrRegionLen; i++) {
-        if (COUNTRY_OR_REGION_KEYWORDS[i][0] === "NULL") {
+
+        if (countryOrRegionProxiesGroups[i][0] === "NULL") {
             continue;
         }
         
@@ -1287,7 +1295,6 @@ function main(config) {
         "proxy-groups": [
             ...proxyGroups,
             ...baseProxyGroups,
-            //...gfwProxyGroups,
             
         ],
         "rule-providers": ruleProviders,

@@ -7,7 +7,7 @@ const clashConfigs = require('./clash-configs.js');
 
 try {
     // 读取YAML文件
-    const yamlFile = fs.readFileSync('1731748106775-1.yaml', 'utf8');
+    const yamlFile = fs.readFileSync('Hellokugou.yaml', 'utf8');
     const config = yaml.load(yamlFile);
 
     // 处理配置
