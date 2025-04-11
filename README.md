@@ -5,7 +5,7 @@ RevertClash 是两个项目，一个是用来将多个来源的clash配置文件
 ## 🌟 特性
 
 - 智能合并多个配置源
-- 自动优化代理规则
+- 自动优化代理规则bg
 - 支持高质量节点筛选
 - 内置大量预定义规则（包括流媒体、游戏等）
 - 提供 HTTP API 服务
@@ -35,7 +35,7 @@ npm install
 1. 启动 HTTP 服务器：
 ```bash
 cd revertclash-app
-node src/index.js
+npm run start
 ```
 
 2. 启动主程序，查看对文件的效果：
