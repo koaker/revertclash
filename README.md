@@ -112,5 +112,5 @@ const HIGH_QUALITY_KEYWORDS = [
 
 ## 🔗 相关链接
 
- * author : Phantasia https://github.com/MarchPhantasia clash-config.js
+ * author : Phantasia https://github.com/MarchPhantasia clash-config.js 中的DNS、原有的规则框架
  * editer : spocel https://github.com/spocel other 
