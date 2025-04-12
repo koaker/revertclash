@@ -1,6 +1,6 @@
 # RevertClash
 
-RevertClash 是两个项目，一个是用来将多个来源的clash配置文件的所有节点提取出来汇总到一个文件中，一个是clashverge脚本，用来为一个clash配置文件添加多个配置好的规则，它可以帮助你管理和优化 Clash 代理规则配置。
+RevertClash 是是用来将多个来源的clash配置文件的所有节点提取出来汇总到一个文件中，其中clash-config一个是clashverge脚本，用来为一个clash配置文件添加多个配置好的规则，它可以帮助你管理和优化 Clash 代理规则配置。
 
 ## 🌟 特性
 
