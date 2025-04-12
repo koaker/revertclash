@@ -1,15 +1,16 @@
 {
-  "name": "revertclash",
+  "name": "revertclash-app",
   "version": "1.0.0",
-  "main": "clash-config.js",
+  "description": "A tool to merge and serve clash configurations",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "axios": "^1.6.7",
+    "chokidar": "^3.6.0",
+    "express": "^4.18.3",
+    "js-yaml": "^4.1.0",
+    "yaml": "^2.4.1"
   }
 }

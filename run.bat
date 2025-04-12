@@ -1,1 +1,1 @@
-node process-config.js
+npm run start
