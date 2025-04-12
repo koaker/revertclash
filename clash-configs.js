@@ -1164,6 +1164,9 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 newProxy.name = proxyName + "_dialer";
                 newProxy["dialer-proxy"] = "前置机场";
                 newProxy["skip-cert-verify"] = true;
+                if (newProxy["type"] === "vless" && newProxy["udp"] === true) {
+                    delete(newProxy.udp)
+                }
                 // 将新节点添加到数组
                 proxies.push(newProxy);
                 needDialerProxiesNewName.push(newProxy.name);
