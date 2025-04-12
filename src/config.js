@@ -7,6 +7,7 @@ const URL = require('url');
 // 配置文件路径
 const CONFIG_FILE = path.join(__dirname, '..', 'clash-urls.txt');
 const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
+const CONFIG_SETTINGS_FILE = path.join(__dirname, '..', 'config-settings.json');
 const OUTPUT_FILE = path.join(__dirname, '..', 'merged-config.yaml');
 
 // Clash Verge的请求头
@@ -279,6 +280,25 @@ async function readLocalConfigs() {
     }
 }
 
+// 读取配置设置
+async function readConfigSettings() {
+    try {
+        const content = await fs.readFile(CONFIG_SETTINGS_FILE, 'utf8');
+        return JSON.parse(content);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            // 创建默认配置
+            const defaultSettings = {
+                useClashConfig: false // 默认不使用clash-configs.js处理
+            };
+            await fs.writeFile(CONFIG_SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
+            return defaultSettings;
+        }
+        console.error('读取配置设置失败:', err.message);
+        return { useClashConfig: false };
+    }
+}
+
 async function processConfigs() {
     console.log('开始处理配置...');
     
@@ -306,10 +326,29 @@ async function processConfigs() {
 
     try {
         const mergedConfig = await mergeConfigs(configs);
-        // 保存合并后的配置
-        await fs.writeFile(OUTPUT_FILE, YAML.stringify(mergedConfig));
-        console.log(`配置已合并并保存到: ${OUTPUT_FILE}`);
-        console.log(`成功合并了 ${mergedConfig.proxies.length} 个代理节点`);
+
+        // 读取配置设置
+        const settings = await readConfigSettings();
+        
+        let finalConfig = mergedConfig;
+        
+        // 如果启用了clash-configs处理
+        if (settings.useClashConfig) {
+            try {
+                const clashConfigProcessor = require('../clash-configs.js');
+                finalConfig = clashConfigProcessor.main(mergedConfig);
+                console.log('已使用clash-configs.js处理配置');
+            } catch (err) {
+                console.error('使用clash-configs处理时出错:', err.message);
+                // 如果处理失败,使用原始合并配置
+                finalConfig = mergedConfig;
+            }
+        }
+
+        // 保存最终配置
+        await fs.writeFile(OUTPUT_FILE, YAML.stringify(finalConfig));
+        console.log(`配置已保存到: ${OUTPUT_FILE}`);
+        console.log(`成功处理了 ${finalConfig.proxies.length} 个代理节点`);
     } catch (err) {
         console.error('处理配置失败:', err.message);
     }

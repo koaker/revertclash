@@ -28,17 +28,20 @@ npm install
 - 复制 `clash-urls.txt.example` 到 `clash-urls.txt`
 - 根据需要修改配置文件
 
-4.clash verge使用：
+4.
+如果只需要规则文件，将setting.json的变量设为true
+如果想在clash中导入只有proxies的文件，设为flash
+
+5.clash verge使用：
 - 将clash-config.js 中除了module.exports = { main };的函数全部复制导入到clash verge中
 
 ## 🚀 使用方法
 1. 启动 HTTP 服务器：
 ```bash
-cd revertclash-app
 npm run start
 ```
 
-2. 启动主程序，查看对文件的效果：
+2. 启动脚本运行，查看对文件的效果：
 ```bash
 node process-config.js
 ```
