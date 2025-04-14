@@ -13,3 +13,5 @@ merged-config.yaml
 *.yaml
 revertclash-app/*.yaml
 revertclash-app/config/*.yaml
+
+run.bat

@@ -5,6 +5,20 @@ const { OUTPUT_FILE } = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'admin'; // 默认密码
+const authorizedIPs = new Set();
+
+// IP验证中间件
+const checkIPAuth = (req, res, next) => {
+    const clientIP = req.ip;
+    if (authorizedIPs.has(clientIP)) {
+        next();
+    } else {
+        res.status(403).json({
+            error: '未授权的IP地址'
+        });
+    }
+};
 
 // 基础状态检查
 app.get('/status', (req, res) => {
@@ -15,7 +29,25 @@ app.get('/status', (req, res) => {
 });
 
 // 获取合并后的配置文件
-app.get('/config', async (req, res) => {
+// IP认证接口
+app.post('/auth', express.json(), (req, res) => {
+    const { password } = req.body;
+    const clientIP = req.ip;
+
+    if (password === AUTH_PASSWORD) {
+        authorizedIPs.add(clientIP);
+        res.json({
+            status: 'success',
+            message: 'IP认证成功'
+        });
+    } else {
+        res.status(401).json({
+            error: '密码错误'
+        });
+    }
+});
+
+app.get('/config', checkIPAuth, async (req, res) => {
     try {
         const config = await fs.readFile(OUTPUT_FILE, 'utf8');
         res.setHeader('Content-Type', 'text/yaml');
@@ -34,10 +66,34 @@ app.get('/config', async (req, res) => {
     }
 });
 
+// 获取已授权的IP列表
+app.get('/auth/list', (req, res) => {
+    res.json({
+        authorized_ips: Array.from(authorizedIPs)
+    });
+});
+
+// 移除IP授权
+app.delete('/auth', express.json(), (req, res) => {
+    const { ip } = req.body;
+    if (authorizedIPs.has(ip)) {
+        authorizedIPs.delete(ip);
+        res.json({
+            status: 'success',
+            message: `已移除IP: ${ip}`
+        });
+    } else {
+        res.status(404).json({
+            error: '未找到该IP'
+        });
+    }
+});
+
 function startServer() {
     app.listen(PORT, () => {
         console.log(`HTTP服务器已启动: http://localhost:${PORT}`);
         console.log(`配置文件地址: http://localhost:${PORT}/config`);
+        console.log(`默认验证密码: ${AUTH_PASSWORD}`);
     });
 }
 

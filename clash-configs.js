@@ -1109,13 +1109,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "自动选择(最低延迟)", "负载均衡", "HighQuality", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["DIRECT", "自动选择(最低延迟)", "负载均衡", "HighQuality", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点", ...(socks5ProxiesName.length > 0 || needDialerProxiesName.length > 0 ? ["dialer-proxy的节点"] : [])],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["自动选择(最低延迟)", "负载均衡",  "HighQuality","DIRECT", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["自动选择(最低延迟)", "负载均衡",  "HighQuality","DIRECT", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点", ...(socks5ProxiesName.length > 0 || needDialerProxiesName.length > 0 ? ["dialer-proxy的节点"] : [])],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
