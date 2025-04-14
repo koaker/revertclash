@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevertClash 认证</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 1rem;
+            display: none;
+        }
+        .info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-group">
+            <label for="password">请输入访问密码：</label>
+            <input type="password" id="password" required>
+        </div>
+        <button onclick="authenticate()">验证</button>
+        <div id="error" class="error"></div>
+        <div id="attempts" class="info"></div>
+    </div>
+
+    <script>
+        // 获取剩余尝试次数
+        async function checkAttempts() {
+            try {
+                const response = await fetch('/auth/attempts');
+                const data = await response.json();
+                document.getElementById('attempts').textContent = 
+                    `剩余尝试次数：${data.remainingAttempts}/${data.maxAttemptsPerDay}`;
+            } catch (error) {
+                console.error('获取尝试次数失败:', error);
+            }
+        }
+
+        // 页面加载时获取尝试次数
+        checkAttempts();
+
+        async function authenticate() {
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            
+            try {
+                const response = await fetch('/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.location.href = '/home';
+                } else {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                    checkAttempts(); // 更新尝试次数
+                }
+            } catch (error) {
+                errorDiv.textContent = '验证失败，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // 支持回车键提交
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                authenticate();
+            }
+        });
+    </script>
+</body>
+</html>

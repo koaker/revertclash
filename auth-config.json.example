@@ -1,0 +1,4 @@
+{
+    "password": "your-secure-password",
+    "maxAttemptsPerDay": 10
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevertClash 主页</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .info-box {
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .config-url {
+            word-break: break-all;
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RevertClash 配置</h1>
+        <div class="info-box">
+            <p>您的IP已通过验证，可以访问配置文件。</p>
+            <div class="config-url">
+                配置文件地址：<br>
+                <a href="/config" id="configUrl" class="button">下载配置文件</a>
+            </div>
+        </div>
+        <p>
+            <button onclick="logout()" class="button" style="background-color: #dc3545;">退出登录</button>
+        </p>
+    </div>
+
+    <script>
+        async function logout() {
+            const ip = await getCurrentIP();
+            if (ip) {
+                try {
+                    await fetch('/auth', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ ip })
+                    });
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                }
+            }
+            window.location.href = '/auth';
+        }
+
+        async function getCurrentIP() {
+            try {
+                const response = await fetch('/auth/list');
+                const data = await response.json();
+                return data.authorized_ips[0]; // 假设列表中第一个IP是当前IP
+            } catch (error) {
+                console.error('获取IP失败:', error);
+                return null;
+            }
+        }
+    </script>
+</body>
+</html>

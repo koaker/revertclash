@@ -1,2 +1,1 @@
-set AUTH_PASSWORD = "your_password"
 npm run start
