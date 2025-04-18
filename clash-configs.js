@@ -92,10 +92,10 @@ const HIGH_QUALITY_KEYWORDS = [
 ];
 
 const LOW_QUALITY_KEYWORDS = [
-    "无限", "x0."
+    "无限", "x0.","低质","低价"
 ];
 
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试"
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群"
 ];
 
 const NEED_DIALER_KEYWORDS = [
@@ -110,51 +110,61 @@ const COUNTRY_OR_REGION_KEYWORDS = [
     {
         name : "香港",
         keywords : ["香港", "HK", "Hong", "ASYNCHRONOUS", "AnyPath®"],
+        enable: true,
         enableAuto : true,
     },
     {
         name : "美国",
         keywords : ["美国", "US", "United States"],
+        enable: true,
         enableAuto : true,
     },
     {
         name : "日本",
         keywords : ["日本", "JP", "Japan"],
+        enable: true,
         enableAuto : true,
     },
     {
         name : "台湾",
         keywords : ["台湾", "TW", "Taiwan"],
+        enable: true,
         enableAuto : true,
     },
     {
         name : "新加坡",
         keywords : ["新加坡", "SG", "Singapore"],
+        enable: true,
         enableAuto : false,
     },
     {
         name : "韩国",
         keywords : ["韩国", "KR", "Korea"],
+        enable: true,
         enableAuto : false,
     },
     {
         name : "欧洲系列",
         keywords: ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
+        enable: true,
         enableAuto : false,
     },
     {
         name : "加拿大",
         keywords : ["加拿大", "CA", "Canada"],
+        enable: false,
         enableAuto : false,
     },
     {
         name :"澳大利亚",
         keywords : ["澳大利亚", "AU", "Australia"],
+        enable: false,
         enableAuto : false,
     },
     {
         name : "俄罗斯",
         keywords : ["俄罗斯", "RU", "Russia"],
+        enable: false,
         enableAuto : false,
     },
 ];
@@ -166,6 +176,7 @@ const COUNTRY_OR_REGION_KEYWORDS = [
  * payload: 自定义规则内容，设置后urls将被忽略
  * extraProxies: 额外添加到此规则组的代理，例如REJECT用于广告拦截
  */
+// 规则越往前越优先级越高，规则组内的规则会被合并到一起
 const PROXY_RULES = [
     // 广告拦截
     { 
@@ -228,7 +239,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "下载服务器列表", 
+        name: "建议走低质量节点：下载服务器列表", 
         gfw : false,
         payload:  [
             "DOMAIN-SUFFIX,eft-store.com",
@@ -238,7 +249,8 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,steamstatic.com",
             "DOMAIN-SUFFIX,xz.pphimalayanrt.com",
             "DOMAIN-SUFFIX,storage.live.com",
-            "DOMAIN-SUFFIX,sharepoint.com"
+            "DOMAIN-SUFFIX,sharepoint.com",
+            "DOMAIN-SUFFIX,cloudflarestorage.com",
         ]
     },
     { 
@@ -1028,14 +1040,18 @@ function filterCountryOrRegionProxies(proxies) {
     if (!proxies || !Array.isArray(proxies)) {
         return [];
     }
-    
-    return COUNTRY_OR_REGION_KEYWORDS.map(countryRegion => {
+    const COUNTRY_OR_REGION_KEYWORDS_FILTERED = COUNTRY_OR_REGION_KEYWORDS.filter(item => item.enable);
+    if (COUNTRY_OR_REGION_KEYWORDS_FILTERED.length === 0) {
+        return [];
+    }
+    return COUNTRY_OR_REGION_KEYWORDS_FILTERED.map(countryRegion => {
         const countryRegex = new RegExp(countryRegion.keywords.join("|"));
         const filteredProxiesName = proxies
             .map(proxy => proxy.name || "")
             .filter(proxyName => countryRegex.test(proxyName));
             
-        return filteredProxiesName.length > 0 ? filteredProxiesName : ["NULL"];
+        return filteredProxiesName.length > 0 ? {name :countryRegion.name, enableAuto: countryRegion, proxies: [...filteredProxiesName]} 
+        : {name:countryRegion.name, enableAuto: countryRegion,proxies: ["NULL"]};
     });
 }
 const findByName1 = (array, name) => {
@@ -1074,24 +1090,24 @@ function buildBaseProxyGroups(testUrl, proxies) {
     for (let i = 0; i < countryOrRegionLen; i++) {
         const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
 
-        if (countryOrRegionProxies[0] === "NULL") {
+        if (countryOrRegionProxies.proxies[0] === "NULL") {
             continue;
         }
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
+        const groupName = "手动选择"+countryOrRegionProxies.name+"节点";
         
         
         finalBaseProxyGroups.push({
             "name": groupName,
             "type": "select",
             "proxies": [
-                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
+                ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
                 "DIRECT",
             ]
         });
         // 当enableAuto为true时，添加自动选择节点组
-        if (COUNTRY_OR_REGION_KEYWORDS[i].enableAuto) 
+        if (countryOrRegionProxies.enableAuto) 
         {
-            const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
+            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点";
         
             finalBaseProxyGroups.push({
                 "name": autoGroupName,
@@ -1100,7 +1116,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "url": testUrl,
                 "interval": CONFIG.testInterval,
                 "proxies": [
-                    ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
+                    ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
                     "DIRECT",
                 ]
             });
@@ -1241,17 +1257,17 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
     
     for (let i = 0; i < countryOrRegionLen; i++) {
 
-        if (countryOrRegionProxiesGroups[i][0] === "NULL") {
+        if (countryOrRegionProxiesGroups[i].proxies === "NULL") {
             continue;
         }
         
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
+        const groupName = "手动选择"+countryOrRegionProxiesGroups[i].name+"节点";
         
         countryOrRegionGroupNames.push(groupName);
 
         // 当enableAuto为true时，添加自动选择节点组
-        if (COUNTRY_OR_REGION_KEYWORDS[i].enableAuto) {
-            const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
+        if (countryOrRegionProxiesGroups[i].enableAuto) {
+            const autoGroupName = "自动选择"+countryOrRegionProxiesGroups[i].name+"节点";
             countryOrRegionGroupNames.push(autoGroupName);
         }
         
