@@ -2,8 +2,15 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const { OUTPUT_FILE } = require('./config');
+const { URLManager, CONFIG_FILE } = require('./urlManager');
+const { ConfigManager, CONFIGS_DIR } = require('./configManager');
 
 const app = express();
+const urlManager = new URLManager(CONFIG_FILE);
+const configManager = new ConfigManager(CONFIGS_DIR);
+
+// 支持JSON请求体
+app.use(express.json());
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '..', 'public')));
 const PORT = process.env.PORT || 3000;
@@ -116,9 +123,13 @@ app.get('/status', (req, res) => {
     });
 });
 
-// 首页路由
+// 页面路由
 app.get('/home', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'home.html'));
+});
+
+app.get('/manage', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'manage.html'));
 });
 
 // 认证页面路由
@@ -202,6 +213,120 @@ app.post('/auth', express.json(), (req, res) => {
     }
 });
 
+// URL管理API
+app.get('/api/urls', checkIPAuth, async (req, res) => {
+    try {
+        const urls = await urlManager.readUrls();
+        res.json(urls);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/urls', checkIPAuth, async (req, res) => {
+    try {
+        const { name, url } = req.body;
+        if (!name || !url) {
+            return res.status(400).json({ error: '名称和URL都是必需的' });
+        }
+        const result = await urlManager.addUrl(name, url);
+        res.status(201).json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.put('/api/urls/:name', checkIPAuth, async (req, res) => {
+    try {
+        const { name: oldName } = req.params;
+        const { name: newName, url } = req.body;
+        if (!newName || !url) {
+            return res.status(400).json({ error: '新名称和URL都是必需的' });
+        }
+        const result = await urlManager.updateUrl(oldName, newName, url);
+        res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.delete('/api/urls/:name', checkIPAuth, async (req, res) => {
+    try {
+        const { name } = req.params;
+        await urlManager.deleteUrl(name);
+        res.status(204).send();
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// 配置文件管理API
+app.get('/api/configs', checkIPAuth, async (req, res) => {
+    try {
+        const configs = await configManager.listConfigs();
+        res.json(configs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/configs/:name', checkIPAuth, async (req, res) => {
+    try {
+        const { name } = req.params;
+        const config = await configManager.readConfig(name);
+        res.json(config);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            res.status(404).json({ error: '配置文件不存在' });
+        } else {
+            res.status(500).json({ error: err.message });
+        }
+    }
+});
+
+app.post('/api/configs', checkIPAuth, async (req, res) => {
+    try {
+        const { name, content } = req.body;
+        if (!name || !content) {
+            return res.status(400).json({ error: '名称和内容都是必需的' });
+        }
+        configManager.validateFileName(name);
+        const fileName = await configManager.saveConfig(name, content);
+        res.status(201).json({ name: fileName });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.put('/api/configs/:name', checkIPAuth, async (req, res) => {
+    try {
+        const { name } = req.params;
+        const { content } = req.body;
+        if (!content) {
+            return res.status(400).json({ error: '内容是必需的' });
+        }
+        await configManager.saveConfig(name, content);
+        res.json({ name });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.delete('/api/configs/:name', checkIPAuth, async (req, res) => {
+    try {
+        const { name } = req.params;
+        await configManager.deleteConfig(name);
+        res.status(204).send();
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            res.status(404).json({ error: '配置文件不存在' });
+        } else {
+            res.status(400).json({ error: err.message });
+        }
+    }
+});
+
+// 合并后的配置文件访问
 app.get('/config', checkIPAuth, async (req, res) => {
     try {
         const config = await fs.readFile(OUTPUT_FILE, 'utf8');

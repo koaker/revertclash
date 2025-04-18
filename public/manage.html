@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 1rem;
+        }
+        .table th, .table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        /* 设置列宽度 */
+        .table th:nth-child(1),
+        .table td:nth-child(1) {
+            width: 180px;
+            min-width: 180px;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .table th:nth-child(2),
+        .table td:nth-child(2) {
+            min-width: 300px;
+        }
+        .table th:nth-child(3),
+        .table td:nth-child(3) {
+            width: 150px;
+            min-width: 150px;
+        }
+        /* URL单元格样式 */
+        .table td.url-cell {
+            max-width: 500px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            position: relative;
+            padding-right: 20px; /* 防止文字贴近右边界 */
+        }
+        /* URL hover效果 */
+        .table td.url-cell:hover::after {
+            content: attr(title);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            z-index: 1000;
+            background: white;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: max-content;
+            max-width: 800px;
+            word-break: break-all;
+            white-space: normal;
+        }
+        .table th {
+            background-color: #f8f9fa;
+        }
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: .5rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea.form-control {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .close {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+        .alert {
+            padding: 10px;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 提示框 -->
+        <div id="alert" class="alert"></div>
+
+        <!-- URL管理部分 -->
+        <div class="section">
+            <h2>URL管理</h2>
+            <button class="btn" onclick="showAddUrlModal()">添加URL</button>
+            <table class="table" id="urlTable">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>URL</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 配置文件管理部分 -->
+        <div class="section">
+            <h2>配置文件管理</h2>
+            <button class="btn" onclick="showAddConfigModal()">添加配置</button>
+            <table class="table" id="configTable">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>大小</th>
+                        <th>修改时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- URL模态框 -->
+        <div id="urlModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeUrlModal()">&times;</span>
+                <h3>URL配置</h3>
+                <form id="urlForm">
+                    <input type="hidden" id="urlOldName">
+                    <div class="form-group">
+                        <label for="urlName">名称</label>
+                        <input type="text" id="urlName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="urlValue">URL</label>
+                        <input type="text" id="urlValue" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn">保存</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 配置文件模态框 -->
+        <div id="configModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeConfigModal()">&times;</span>
+                <h3>配置文件</h3>
+                <form id="configForm">
+                    <div class="form-group">
+                        <label for="configName">文件名 (.yaml)</label>
+                        <input type="text" id="configName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="configContent">内容</label>
+                        <textarea id="configContent" class="form-control" required></textarea>
+                    </div>
+                    <button type="submit" class="btn">保存</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let isEditing = false;
+
+        // 工具函数
+        function showAlert(message, type = 'danger') {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            setTimeout(() => alert.style.display = 'none', 3000);
+        }
+
+        function formatSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            return `${size.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        // URL管理功能
+        async function loadUrls() {
+            try {
+                const response = await fetch('/api/urls');
+                if (!response.ok) throw new Error('加载URL失败');
+                const urls = await response.json();
+                
+                const tbody = document.querySelector('#urlTable tbody');
+                tbody.innerHTML = '';
+                
+                urls.forEach(({name, url}) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="width: 150px">${name}</td>
+                        <td class="url-cell" title="${url}">${url}</td>
+                        <td style="width: 150px">
+                            <button class="btn" onclick="editUrl('${name}', '${url}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteUrl('${name}')">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert(err.message);
+            }
+        }
+
+        function showAddUrlModal() {
+            isEditing = false;
+            document.getElementById('urlForm').reset();
+            document.getElementById('urlModal').style.display = 'block';
+        }
+
+        function closeUrlModal() {
+            document.getElementById('urlModal').style.display = 'none';
+        }
+
+        function editUrl(name, url) {
+            isEditing = true;
+            document.getElementById('urlOldName').value = name;
+            document.getElementById('urlName').value = name;
+            document.getElementById('urlValue').value = url;
+            document.getElementById('urlModal').style.display = 'block';
+        }
+
+        async function deleteUrl(name) {
+            if (!confirm(`确定要删除 ${name} 吗？`)) return;
+            
+            try {
+                const response = await fetch(`/api/urls/${name}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('删除失败');
+                showAlert('删除成功', 'success');
+                await loadUrls();
+            } catch (err) {
+                showAlert(err.message);
+            }
+        }
+
+        document.getElementById('urlForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('urlName').value;
+            const url = document.getElementById('urlValue').value;
+            const oldName = document.getElementById('urlOldName').value;
+
+            try {
+                const response = await fetch(isEditing ? `/api/urls/${oldName}` : '/api/urls', {
+                    method: isEditing ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, url })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || '操作失败');
+                }
+
+                showAlert('保存成功', 'success');
+                closeUrlModal();
+                await loadUrls();
+            } catch (err) {
+                showAlert(err.message);
+            }
+        };
+
+        // 配置文件管理功能
+        async function loadConfigs() {
+            try {
+                const response = await fetch('/api/configs');
+                if (!response.ok) throw new Error('加载配置失败');
+                const configs = await response.json();
+                
+                const tbody = document.querySelector('#configTable tbody');
+                tbody.innerHTML = '';
+                
+                configs.forEach(({name, size, modifiedTime}) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${name}</td>
+                        <td>${formatSize(size)}</td>
+                        <td>${formatDate(modifiedTime)}</td>
+                        <td>
+                            <button class="btn" onclick="editConfig('${name}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteConfig('${name}')">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert(err.message);
+            }
+        }
+
+        function showAddConfigModal() {
+            document.getElementById('configForm').reset();
+            document.getElementById('configModal').style.display = 'block';
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        async function editConfig(name) {
+            try {
+                const response = await fetch(`/api/configs/${name}`);
+                if (!response.ok) throw new Error('加载配置失败');
+                const {content} = await response.json();
+                
+                document.getElementById('configName').value = name;
+                document.getElementById('configName').readOnly = true;
+                document.getElementById('configContent').value = content;
+                document.getElementById('configModal').style.display = 'block';
+            } catch (err) {
+                showAlert(err.message);
+            }
+        }
+
+        async function deleteConfig(name) {
+            if (!confirm(`确定要删除 ${name} 吗？`)) return;
+            
+            try {
+                const response = await fetch(`/api/configs/${name}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('删除失败');
+                showAlert('删除成功', 'success');
+                await loadConfigs();
+            } catch (err) {
+                showAlert(err.message);
+            }
+        }
+
+        document.getElementById('configForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('configName').value;
+            const content = document.getElementById('configContent').value;
+
+            try {
+                const response = await fetch(`/api/configs/${name}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || '保存失败');
+                }
+
+                showAlert('保存成功', 'success');
+                closeConfigModal();
+                await loadConfigs();
+            } catch (err) {
+                showAlert(err.message);
+            }
+        };
+
+        // 初始加载
+        loadUrls();
+        loadConfigs();
+    </script>
+</body>
+</html>
