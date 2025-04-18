@@ -163,6 +163,17 @@
         <!-- 提示框 -->
         <div id="alert" class="alert"></div>
 
+        <!-- 顶部操作栏 -->
+        <div class="section" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn" onclick="updateConfig()" style="font-size: 16px; padding: 10px 20px;">
+                    <span id="updateBtnText">立即更新配置</span>
+                    <span id="updateSpinner" style="display: none;">更新中...</span>
+                </button>
+                <a href="/home" class="btn" style="background-color: #6c757d; text-decoration: none;">返回首页</a>
+            </div>
+        </div>
+
         <!-- URL管理部分 -->
         <div class="section">
             <h2>URL管理</h2>
@@ -239,6 +250,41 @@
     </div>
 
     <script>
+        // 更新配置函数
+        async function updateConfig() {
+            const btnText = document.getElementById('updateBtnText');
+            const spinner = document.getElementById('updateSpinner');
+            const btn = spinner.parentElement;
+            
+            try {
+                // 禁用按钮
+                btn.disabled = true;
+                btnText.style.display = 'none';
+                spinner.style.display = 'inline';
+                
+                const response = await fetch('/api/update', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || '更新失败');
+                }
+                
+                showAlert(data.message, 'success');
+                
+                // 刷新列表
+                await Promise.all([loadUrls(), loadConfigs()]);
+            } catch (err) {
+                showAlert(err.message);
+            } finally {
+                // 恢复按钮状态
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                spinner.style.display = 'none';
+            }
+        }
+
         // 全局变量
         let isEditing = false;
 
@@ -382,8 +428,14 @@
             }
         }
 
+        // 配置文件表单处理
+        let isConfigEditing = false;
+
         function showAddConfigModal() {
+            isConfigEditing = false;
+            const configNameInput = document.getElementById('configName');
             document.getElementById('configForm').reset();
+            configNameInput.readOnly = false;
             document.getElementById('configModal').style.display = 'block';
         }
 
@@ -397,8 +449,10 @@
                 if (!response.ok) throw new Error('加载配置失败');
                 const {content} = await response.json();
                 
-                document.getElementById('configName').value = name;
-                document.getElementById('configName').readOnly = true;
+                isConfigEditing = true;
+                const configNameInput = document.getElementById('configName');
+                configNameInput.value = name;
+                configNameInput.readOnly = true;
                 document.getElementById('configContent').value = content;
                 document.getElementById('configModal').style.display = 'block';
             } catch (err) {
@@ -427,12 +481,12 @@
             const content = document.getElementById('configContent').value;
 
             try {
-                const response = await fetch(`/api/configs/${name}`, {
-                    method: 'PUT',
+                const response = await fetch(isConfigEditing ? `/api/configs/${name}` : '/api/configs', {
+                    method: isConfigEditing ? 'PUT' : 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ content })
+                    body: JSON.stringify(isConfigEditing ? { content } : { name, content })
                 });
 
                 if (!response.ok) {

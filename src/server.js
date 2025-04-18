@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
-const { OUTPUT_FILE } = require('./config');
+const { OUTPUT_FILE, processConfigs } = require('./config');
 const { URLManager, CONFIG_FILE } = require('./urlManager');
 const { ConfigManager, CONFIGS_DIR } = require('./configManager');
 
@@ -323,6 +323,33 @@ app.delete('/api/configs/:name', checkIPAuth, async (req, res) => {
         } else {
             res.status(400).json({ error: err.message });
         }
+    }
+});
+
+// 更新配置
+app.post('/api/update', checkIPAuth, async (req, res) => {
+    try {
+        await processConfigs();
+        res.json({ status: 'success', message: '配置已更新' });
+    } catch (err) {
+        console.error('更新配置失败:', err);
+        res.status(500).json({ error: err.message || '更新配置失败' });
+    }
+});
+
+// 立即更新配置
+app.post('/api/update', checkIPAuth, async (req, res) => {
+    try {
+        await processConfigs();
+        res.json({
+            status: 'success',
+            message: '配置更新成功'
+        });
+    } catch (err) {
+        console.error('更新配置失败:', err);
+        res.status(500).json({
+            error: err.message || '更新配置失败'
+        });
     }
 });
 
