@@ -1220,7 +1220,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
             const proxyName = socks5ProxiesName[i];
             for (let j = 0; j < proxies.length; j++) {
                 if (proxies[j].name === proxyName) {
-                    proxies[j]["dialerProxy"] = "前置机场";
+                    proxies[j]["dialer-proxy"] = "前置机场";
                 }
             }
         }
