@@ -27,12 +27,13 @@ async function readUrls() {
             if (!line || line.startsWith('#')) return;
             
             // 检查是否包含名称前缀（格式：名称=URL）
-            const parts = line.split('=');
-            if (parts.length === 2) {
-                urls.push({
-                    name: parts[0].trim(),
-                    url: parts[1].trim()
-                });
+            const firstEqualIndex = line.indexOf('=');
+            if (firstEqualIndex > 0) {
+                const name = line.substring(0, firstEqualIndex).trim();
+                const url = line.substring(firstEqualIndex + 1).trim();
+                if (url) {
+                    urls.push({ name, url });
+                }
             } else {
                 // 如果没有指定名称，使用默认前缀
                 urls.push({
