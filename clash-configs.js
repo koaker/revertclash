@@ -107,17 +107,56 @@ const NEED_DIALER_KEYWORDS = [
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
  */
 const COUNTRY_OR_REGION_KEYWORDS = [
-    // 国家或地区
-    ["香港", "HK", "Hong", "ASYNCHRONOUS", "AnyPath®"],
-    ["台湾", "Taiwan"],
-    ["日本", "JP", "Japan"],
-    ["美国", "American", "United States"],
-    ["新加坡", "SG", "Singapore"],
-    ["韩国", "KR", "Korea"],
-    ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
-    ["加拿大", "CA", "Canada"],
-    ["澳大利亚", "AU", "Australia"],
-    ["俄罗斯", "RU", "Russia"],
+    {
+        name : "香港",
+        keywords : ["香港", "HK", "Hong", "ASYNCHRONOUS", "AnyPath®"],
+        enableAuto : true,
+    },
+    {
+        name : "美国",
+        keywords : ["美国", "US", "United States"],
+        enableAuto : true,
+    },
+    {
+        name : "日本",
+        keywords : ["日本", "JP", "Japan"],
+        enableAuto : true,
+    },
+    {
+        name : "台湾",
+        keywords : ["台湾", "TW", "Taiwan"],
+        enableAuto : true,
+    },
+    {
+        name : "新加坡",
+        keywords : ["新加坡", "SG", "Singapore"],
+        enableAuto : false,
+    },
+    {
+        name : "韩国",
+        keywords : ["韩国", "KR", "Korea"],
+        enableAuto : false,
+    },
+    {
+        name : "欧洲系列",
+        keywords: ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
+        enableAuto : false,
+    },
+    {
+        name : "加拿大",
+        keywords : ["加拿大", "CA", "Canada"],
+        enableAuto : false,
+    },
+    {
+        name :"澳大利亚",
+        keywords : ["澳大利亚", "AU", "Australia"],
+        enableAuto : false,
+    },
+    {
+        name : "俄罗斯",
+        keywords : ["俄罗斯", "RU", "Russia"],
+        enableAuto : false,
+    },
 ];
 /**
  * 代理规则配置
@@ -150,14 +189,17 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,ssr.wtf",
             "DOMAIN-SUFFIX,aws-cisco-delltechnologies-fujitsu-hewlettpackardenterprise-ibm.com",
             "DOMAIN-SUFFIX,lycorisrecoil.org",
-         ]
+        ]
     },
     { 
-        name: "exhentai", 
+        name: "必须美国节点：exhentai、openai", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,exhentai.org",
             "DOMAIN-SUFFIX,e-hentai.org",
+        ],
+        urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" 
         ]
     },
     { 
@@ -186,21 +228,17 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "塔科夫下载", 
+        name: "下载服务器列表", 
         gfw : false,
         payload:  [
             "DOMAIN-SUFFIX,eft-store.com",
-        ]
-    },
-    { 
-        name: "🎮 Steam下载选择", 
-        gfw : false,
-        payload:  [
             "DOMAIN-SUFFIX,dl.steam.clngaa.com",
             "DOMAIN-SUFFIX,st.dl.eccdnx.com",
             "DOMAIN-SUFFIX,steamcontent.com",
             "DOMAIN-SUFFIX,steamstatic.com",
             "DOMAIN-SUFFIX,xz.pphimalayanrt.com",
+            "DOMAIN-SUFFIX,storage.live.com",
+            "DOMAIN-SUFFIX,sharepoint.com"
         ]
     },
     { 
@@ -709,11 +747,6 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
     },
     { 
-        name: "openAi", 
-        gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml" 
-    },
-    { 
         name: "Netflix", 
         gfw : true,
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Netflix/Netflix_No_Resolve.yaml" 
@@ -725,16 +758,6 @@ const PROXY_RULES = [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Twitter/Twitter_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Facebook/Facebook_No_Resolve.yaml"
         ]
-    },
-    { 
-        name: "TikTok", 
-        gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" 
-    },
-    { 
-        name: "OneDrive下载", 
-        gfw : false,
-        payload: ["DOMAIN-SUFFIX,storage.live.com", "DOMAIN-SUFFIX,sharepoint.com"]
     },
     { 
         name: "OneDrive", 
@@ -1006,8 +1029,8 @@ function filterCountryOrRegionProxies(proxies) {
         return [];
     }
     
-    return COUNTRY_OR_REGION_KEYWORDS.map(keywords => {
-        const countryRegex = new RegExp(keywords.join("|"));
+    return COUNTRY_OR_REGION_KEYWORDS.map(countryRegion => {
+        const countryRegex = new RegExp(countryRegion.keywords.join("|"));
         const filteredProxiesName = proxies
             .map(proxy => proxy.name || "")
             .filter(proxyName => countryRegex.test(proxyName));
@@ -1054,7 +1077,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         if (countryOrRegionProxies[0] === "NULL") {
             continue;
         }
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
         
         
         finalBaseProxyGroups.push({
@@ -1065,20 +1088,23 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "DIRECT",
             ]
         });
-
-        const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        // 当enableAuto为true时，添加自动选择节点组
+        if (COUNTRY_OR_REGION_KEYWORDS[i].enableAuto) 
+        {
+            const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
         
-        finalBaseProxyGroups.push({
-            "name": autoGroupName,
-            "type": "url-test",
-            "tolerance": CONFIG.tolerance,
-            "url": testUrl,
-            "interval": CONFIG.testInterval,
-            "proxies": [
-                ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
-                "DIRECT",
-            ]
-        });
+            finalBaseProxyGroups.push({
+                "name": autoGroupName,
+                "type": "url-test",
+                "tolerance": CONFIG.tolerance,
+                "url": testUrl,
+                "interval": CONFIG.testInterval,
+                "proxies": [
+                    ...(countryOrRegionProxies !== "NULL" ? countryOrRegionProxies : []),
+                    "DIRECT",
+                ]
+            });
+        }
     }
 
     // 将最基本的放在最后
@@ -1219,12 +1245,15 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
             continue;
         }
         
-        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
+        const groupName = "手动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
         
         countryOrRegionGroupNames.push(groupName);
 
-        const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i][0]+"节点";
-        countryOrRegionGroupNames.push(autoGroupName);
+        // 当enableAuto为true时，添加自动选择节点组
+        if (COUNTRY_OR_REGION_KEYWORDS[i].enableAuto) {
+            const autoGroupName = "自动选择"+COUNTRY_OR_REGION_KEYWORDS[i].name+"节点";
+            countryOrRegionGroupNames.push(autoGroupName);
+        }
         
     }
     return countryOrRegionGroupNames
