@@ -100,7 +100,7 @@ const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠�
 
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
-    "家宽", "家庭宽带", 
+    "家宽", "家庭宽带", "need-dialer"
 ];
 /**
  * 国家或者地区节点关键词列表
@@ -231,12 +231,15 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "塔科夫", 
+        name: "塔科夫、你画我猜和Steam", 
         gfw : true,
         payload:  [
             "DOMAIN-SUFFIX,eft-project.com",
-            "DOMAIN-SUFFIX,escapefromtarkov.com"
-        ]
+            "DOMAIN-SUFFIX,escapefromtarkov.com",
+            "DOMAIN,b47db.playfabapi.com",
+            "IP-CIDR,8.218.91.138/22"
+        ],
+        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
         name: "建议走低质量节点：下载服务器列表", 
@@ -705,14 +708,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,deepseek.com",
         ]
     },
-    { 
-        name: "draw&guess", 
-        gfw : true,
-        payload:  [
-            "DOMAIN,b47db.playfabapi.com",
-            "IP-CIDR,8.218.91.138/22"
-        ]
-    },
 
     // 常用网站分组
     { 
@@ -780,11 +775,6 @@ const PROXY_RULES = [
         name: "Microsoft与bing服务", 
         gfw : true,
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml" 
-    },
-    { 
-        name: "Steam", 
-        gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
         name: "Cloudflare", 
@@ -1050,8 +1040,8 @@ function filterCountryOrRegionProxies(proxies) {
             .map(proxy => proxy.name || "")
             .filter(proxyName => countryRegex.test(proxyName));
             
-        return filteredProxiesName.length > 0 ? {name :countryRegion.name, enableAuto: countryRegion, proxies: [...filteredProxiesName]} 
-        : {name:countryRegion.name, enableAuto: countryRegion,proxies: ["NULL"]};
+        return filteredProxiesName.length > 0 ? {name :countryRegion.name, enableAuto: countryRegion.enableAuto, proxies: [...filteredProxiesName]} 
+        : {name:countryRegion.name, enableAuto: countryRegion.enableAuto,proxies: ["NULL"]};
     });
 }
 const findByName1 = (array, name) => {
