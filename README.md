@@ -25,13 +25,17 @@ npm install
 ```
 
 3. 配置：
-- 复制 `clash-urls.txt.example` 到 `clash-urls.txt`
+- 复制 `clash-urls.txt.example`去掉后缀,重命名为 `clash-urls.txt`
 - 根据需要修改配置文件
 
 4.
-如果只需要规则文件，将setting.json的变量设为true
-如果想在clash中导入只有proxies的文件，设为flash
-
+如果只需要规则文件，将config-setting.json的变量设为true,并且将auth-config.json.example去掉后缀，密码修改为你自己的密码
+如果想在clash中导入只有proxies的文件，设为false
+```bash
+npm run start
+```
+启动服务器
+访问localhost:3000，密码是文件中的密码
 5.clash verge使用：
 - 将clash-config.js 中除了module.exports = { main };的函数全部复制导入到clash verge中
 
@@ -51,37 +55,16 @@ node process-config.js
 - `GET /config`: 获取处理后的配置文件
 
 默认订阅链接：http://localhost:3000/config
+新增管理接口，访问界面即可看到
 
 ## ⚙️ 配置选项
 
 在 `clash-configs.js` 中，你可以自定义以下配置：
 
-```javascript
-const CONFIG = {
-    // 测试连接URL
-    testUrl: "https://www.google.com",
-    
-    // 自动测试间隔 (秒)
-    testInterval: 300,
-    
-    // 自动选择容差 (毫秒)
-    tolerance: 20,
-    
-    // 负载均衡策略
-    balanceStrategy: "sticky-sessions"
-};
-```
-
 ### 自定义规则
 
 你可以在 `USER_RULES` 数组中添加自定义规则：
 
-```javascript
-const USER_RULES = [
-    "DOMAIN-SUFFIX,example.com,国外网站",
-    // 添加更多规则...
-];
-```
 ## 🌐 预定义规则集
 
 项目内置了多个规则集，包括：
@@ -97,13 +80,6 @@ const USER_RULES = [
 ### 节点筛选
 
 可以通过关键词来筛选高质量节点：
-
-```javascript
-const HIGH_QUALITY_KEYWORDS = [
-    "IEPL", "IPLC", "专线", "高速",
-    // 更多关键词...
-];
-```
 
 ### DNS 配置 来源Phantasia
 
