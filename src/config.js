@@ -290,6 +290,12 @@ async function readLocalConfigs() {
                     
                     if (config && Array.isArray(config.proxies)) {
                         console.log(`成功读取本地配置: ${file}`);
+                        // 为每个代理添加文件名前缀
+                        const fileName = file.replace(/\.(yaml|yml)$/, '');
+                        config.proxies = config.proxies.map(proxy => ({
+                            ...proxy,
+                            name: `${fileName}-${proxy.name}`
+                        }));
                         configs.push(config);
                     }
                 } catch (err) {

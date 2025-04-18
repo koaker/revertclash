@@ -84,9 +84,21 @@ class ConfigManager {
     }
 
     validateFileName(fileName) {
-        const validName = /^[a-zA-Z0-9_-]+\.(yaml|yml)$/;
-        if (!validName.test(fileName)) {
-            throw new Error('无效的文件名。只允许使用字母、数字、下划线和横线，必须以.yaml或.yml结尾');
+        // 检查后缀名
+        if (!fileName.endsWith('.yaml') && !fileName.endsWith('.yml')) {
+            throw new Error('配置文件必须以.yaml或.yml结尾');
+        }
+
+        // 检查文件名长度
+        const nameWithoutExt = fileName.replace(/\.(yaml|yml)$/, '');
+        if (nameWithoutExt.length === 0) {
+            throw new Error('文件名不能为空');
+        }
+
+        // 检查是否包含非法字符（Windows文件系统限制字符）
+        const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+        if (invalidChars.test(fileName)) {
+            throw new Error('文件名不能包含以下字符: < > : " / \\ | ? *');
         }
     }
 }
