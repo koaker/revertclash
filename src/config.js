@@ -20,9 +20,29 @@ const CLASH_HEADERS = {
 async function readUrls() {
     try {
         const content = await fs.readFile(CONFIG_FILE, 'utf8');
-        return content.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.startsWith('#'));
+        const urls = [];
+        
+        content.split('\n').forEach(line => {
+            line = line.trim();
+            if (!line || line.startsWith('#')) return;
+            
+            // 检查是否包含名称前缀（格式：名称=URL）
+            const parts = line.split('=');
+            if (parts.length === 2) {
+                urls.push({
+                    name: parts[0].trim(),
+                    url: parts[1].trim()
+                });
+            } else {
+                // 如果没有指定名称，使用默认前缀
+                urls.push({
+                    name: '节点',
+                    url: line
+                });
+            }
+        });
+        
+        return urls;
     } catch (err) {
         if (err.code === 'ENOENT') {
             await fs.writeFile(CONFIG_FILE, '# 在此文件中添加Clash配置URL，每行一个\n');
@@ -131,7 +151,7 @@ function convertURIsToClashConfig(uris) {
     };
 }
 
-async function downloadConfig(url) {
+async function downloadConfig(url, prefix) {
     try {
         // 使用Clash Verge UA下载
         const response = await axios.get(url, {
@@ -183,6 +203,14 @@ async function downloadConfig(url) {
         if (!config || !Array.isArray(config.proxies)) {
             console.error('无效的Clash配置格式:', url);
             return null;
+        }
+
+        // 添加节点前缀
+        if (prefix) {
+            config.proxies = config.proxies.map(proxy => ({
+                ...proxy,
+                name: `${prefix}·${proxy.name}`
+            }));
         }
 
         // 只保留proxies，去除其他配置
@@ -313,9 +341,9 @@ async function processConfigs() {
     if (urls.length > 0) {
         console.log(`发现 ${urls.length} 个配置URL`);
         
-        for (const url of urls) {
-            console.log(`正在下载配置: ${url}`);
-            const config = await downloadConfig(url);
+        for (const { url, name } of urls) {
+            console.log(`正在下载配置: ${url} (前缀: ${name})`);
+            const config = await downloadConfig(url, name);
             if (config) {
                 configs.push(config);
             }
