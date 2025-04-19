@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
-const { OUTPUT_FILE, processConfigs } = require('./config');
+const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE, processConfigs } = require('./config');
 const { URLManager, CONFIG_FILE } = require('./urlManager');
 const { ConfigManager, CONFIGS_DIR } = require('./configManager');
 
@@ -373,6 +373,25 @@ app.get('/config', checkIPAuth, async (req, res) => {
     }
 });
 
+// 合并后的配置文件访问
+app.get('/processed-config', checkIPAuth, async (req, res) => {
+    try {
+        const config = await fs.readFile(PROCESSED_OUTPUT_FILE, 'utf8');
+        res.setHeader('Content-Type', 'text/yaml');
+        res.send(config);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            res.status(404).json({
+                error: '配置文件尚未生成'
+            });
+        } else {
+            console.error('读取配置文件失败:', err);
+            res.status(500).json({
+                error: '服务器内部错误'
+            });
+        }
+    }
+});
 // 获取已授权的IP列表
 app.get('/auth/list', (req, res) => {
     res.json({

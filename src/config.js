@@ -9,6 +9,7 @@ const CONFIG_FILE = path.join(__dirname, '..', 'clash-urls.txt');
 const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
 const CONFIG_SETTINGS_FILE = path.join(__dirname, '..', 'config-settings.json');
 const OUTPUT_FILE = path.join(__dirname, '..', 'merged-config.yaml');
+const PROCESSED_OUTPUT_FILE = path.join(__dirname, '..', 'processed-merged-config.yaml');
 
 // Clash Verge的请求头
 const CLASH_HEADERS = {
@@ -383,6 +384,11 @@ async function processConfigs() {
         // 保存最终配置
         await fs.writeFile(OUTPUT_FILE, YAML.stringify(finalConfig));
         console.log(`配置已保存到: ${OUTPUT_FILE}`);
+        const clashConfigs = require('../clash-configs.js');
+        const processedConfig = clashConfigs.main(finalConfig);
+
+        await fs.writeFile(PROCESSED_OUTPUT_FILE, YAML.stringify(processedConfig));
+        console.log(`处理过的配置已保存到: ${PROCESSED_OUTPUT_FILE}`);
         console.log(`成功处理了 ${finalConfig.proxies.length} 个代理节点`);
     } catch (err) {
         console.error('处理配置失败:', err.message);
@@ -391,5 +397,6 @@ async function processConfigs() {
 
 module.exports = {
     processConfigs,
-    OUTPUT_FILE
+    OUTPUT_FILE,
+    PROCESSED_OUTPUT_FILE
 };
