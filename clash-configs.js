@@ -94,7 +94,9 @@ const HIGH_QUALITY_KEYWORDS = [
 const LOW_QUALITY_KEYWORDS = [
     "无限", "x0.","低质","低价"
 ];
-
+const LOW_QUALITY__PROVIDER_KEYWORDS = [
+    "低质"
+];
 const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法"
 ];
 
@@ -106,6 +108,8 @@ const NEED_DIALER_KEYWORDS = [
  * 国家或者地区节点关键词列表
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
  */
+const DIVIDE_KEYWORDS = "|-|";
+
 const COUNTRY_OR_REGION_KEYWORDS = [
     {
         name : "香港",
@@ -580,6 +584,7 @@ const REGEX_CACHE = {
     lowQuality: new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i"),
     notProxy: new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i"),
     needDialer: new RegExp(NEED_DIALER_KEYWORDS.join("|"), "i"),
+    lowQualityProvider: new RegExp(LOW_QUALITY__PROVIDER_KEYWORDS.join("|"), "i"),
 };
 
 // 构建DNS配置对象
@@ -771,6 +776,25 @@ const findByName1 = (array, name) => {
     return array.find(item => item.name === name);
 }
 
+// 按提供商分类代理节点
+function filterLowQualityProviderProxies(proxies, flag) {
+    if (flag) {
+        return proxies;
+    }
+    // 使用Map存储按提供商分类的节点
+    const filteredLowQualityProvidersProxies = [];
+    proxies.forEach(proxy => {
+        const parts = proxy.name.split(DIVIDE_KEYWORDS);
+        if (parts.length >= 2) {
+            const provider = parts[0].trim();
+            if (!REGEX_CACHE.lowQualityProvider.test(provider)) {
+                filteredLowQualityProvidersProxies.push(proxy)
+            }
+        }
+    });
+    
+    return filteredLowQualityProvidersProxies;
+}
 /**
  * 构建基本代理组
  * @param {string} testUrl "测试URL
@@ -781,8 +805,8 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 筛选所有节点
     const filteredProxiesName = filterNameByRules(proxies, null)
 
-    // 筛选高质量节点
-    const highQualityProxiesName = filterNameByRules(proxies, REGEX_CACHE.highQuality);
+    // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
+    const filteredLowQualityProvidersProxies = filterLowQualityProviderProxies(proxies, false)
 
     // 筛选低质量下载节点
     const lowQualityProxiesName = filterNameByRules(proxies, REGEX_CACHE.lowQuality);
@@ -792,9 +816,11 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 获取除socks5之外需要dialer节点
     const needDialerProxiesName = filterNameByRules(proxies, REGEX_CACHE.needDialer);
 
-    // 过滤掉
+    // 这里需要保证剩余的节点质量很高
+    // 筛选高质量节点
+    const highQualityProxiesName = filterNameByRules(filteredLowQualityProvidersProxies, REGEX_CACHE.highQuality);
     // 筛选国家或者地区节点 
-    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(proxies);
+    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(filteredLowQualityProvidersProxies);
     const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
 
@@ -879,8 +905,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
             "name": "HighQuality",
             "type": "select",
             "proxies": [
-                "自动选择(最低延迟)",
-                "负载均衡",
                 "DIRECT",
                 ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : [])
             ]
