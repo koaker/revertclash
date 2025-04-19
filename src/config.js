@@ -210,7 +210,7 @@ async function downloadConfig(url, prefix) {
         if (prefix) {
             config.proxies = config.proxies.map(proxy => ({
                 ...proxy,
-                name: `${prefix}·${proxy.name}`
+                name: `${prefix}|-|${proxy.name}`
             }));
         }
 
@@ -294,7 +294,7 @@ async function readLocalConfigs() {
                         const fileName = file.replace(/\.(yaml|yml)$/, '');
                         config.proxies = config.proxies.map(proxy => ({
                             ...proxy,
-                            name: `${fileName}-${proxy.name}`
+                            name: `${fileName}|-|${proxy.name}`
                         }));
                         configs.push(config);
                     }
