@@ -77,11 +77,11 @@ const SAVED_RULES = [
  */
 const HIGH_QUALITY_KEYWORDS = [
     // 线路类型关键词
-    "家宽", "家庭宽带", "IEPL", "Iepl", "iepl",
+    "IEPL", "Iepl", "iepl",
     "IPLC", "iplc", "Iplc", "专线", "高速",
-    
+    "深港", "沪日", "沪美",
     // 节点等级关键词
-    "高级", "精品", "原生", "SVIP", "svip", 
+    "SVIP", "svip", 
     "Svip", "VIP", "vip", "Vip", "Premium", 
     "premium",
     
@@ -99,7 +99,7 @@ const LOW_QUALITY__PROVIDER_KEYWORDS = [
 ];
 const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法"
 ];
-
+const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生", "高级", "精品"]
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
     "家宽", "家庭宽带", "need-dialer"
@@ -585,6 +585,7 @@ const REGEX_CACHE = {
     notProxy: new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i"),
     needDialer: new RegExp(NEED_DIALER_KEYWORDS.join("|"), "i"),
     lowQualityProvider: new RegExp(LOW_QUALITY__PROVIDER_KEYWORDS.join("|"), "i"),
+    householdProxy: new RegExp(HOUSEHOLE_KEYWORDS.join("|"), "i"),
 };
 
 // 构建DNS配置对象
@@ -782,19 +783,82 @@ function filterLowQualityProviderProxies(proxies, flag) {
         return proxies;
     }
     // 使用Map存储按提供商分类的节点
-    const filteredLowQualityProvidersProxies = [];
+    const filteredLowQualityProvidersProxies = {
+        lowQualityProviderProxies: [],
+        otherProxies: [],
+    };
     proxies.forEach(proxy => {
         const parts = proxy.name.split(DIVIDE_KEYWORDS);
         if (parts.length >= 2) {
             const provider = parts[0].trim();
             if (!REGEX_CACHE.lowQualityProvider.test(provider)) {
-                filteredLowQualityProvidersProxies.push(proxy)
+                filteredLowQualityProvidersProxies.otherProxies.push(proxy)
+            } else {
+                filteredLowQualityProvidersProxies.lowQualityProviderProxies.push(proxy);
             }
         }
     });
     
     return filteredLowQualityProvidersProxies;
 }
+// 此函数用来返回将代理组分类之后的代理组
+/*返回的格式应该是
+{
+    lowQuailtyProxies : [...proxies], 
+    highQuailtyProxies : [...proxies],
+    householdProxies : [...proxies],
+    otherProxioes: [...proxies],
+    lowQualityProviderProxies : [...proxies]
+}
+*/
+function filterAllProxies(proxies) {
+    // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
+    const filteredProvidersProxies = filterLowQualityProviderProxies(proxies, false)
+    // proxies已经去除低质量提供商节点
+    proxies = filteredProvidersProxies.otherProxies;
+    //console.log(proxies)
+    const returnedProxies = {
+        lowQualityProxies: [...filteredProvidersProxies.lowQualityProviderProxies],
+        highQualityProxies: [],
+        householdProxies: [],
+        otherProxies: [],
+    }
+    // 暂时不进行判断是否有节点
+    for (let i = 0; i < proxies.length; i++) {
+        const proxy = proxies[i];
+        const proxyName = proxy.name || "";
+        var flag = false;
+        if (REGEX_CACHE.lowQuality.test(proxyName)) {
+            returnedProxies.lowQualityProxies.push(proxy);
+            //console.log(proxyName+"low")
+            flag = true;
+        } else if (REGEX_CACHE.highQuality.test(proxyName)) {
+            returnedProxies.highQualityProxies.push(proxy);
+            //console.log(proxyName+"high")
+            flag = true;
+        } else if (REGEX_CACHE.householdProxy.test(proxyName)) {
+            returnedProxies.householdProxies.push(proxy);
+           // console.log(proxyName+"household")
+            flag = true;
+        } else if (!flag) {
+            returnedProxies.otherProxies.push(proxy);
+           // console.log(proxyName+"other")
+        }
+    }
+
+    return returnedProxies;
+}
+
+// iepl 高级线路 流量贵 延迟低、ip质量差
+// 普通线路 流量中等，延迟中等、ip质量差
+// 低质量线路 流量便宜，延迟高、ip质量差
+// 家宽 流量不定，延迟不定、ip质量好
+// socks或者need_dialer 没有办法直接连接或者连接质量差 需要中转 ip质量好
+//处理思路 ： 
+
+
+var DIALERPROXY = false;
+
 /**
  * 构建基本代理组
  * @param {string} testUrl "测试URL
@@ -802,25 +866,78 @@ function filterLowQualityProviderProxies(proxies, flag) {
  * @returns {Array} 基本代理组配置
  */
 function buildBaseProxyGroups(testUrl, proxies) {
+    
+    // 获取socks5代理节点
+    const socks5ProxiesName = filtersocks5ProxiesName(proxies)
+    if (socks5ProxiesName.length > 0) {
+        DIALERPROXY = true;
+        // sock5接近明文传输，全部前置
+        for (let i = 0; i < socks5ProxiesName.length; i++) {
+            const proxyName = socks5ProxiesName[i];
+            for (let j = 0; j < proxies.length; j++) {
+                if (proxies[j].name === proxyName) {
+                    proxies[j]["dialer-proxy"] = "前置机场";
+                }
+            }
+        }
+    }
+    // 获取除socks5之外需要dialer节点
+    const needDialerProxiesName = filterNameByRules(proxies, REGEX_CACHE.needDialer);
+    if (needDialerProxiesName.length > 0) {
+        DIALERPROXY = true;
+        const needDialerProxiesNewName = []
+        // 将低质量下载节点复制一份，存入到proxies后面
+        for (let i = 0; i < needDialerProxiesName.length; i++) {
+            const proxyName = needDialerProxiesName[i];
+            const proxyIndex = proxies.findIndex(p => p.name === proxyName);
+            
+            if (proxyIndex !== -1) {
+                // 深拷贝原始代理节点
+                const newProxy = JSON.parse(JSON.stringify(proxies[proxyIndex]));;
+                
+                // 修改新节点的名称和属性
+                newProxy.name = proxyName + "_dialer";
+                newProxy["dialer-proxy"] = "前置机场";
+                newProxy["skip-cert-verify"] = true;
+                if (newProxy["type"] === "vless" && newProxy["udp"] === true) {
+                    delete(newProxy.udp)
+                }
+                // 将新节点添加到数组
+                proxies.push(newProxy);
+                needDialerProxiesNewName.push(newProxy.name);
+            }
+        }
+    }
+    const baseProxyGroups = []
+    if (DIALERPROXY) {
+        baseProxyGroups.push(
+            {
+            "name": "前置机场",
+            "type": "select",
+            "include-all": true,
+            "url": testUrl,
+            "interval": CONFIG.testInterval
+            }
+        )
+    }
     // 筛选所有节点
     const filteredProxiesName = filterNameByRules(proxies, null)
 
+    const typedProxies = filterAllProxies(proxies);
+    //console.log(typedProxies)
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
-    const filteredLowQualityProvidersProxies = filterLowQualityProviderProxies(proxies, false)
-
     // 筛选低质量下载节点
-    const lowQualityProxiesName = filterNameByRules(proxies, REGEX_CACHE.lowQuality);
+    const lowQualityProxiesName = filterNameByRules(typedProxies.lowQualityProxies, REGEX_CACHE.lowQuality);
 
-    // 获取socks5代理节点
-    const socks5ProxiesName = filtersocks5ProxiesName(proxies)
-    // 获取除socks5之外需要dialer节点
-    const needDialerProxiesName = filterNameByRules(proxies, REGEX_CACHE.needDialer);
-
-    // 这里需要保证剩余的节点质量很高
+    // 这里需要保证剩余的节点线路质量很高
     // 筛选高质量节点
-    const highQualityProxiesName = filterNameByRules(filteredLowQualityProvidersProxies, REGEX_CACHE.highQuality);
+    const highQualityProxiesName = filterNameByRules(typedProxies.highQualityProxies);
+    
+    // 筛选家庭宽带节点
+    const householdProxiesName = filterNameByRules(typedProxies.householdProxies);
     // 筛选国家或者地区节点 
-    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies(filteredLowQualityProvidersProxies);
+    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
+    console.log(countryOrRegionProxiesGroups)
     const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
 
@@ -833,7 +950,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         if (countryOrRegionProxies.proxies[0] === "NULL") {
             continue;
         }
-        const groupName = "手动选择"+countryOrRegionProxies.name+"节点";
+        const groupName = "手动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
         
         
         finalBaseProxyGroups.push({
@@ -847,7 +964,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         // 当enableAuto为true时，添加自动选择节点组
         if (countryOrRegionProxies.enableAuto) 
         {
-            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点";
+            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
         
             finalBaseProxyGroups.push({
                 "name": autoGroupName,
@@ -864,7 +981,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     }
 
     // 将最基本的放在最后
-    const baseProxyGroups = [
+    baseProxyGroups.push(...[
         // 基本代理组
         {
             "name": "手动选择所有节点",
@@ -891,22 +1008,38 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "自动选择(最低延迟)", "负载均衡", "HighQuality", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点", ...(socks5ProxiesName.length > 0 || needDialerProxiesName.length > 0 ? ["dialer-proxy的节点"] : [])],
+            "proxies": ["DIRECT", "自动选择(最低延迟)", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["自动选择(最低延迟)", "负载均衡",  "HighQuality","DIRECT", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点", ...(socks5ProxiesName.length > 0 || needDialerProxiesName.length > 0 ? ["dialer-proxy的节点"] : [])],
+            "proxies": ["自动选择(最低延迟)", "负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
         {
-            "name": "HighQuality",
+            "name": "HighQuality Country 1",
+            "type": "select",
+            "proxies": [
+                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+                "DIRECT",
+            ]
+        },
+        {
+            "name": "HighQuality Country 2",
+            "type": "select",
+            "proxies": [
+                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+                "DIRECT",
+            ]
+        },
+        {
+            "name": "家庭宽带",
             "type": "select",
             "proxies": [
                 "DIRECT",
-                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : [])
+                ...(householdProxiesName.length > 0 ? householdProxiesName : [])
             ]
         },
         // 自动选择和负载均衡
@@ -926,63 +1059,8 @@ function buildBaseProxyGroups(testUrl, proxies) {
             "url": testUrl,
             "interval": CONFIG.testInterval
         },
-    ];
+    ]);
     
-
-    if (socks5ProxiesName.length > 0 || needDialerProxiesName.length > 0) {
-        const needDialerProxiesNewName = []
-        // 将低质量下载节点复制一份，存入到proxies后面
-        for (let i = 0; i < needDialerProxiesName.length; i++) {
-            const proxyName = needDialerProxiesName[i];
-            const proxyIndex = proxies.findIndex(p => p.name === proxyName);
-            
-            if (proxyIndex !== -1) {
-                // 深拷贝原始代理节点
-                const newProxy = JSON.parse(JSON.stringify(proxies[proxyIndex]));;
-                
-                // 修改新节点的名称和属性
-                newProxy.name = proxyName + "_dialer";
-                newProxy["dialer-proxy"] = "前置机场";
-                newProxy["skip-cert-verify"] = true;
-                if (newProxy["type"] === "vless" && newProxy["udp"] === true) {
-                    delete(newProxy.udp)
-                }
-                // 将新节点添加到数组
-                proxies.push(newProxy);
-                needDialerProxiesNewName.push(newProxy.name);
-            }
-        }
-
-        // sock5接近明文传输，全部前置
-        for (let i = 0; i < socks5ProxiesName.length; i++) {
-            const proxyName = socks5ProxiesName[i];
-            for (let j = 0; j < proxies.length; j++) {
-                if (proxies[j].name === proxyName) {
-                    proxies[j]["dialer-proxy"] = "前置机场";
-                }
-            }
-        }
-
-        baseProxyGroups.push(
-            {
-            "name": "前置机场",
-            "type": "select",
-            "include-all": true,
-            "url": testUrl,
-            "interval": CONFIG.testInterval
-            },
-            {
-                "name": "dialer-proxy的节点",
-                "type": "select",
-                "url": testUrl,
-                "interval": CONFIG.testInterval,
-                "proxies": [
-                    ...socks5ProxiesName,
-                    ...needDialerProxiesNewName,
-                ]
-            }
-        )
-    }
     finalBaseProxyGroups.push(...baseProxyGroups);
     return finalBaseProxyGroups;
 }
@@ -999,13 +1077,13 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
             continue;
         }
         
-        const groupName = "手动选择"+countryOrRegionProxiesGroups[i].name+"节点";
+        const groupName = "手动选择"+countryOrRegionProxiesGroups[i].name+"节点，节点质量中等偏上";
         
         countryOrRegionGroupNames.push(groupName);
 
         // 当enableAuto为true时，添加自动选择节点组
         if (countryOrRegionProxiesGroups[i].enableAuto) {
-            const autoGroupName = "自动选择"+countryOrRegionProxiesGroups[i].name+"节点";
+            const autoGroupName = "自动选择"+countryOrRegionProxiesGroups[i].name+"节点，节点质量中等偏上";
             countryOrRegionGroupNames.push(autoGroupName);
         }
         
@@ -1122,9 +1200,7 @@ function main(config) {
     for (let i = 0; i < configLen; i++) {
         const { name, gfw, urls, payload, extraProxies } = PROXY_RULES[i];
 
-        const dialerGroup = findByName1(baseProxyGroups, "dialer-proxy的节点");
-
-        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups, dialerGroup !== undefined));
+        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups));
 
         // 处理规则
         if (payload) {
@@ -1158,7 +1234,6 @@ function main(config) {
         "proxy-groups": [
             ...proxyGroups,
             ...baseProxyGroups,
-            
         ],
         "rule-providers": ruleProviders,
         rules: [
