@@ -207,6 +207,15 @@ const PROXY_RULES = [
         ]
     },
     { 
+        name: "ip检测", 
+        gfw : true,
+        payload: [
+            "DOMAIN-SUFFIX,ping0.cc",
+            "DOMAIN-SUFFIX,speed.cloudflare.com",
+            "DOMAIN-SUFFIX,speedtest.net",
+        ]
+    },
+    { 
         name: "必须美国节点：exhentai、openai、claude、gemini", 
         gfw : true,
         payload: [
@@ -1008,13 +1017,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "自动选择(最低延迟)", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["DIRECT", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["自动选择(最低延迟)", "负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
@@ -1042,15 +1051,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 ...(householdProxiesName.length > 0 ? householdProxiesName : [])
             ]
         },
-        // 自动选择和负载均衡
-        {
-            "name": "自动选择(最低延迟)",
-            "type": "url-test",
-            "tolerance": CONFIG.tolerance,
-            "include-all": true,
-            "url": testUrl,
-            "interval": CONFIG.testInterval
-        },
         {
             "name": "负载均衡",
             "type": "load-balance",
@@ -1073,7 +1073,7 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
     
     for (let i = 0; i < countryOrRegionLen; i++) {
 
-        if (countryOrRegionProxiesGroups[i].proxies === "NULL") {
+        if (countryOrRegionProxiesGroups[i].proxies[0] === "NULL") {
             continue;
         }
         
