@@ -4,68 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RevertClash 主页</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            background-color: #f5f5f5;
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
         }
         .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+        }
+        .feature-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            height: 100%;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #007bff;
+        }
+        .navbar {
+            margin-bottom: 20px;
+            background-color: #fff;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        h1 {
-            color: #333;
-            margin-top: 0;
+        .navbar-brand {
+            font-weight: bold;
         }
-        .info-box {
-            background: #e9ecef;
-            padding: 1rem;
-            border-radius: 4px;
-            margin: 1rem 0;
+        .nav-link {
+            color: #495057;
         }
-        .button {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 0.5rem 0;
-        }
-        .button:hover {
-            background-color: #0056b3;
+        .nav-link.active {
+            font-weight: bold;
+            color: #007bff;
         }
         .config-url {
             word-break: break-all;
             background: #f8f9fa;
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin: 0.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>RevertClash 配置</h1>
-        <div class="info-box">
-            <p>您的IP已通过验证，可以访问以下功能：</p>
-            <div class="config-url">
-                <p>配置文件：</p>
-                <a href="/config" id="configUrl" class="button">下载配置文件</a>
-                <a href="/processed-config" id="configUrl" class="button">下载处理过后的配置文件</a>
-                <a href="/manage" id="manageUrl" class="button" style="margin-left: 10px;">管理配置</a>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">RevertClash</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/home">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/nodes">节点管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/manage">配置管理</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <button onclick="logout()" class="btn btn-outline-danger btn-sm">退出登录</button>
+                    </li>
+                </ul>
             </div>
         </div>
-        <p>
-            <button onclick="logout()" class="button" style="background-color: #dc3545;">退出登录</button>
-        </p>
+    </nav>
+
+    <div class="container">
+        <!-- 欢迎卡片 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">欢迎使用 RevertClash</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">您的IP已通过验证，可以访问所有功能。</p>
+                <div class="config-url">
+                    <h6>配置文件下载：</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="/config" class="btn btn-primary">
+                            <i class="bi bi-download"></i> 下载配置文件
+                        </a>
+                        <a href="/processed-config" class="btn btn-success">
+                            <i class="bi bi-gear"></i> 下载处理后的配置文件
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功能卡片 -->
+        <h5 class="mb-3">功能导航</h5>
+        <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+            <!-- 节点管理卡片 -->
+            <div class="col">
+                <div class="card feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <h5 class="card-title">节点管理</h5>
+                        <p class="card-text">选择、筛选和管理您的节点，生成自定义配置。</p>
+                        <a href="/nodes" class="btn btn-outline-primary">前往管理</a>
+                    </div>
+                </div>
+            </div>
+            <!-- 配置管理卡片 -->
+            <div class="col">
+                <div class="card feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-gear-wide-connected"></i>
+                        </div>
+                        <h5 class="card-title">配置管理</h5>
+                        <p class="card-text">管理订阅链接和配置文件，更新和处理配置。</p>
+                        <a href="/manage" class="btn btn-outline-primary">前往管理</a>
+                    </div>
+                </div>
+            </div>
+            <!-- 协议转换卡片 -->
+            <div class="col">
+                <div class="card feature-card">
+                    <div class="card-body text-center">
+                        <div class="feature-icon">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </div>
+                        <h5 class="card-title">协议转换</h5>
+                        <p class="card-text">在不同协议之间转换，支持SS、VLESS和Hysteria2等。</p>
+                        <a href="/manage#protocol-converter" class="btn btn-outline-primary">前往转换</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         async function logout() {
             const ip = await getCurrentIP();
