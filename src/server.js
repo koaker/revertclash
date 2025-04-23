@@ -5,6 +5,7 @@ const path = require('path');
 const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE, processConfigs } = require('./config');
 const { URLManager, CONFIG_FILE } = require('./urlManager');
 const { ConfigManager, CONFIGS_DIR } = require('./configManager');
+const converterApi = require('./converters/api');
 
 const app = express();
 const urlManager = new URLManager(CONFIG_FILE);
@@ -14,6 +15,8 @@ const configManager = new ConfigManager(CONFIGS_DIR);
 app.use(express.json());
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '..', 'public')));
+// 协议转换器API
+app.use('/api/converter', converterApi);
 const PORT = process.env.PORT || 3000;
 const AUTH_CONFIG_FILE = path.join(__dirname, '..', 'auth-config.json');
 const authorizedIPs = new Set();
