@@ -293,20 +293,32 @@
 
         <!-- 导入非Clash链接模态框 -->
         <div id="importNonClashModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content" style="width: 80%; max-width: 1200px;">
                 <span class="close" onclick="closeImportNonClashModal()">&times;</span>
                 <h3>导入非Clash订阅链接</h3>
-                <form id="importNonClashForm">
-                    <div class="form-group">
-                        <label for="nonClashConfigName">配置文件名称</label>
-                        <input type="text" id="nonClashConfigName" class="form-control" required placeholder="输入配置文件名称（不需要添加.yaml后缀）">
+                <div class="form-group">
+                    <label for="nonClashConfigName">配置文件名称</label>
+                    <input type="text" id="nonClashConfigName" class="form-control" required placeholder="输入配置文件名称（不需要添加.yaml后缀）">
+                </div>
+                <div style="display: flex; gap: 20px; margin-top: 15px;">
+                    <!-- 左侧：订阅链接输入 -->
+                    <div style="flex: 1;">
+                        <div class="form-group">
+                            <label for="nonClashLinks">订阅链接</label>
+                            <textarea id="nonClashLinks" class="form-control" style="height: 300px;" placeholder="输入非Clash格式的订阅链接，每行一个，支持SS、VLESS、Hysteria2等协议"></textarea>
+                        </div>
+                        <button type="button" id="convertBtn" class="btn" style="margin-top: 10px;">转换</button>
                     </div>
-                    <div class="form-group">
-                        <label for="nonClashLinks">订阅链接</label>
-                        <textarea id="nonClashLinks" class="form-control" required placeholder="输入非Clash格式的订阅链接，每行一个，支持SS、VLESS、Hysteria2等协议"></textarea>
+                    
+                    <!-- 右侧：预览结果 -->
+                    <div style="flex: 1;">
+                        <div class="form-group">
+                            <label for="previewResult">预览结果 (可编辑)</label>
+                            <textarea id="previewResult" class="form-control" style="height: 300px; font-family: monospace;"></textarea>
+                        </div>
+                        <button type="button" id="saveConfigBtn" class="btn" style="margin-top: 10px; float: right;">保存为配置文件</button>
                     </div>
-                    <button type="submit" class="btn">转换并保存</button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -567,7 +579,10 @@
 
         // 协议转换相关功能
         function showImportNonClashModal() {
-            document.getElementById('importNonClashForm').reset();
+            // 清空输入框
+            document.getElementById('nonClashConfigName').value = '';
+            document.getElementById('nonClashLinks').value = '';
+            document.getElementById('previewResult').value = '';
             document.getElementById('importNonClashModal').style.display = 'block';
         }
         
@@ -640,15 +655,12 @@
             }
         }
         
-        // 导入非Clash链接并保存
-        document.getElementById('importNonClashForm').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('nonClashConfigName').value.trim();
+        // 转换按钮点击事件
+        document.getElementById('convertBtn').addEventListener('click', async () => {
             const links = document.getElementById('nonClashLinks').value.trim();
             
-            if (!name || !links) {
-                showAlert('名称和链接不能为空');
+            if (!links) {
+                showAlert('订阅链接不能为空');
                 return;
             }
             
@@ -681,7 +693,50 @@
                 // 使用第一个成功转换的配置
                 const firstConfig = result.successful[0].config;
                 
-                // 保存转换后的配置
+                // 将配置转换为YAML字符串并显示在预览区域
+                let configContent;
+                if (typeof firstConfig === 'string') {
+                    // 如果已经是字符串，直接使用
+                    configContent = firstConfig;
+                } else if (typeof firstConfig === 'object') {
+                    // 如果是对象，转换为YAML字符串
+                    try {
+                        const YAML = await import('https://cdn.jsdelivr.net/npm/yaml@2.3.1/+esm');
+                        configContent = YAML.stringify(firstConfig);
+                    } catch (err) {
+                        // 如果无法导入YAML库，尝试使用JSON字符串
+                        configContent = JSON.stringify(firstConfig, null, 2);
+                    }
+                } else {
+                    throw new Error('无效的配置格式');
+                }
+                
+                // 显示在预览区域
+                document.getElementById('previewResult').value = configContent;
+                
+                showAlert('转换成功，请在右侧预览结果', 'success');
+            } catch (err) {
+                showAlert(err.message);
+            }
+        });
+        
+        // 保存按钮点击事件
+        document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+            const name = document.getElementById('nonClashConfigName').value.trim();
+            const content = document.getElementById('previewResult').value.trim();
+            
+            if (!name) {
+                showAlert('配置文件名称不能为空');
+                return;
+            }
+            
+            if (!content) {
+                showAlert('预览结果不能为空，请先转换订阅链接');
+                return;
+            }
+            
+            try {
+                // 保存配置
                 const saveResponse = await fetch('/api/configs', {
                     method: 'POST',
                     headers: {
@@ -689,7 +744,7 @@
                     },
                     body: JSON.stringify({
                         name: name.endsWith('.yaml') ? name : name + '.yaml',
-                        content: firstConfig
+                        content: content
                     })
                 });
                 
@@ -698,13 +753,13 @@
                     throw new Error(error.error || '保存失败');
                 }
                 
-                showAlert('转换并保存成功', 'success');
+                showAlert('配置文件保存成功', 'success');
                 closeImportNonClashModal();
                 await loadConfigs();
             } catch (err) {
                 showAlert(err.message);
             }
-        };
+        });
 
         // 初始加载
         loadUrls();

@@ -7,6 +7,7 @@ const configRoutes = require('./routes/configs');
 const pageRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const nodeRoutes = require('./routes/nodes');
+const { processConfigs } = require('./config');
 
 // 创建Express应用
 const app = express();
@@ -29,6 +30,22 @@ app.use('/auth', authRoutes);
 app.use('/api/urls', urlRoutes);
 app.use('/api/configs', configRoutes);
 app.use('/api/nodes', nodeRoutes);
+
+// 手动更新配置API
+app.post('/api/update', async (req, res) => {
+    try {
+        await processConfigs();
+        res.json({
+            status: 'success',
+            message: '配置已更新'
+        });
+    } catch (err) {
+        console.error('更新配置失败:', err);
+        res.status(500).json({
+            error: '更新配置失败: ' + err.message
+        });
+    }
+});
 
 // 基础状态检查
 app.get('/status', (req, res) => {
