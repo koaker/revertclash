@@ -690,25 +690,57 @@
                     throw new Error('没有成功转换的URI');
                 }
                 
-                // 使用第一个成功转换的配置
-                const firstConfig = result.successful[0].config;
+                // 收集所有成功转换的节点
+                const allProxies = [];
                 
-                // 将配置转换为YAML字符串并显示在预览区域
-                let configContent;
-                if (typeof firstConfig === 'string') {
-                    // 如果已经是字符串，直接使用
-                    configContent = firstConfig;
-                } else if (typeof firstConfig === 'object') {
-                    // 如果是对象，转换为YAML字符串
-                    try {
-                        const YAML = await import('https://cdn.jsdelivr.net/npm/yaml@2.3.1/+esm');
-                        configContent = YAML.stringify(firstConfig);
-                    } catch (err) {
-                        // 如果无法导入YAML库，尝试使用JSON字符串
-                        configContent = JSON.stringify(firstConfig, null, 2);
+                for (const item of result.successful) {
+                    const config = item.config;
+                    if (typeof config === 'object') {
+                        // 如果是对象格式，直接添加
+                        allProxies.push(config);
+                    } else if (typeof config === 'string') {
+                        // 如果是字符串格式，尝试解析
+                        try {
+                            const YAML = await import('https://cdn.jsdelivr.net/npm/yaml@2.3.1/+esm');
+                            const parsedConfig = YAML.parse(config);
+                            if (parsedConfig) {
+                                allProxies.push(parsedConfig);
+                            }
+                        } catch (err) {
+                            console.error('解析配置失败:', err);
+                            // 如果解析失败，尝试直接添加字符串
+                            allProxies.push({ name: `节点${allProxies.length + 1}`, config });
+                        }
                     }
-                } else {
-                    throw new Error('无效的配置格式');
+                }
+                
+                // 生成包含所有节点的完整配置对象
+                const completeConfig = {
+                    proxies: allProxies
+                };
+                
+                // 将完整配置转换为YAML字符串
+                let configContent;
+                try {
+                    const YAML = await import('https://cdn.jsdelivr.net/npm/yaml@2.3.1/+esm');
+                    configContent = YAML.stringify(completeConfig);
+                } catch (err) {
+                    console.error('转换YAML失败:', err);
+                    // 如果无法使用YAML库，尝试手动构建
+                    configContent = 'proxies:\n';
+                    for (const proxy of allProxies) {
+                        const jsonString = JSON.stringify(proxy, null, 2);
+                        // 将JSON格式化并添加缩进
+                        const lines = jsonString.split('\n');
+                        const indented = lines.map((line, index) => {
+                            if (index === 0) {
+                                return `  - ${line}`;
+                            } else {
+                                return `    ${line}`;
+                            }
+                        }).join('\n');
+                        configContent += indented + '\n';
+                    }
                 }
                 
                 // 显示在预览区域
