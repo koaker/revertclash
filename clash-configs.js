@@ -50,6 +50,7 @@ const USER_RULES = [
     "PROCESS-NAME,SGDownload.exe,REJECT",
     "PROCESS-NAME,SGBizLauncher.exe,REJECT",
     "PROCESS-NAME,PinyinUp.exe,REJECT",
+    "PROCESS-NAME,IDMan.exe,建议走低质量节点：下载服务器列表"
     // 在此添加更多自定义规则...
 ];
 
@@ -97,7 +98,7 @@ const LOW_QUALITY_KEYWORDS = [
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
 ];
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法"
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测", ""
 ];
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生", "高级", "精品"]
 const NEED_DIALER_KEYWORDS = [
@@ -138,13 +139,13 @@ const COUNTRY_OR_REGION_KEYWORDS = [
     {
         name : "新加坡",
         keywords : ["新加坡", "SG", "Singapore"],
-        enable: true,
+        enable: false,
         enableAuto : false,
     },
     {
         name : "韩国",
         keywords : ["韩国", "KR", "Korea"],
-        enable: true,
+        enable: false,
         enableAuto : false,
     },
     {
@@ -213,6 +214,7 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,ping0.cc",
             "DOMAIN-SUFFIX,speed.cloudflare.com",
             "DOMAIN-SUFFIX,speedtest.net",
+            "DOMAIN-SUFFIX,ipdata.co",
         ]
     },
     { 
@@ -271,7 +273,9 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,storage.live.com",
             "DOMAIN-SUFFIX,sharepoint.com",
             "DOMAIN-SUFFIX,cloudflarestorage.com",
-            "DOMAIN-SUFFIX,dl.google.com"
+            "DOMAIN-SUFFIX,dl.google.com",
+            "DOMAIN-SUFFIX,imput.net",
+            "DOMAIN-SUFFIX,googlevideo.com",
         ]
     },
     { 
