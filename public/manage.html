@@ -229,27 +229,7 @@
                 </div>
             </div>
             
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">单个URI转换</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="singleUriInput" class="form-label">输入单个URI（如SS、VLESS、Hysteria2等）</label>
-                        <textarea class="form-control" id="singleUriInput" rows="3" placeholder="输入要转换的URI..."></textarea>
-                    </div>
-                    <button class="btn btn-primary" onclick="convertSingleUri()">
-                        <i class="bi bi-arrow-left-right"></i> 转换为Clash配置
-                    </button>
-                    <div class="mt-3" id="singleUriResult" style="display: none;">
-                        <label class="form-label">转换结果：</label>
-                        <pre class="form-control" id="singleUriResultContent" style="min-height: 150px;"></pre>
-                        <button class="btn btn-success mt-2" onclick="saveSingleUriResult()">
-                            <i class="bi bi-save"></i> 保存为配置文件
-                        </button>
-                    </div>
-                </div>
-            </div>
+
         </div>
 
         <!-- URL模态框 -->
@@ -590,70 +570,7 @@
             document.getElementById('importNonClashModal').style.display = 'none';
         }
         
-        // 单个URI转换
-        async function convertSingleUri() {
-            const uri = document.getElementById('singleUriInput').value.trim();
-            if (!uri) {
-                showAlert('请输入要转换的URI');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/converter/uri-to-clash', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ uri })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || '转换失败');
-                }
-                
-                const result = await response.json();
-                document.getElementById('singleUriResultContent').textContent = result.config;
-                document.getElementById('singleUriResult').style.display = 'block';
-            } catch (err) {
-                showAlert(err.message);
-            }
-        }
-        
-        // 保存单个URI转换结果
-        async function saveSingleUriResult() {
-            const content = document.getElementById('singleUriResultContent').textContent;
-            if (!content) {
-                showAlert('没有可保存的内容');
-                return;
-            }
-            
-            const name = prompt('请输入配置文件名称（不需要添加.yaml后缀）：');
-            if (!name) return;
-            
-            try {
-                const response = await fetch('/api/configs', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: name.endsWith('.yaml') ? name : name + '.yaml',
-                        content
-                    })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || '保存失败');
-                }
-                
-                showAlert('配置文件保存成功', 'success');
-                await loadConfigs();
-            } catch (err) {
-                showAlert(err.message);
-            }
-        }
+        // 单个URI转换相关功能已移除
         
         // 转换按钮点击事件
         document.getElementById('convertBtn').addEventListener('click', async () => {

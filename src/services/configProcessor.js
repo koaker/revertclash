@@ -121,31 +121,34 @@ class ConfigProcessor {
      * @returns {String} - 处理后的配置YAML字符串
      */
     async processSelectedConfig(keepTempFiles = true) {
-        // 临时文件名
-        const tempFile = 'temp-selected-config.yaml';
-        const processedTempFile = 'processed-temp-selected-config.yaml';
-        
-        // 先保存选中节点的配置
-        await this.saveSelectedConfig(tempFile);
-        
-        // 使用clash-configs.js处理配置
-        await processConfigs(path.join(this.outputDir, tempFile));
-        
-        // 读取处理后的配置
-        const processedPath = path.join(this.outputDir, processedTempFile);
-        const processedConfig = await fs.readFile(processedPath, 'utf8');
-        
-        // 如果不需要保留临时文件，则清理
-        if (!keepTempFiles) {
-            try {
-                await fs.unlink(path.join(this.outputDir, tempFile));
-                await fs.unlink(processedPath);
-            } catch (err) {
-                console.warn('清理临时文件失败:', err.message);
-            }
+        try {
+            // 获取选中节点的配置
+            const selectedConfig = await this.generateSelectedConfig();
+            
+            // 将选中节点的配置保存到临时文件
+            const tempFilePath = path.join(this.outputDir, 'selected-config.yaml');
+            await fs.writeFile(tempFilePath, selectedConfig, 'utf8');
+            
+            // 解析选中节点的配置
+            const yamlConfig = yaml.load(selectedConfig);
+            
+            // 使用clash-configs.js处理配置
+            const clashConfigs = require('../../clash-configs.js');
+            
+            // 处理配置
+            const processedConfig = clashConfigs.main(yamlConfig);
+            
+            // 将处理后的配置保存到临时文件
+            const processedTempFilePath = path.join(this.outputDir, 'processed-selected-config.yaml');
+            const processedYaml = yaml.dump(processedConfig);
+            await fs.writeFile(processedTempFilePath, processedYaml, 'utf8');
+            
+            // 返回处理后的YAML字符串
+            return processedYaml;
+        } catch (err) {
+            console.error('处理选中节点配置失败:', err);
+            throw new Error('处理配置失败: ' + err.message);
         }
-        
-        return processedConfig;
     }
 
     /**
