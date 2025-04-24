@@ -6,6 +6,7 @@ const ProtocolConverter = require('./protocolConverter');
 const SSConverter = require('./ssConverter');
 const VlessConverter = require('./vlessConverter');
 const Hysteria2Converter = require('./hysteria2Converter');
+const VMessConverter = require('./vmessConverter');
 
 // 创建协议转换管理器实例
 const protocolConverter = new ProtocolConverter();
@@ -14,6 +15,7 @@ const protocolConverter = new ProtocolConverter();
 protocolConverter.registerConverter('ss', new SSConverter());
 protocolConverter.registerConverter('vless', new VlessConverter());
 protocolConverter.registerConverter('hysteria2', new Hysteria2Converter());
+protocolConverter.registerConverter('vmess', new VMessConverter());
 
 /**
  * 将URI转换为Clash配置

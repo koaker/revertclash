@@ -176,6 +176,8 @@ class ProtocolConverter {
       return 'vless';
     } else if (uri.startsWith('hysteria2://')) {
       return 'hysteria2';
+    } else if (uri.startsWith('vmess://')) {
+      return 'vmess';
     }
     
     return null;
