@@ -98,7 +98,7 @@ const LOW_QUALITY_KEYWORDS = [
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
 ];
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测", ""
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测"
 ];
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生", "高级", "精品"]
 const NEED_DIALER_KEYWORDS = [
@@ -751,15 +751,18 @@ function filtersocks5ProxiesName(proxies) {
  * @returns {Array} 符合条件的节点名称列表
  */
 function filterNotProxies(proxies) {
+    console.log("传入的节点", proxies)
     if (!proxies || !Array.isArray(proxies)) {
+        console.log("空节点")
         return [];
     }
-    
+    console.log("非空节点")
     const countryRegex = REGEX_CACHE.notProxy;
     proxies = proxies.filter(proxy => {
         const proxyName = proxy.name || "";
         return !countryRegex.test(proxyName);
     });
+    console.log("筛选后的节点", proxies)
     return proxies;
 }
 
@@ -935,9 +938,9 @@ function buildBaseProxyGroups(testUrl, proxies) {
     }
     // 筛选所有节点
     const filteredProxiesName = filterNameByRules(proxies, null)
-
+    console.log(proxies)
     const typedProxies = filterAllProxies(proxies);
-    //console.log(typedProxies)
+    console.log(typedProxies)
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     const lowQualityProxiesName = filterNameByRules(typedProxies.lowQualityProxies, REGEX_CACHE.lowQuality);
@@ -1098,10 +1101,11 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
 /*主函数：生成完整的Clash配置 @param {Object} config "输入配置 @returns {Object} 完整的Clash配置*/
 function main(config) {
     let { proxies } = config;
+    //console.log(proxies)
     const testUrl = CONFIG.testUrl;
     // 过滤不是正常节点的节点
     proxies = filterNotProxies(proxies)
-
+    console.log("过滤后的节点", proxies)
     // 初始化规则和代理组
     const rules = USER_RULES.slice();
     const proxyGroups = [];
@@ -1195,7 +1199,7 @@ function main(config) {
         }
     };
 
-
+    console.log(testUrl,proxies)
     // 构建基本代理组
     const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies);
 

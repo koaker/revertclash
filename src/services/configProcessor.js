@@ -125,6 +125,7 @@ class ConfigProcessor {
             // 获取选中节点的配置
             const selectedConfig = await this.generateSelectedConfig();
             
+            
             // 将选中节点的配置保存到临时文件
             const tempFilePath = path.join(this.outputDir, 'selected-config.yaml');
             await fs.writeFile(tempFilePath, selectedConfig, 'utf8');
@@ -137,7 +138,7 @@ class ConfigProcessor {
             
             // 处理配置
             const processedConfig = clashConfigs.main(yamlConfig);
-            
+            //console.log(processedConfig);
             // 将处理后的配置保存到临时文件
             const processedTempFilePath = path.join(this.outputDir, 'processed-selected-config.yaml');
             const processedYaml = yaml.dump(processedConfig);
