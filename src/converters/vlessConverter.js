@@ -73,7 +73,7 @@ class VlessConverter extends BaseConverter {
         
         // Reality相关参数
         if (security === 'reality') {
-          clashConfig.reality = {
+          clashConfig["reality-opts"] = {
             public_key: params.get('pbk') || '',
             short_id: params.get('sid') || ''
           };
