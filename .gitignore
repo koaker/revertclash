@@ -18,3 +18,4 @@ auth-config.json
 run.bat
 auth-config.json
 ssl/*
+.aider*
