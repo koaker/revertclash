@@ -812,6 +812,8 @@ function filterLowQualityProviderProxies(proxies, flag) {
             } else {
                 filteredLowQualityProvidersProxies.lowQualityProviderProxies.push(proxy);
             }
+        } else {
+            filteredLowQualityProvidersProxies.otherProxies.push(proxy)
         }
     });
     
