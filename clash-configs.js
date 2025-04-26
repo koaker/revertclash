@@ -103,7 +103,7 @@ const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠�
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生", "高级", "精品"]
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
-    "家宽", "家庭宽带", "need-dialer"
+     "need-dialer"
 ];
 /**
  * 国家或者地区节点关键词列表
@@ -788,9 +788,6 @@ function filterCountryOrRegionProxies(proxies) {
         return filteredProxiesName.length > 0 ? {name :countryRegion.name, enableAuto: countryRegion.enableAuto, proxies: [...filteredProxiesName]} 
         : {name:countryRegion.name, enableAuto: countryRegion.enableAuto,proxies: ["NULL"]};
     });
-}
-const findByName1 = (array, name) => {
-    return array.find(item => item.name === name);
 }
 
 // 按提供商分类代理节点
