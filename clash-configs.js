@@ -1023,6 +1023,17 @@ function buildBaseProxyGroups(testUrl, proxies) {
             ]
         },
         {
+            "name": "低质量下载节点-负载均衡测试",
+            "type": "load-balance",
+            "strategy": CONFIG.balanceStrategy,
+            "url": testUrl,
+            "interval": CONFIG.testInterval,
+            "proxies": [
+                ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
+                "DIRECT"
+            ]
+        },
+        {
             "name": "规则外",
             "type": "select",
             "proxies": ["国内网站", "国外网站"],
@@ -1031,13 +1042,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["DIRECT", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "手动选择所有节点"],
+            "proxies": ["负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
