@@ -80,7 +80,7 @@ const HIGH_QUALITY_KEYWORDS = [
     // 线路类型关键词
     "IEPL", "Iepl", "iepl",
     "IPLC", "iplc", "Iplc", "专线", "高速",
-    "深港", "沪日", "沪美",
+    "深港", "沪日", "沪美", "夏港","x15",
     // 节点等级关键词
     "SVIP", "svip", 
     "Svip", "VIP", "vip", "Vip", "Premium", 
@@ -955,9 +955,11 @@ function buildBaseProxyGroups(testUrl, proxies) {
     const householdProxiesName = filterNameByRules(typedProxies.householdProxies);
     // 筛选国家或者地区节点 
     const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
+    const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies]);
     console.log(countryOrRegionProxiesGroups)
-    const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups);
+    const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
+    const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
 
 
     const finalBaseProxyGroups = [];
@@ -979,10 +981,17 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "DIRECT",
             ]
         });
+    }
+    for (let i = 0; i < MiddleQualitycountryOrRegionLen; i++) {
+        const countryOrRegionProxies = MiddleQualitycountryOrRegionProxiesGroups[i];
+
+        if (countryOrRegionProxies.proxies[0] === "NULL") {
+            continue;
+        }
         // 当enableAuto为true时，添加自动选择节点组
         if (countryOrRegionProxies.enableAuto) 
         {
-            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
+            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等";
         
             finalBaseProxyGroups.push({
                 "name": autoGroupName,
@@ -1011,7 +1020,10 @@ function buildBaseProxyGroups(testUrl, proxies) {
         },
         {
             "name": "低质量下载节点",
-            "type": "select",
+            "type": "url-test",
+            "tolerance": CONFIG.tolerance,
+            "url": testUrl,
+            "interval": CONFIG.testInterval,
             "proxies": [
                 ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
                 "DIRECT"
@@ -1075,7 +1087,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
 }
 
 /* 获得国家或者区域组的名称并处理输出 输入国家区域组 输出名称组*/
-function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
+function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups) {
     const countryOrRegionGroupNames = [];
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
 
@@ -1091,8 +1103,8 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups) {
         countryOrRegionGroupNames.push(groupName);
 
         // 当enableAuto为true时，添加自动选择节点组
-        if (countryOrRegionProxiesGroups[i].enableAuto) {
-            const autoGroupName = "自动选择"+countryOrRegionProxiesGroups[i].name+"节点，节点质量中等偏上";
+        if (MiddleQualitycountryOrRegionProxiesGroups[i].enableAuto) {
+            const autoGroupName = "自动选择"+MiddleQualitycountryOrRegionProxiesGroups[i].name+"节点，节点质量中等";
             countryOrRegionGroupNames.push(autoGroupName);
         }
         
