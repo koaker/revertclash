@@ -50,7 +50,6 @@ const USER_RULES = [
     "PROCESS-NAME,SGDownload.exe,REJECT",
     "PROCESS-NAME,SGBizLauncher.exe,REJECT",
     "PROCESS-NAME,PinyinUp.exe,REJECT",
-    "PROCESS-NAME,IDMan.exe,建议走低质量节点：下载服务器列表"
     // 在此添加更多自定义规则...
 ];
 
@@ -198,16 +197,6 @@ const PROXY_RULES = [
         payload: "DOMAIN-SUFFIX,linux.do" 
     },
     { 
-        name: "梯子官网", 
-        gfw : true,
-        payload: [
-            "DOMAIN-SUFFIX,管人痴.com",
-            "DOMAIN-SUFFIX,ssr.wtf",
-            "DOMAIN-SUFFIX,aws-cisco-delltechnologies-fujitsu-hewlettpackardenterprise-ibm.com",
-            "DOMAIN-SUFFIX,lycorisrecoil.org",
-        ]
-    },
-    { 
         name: "ip检测", 
         gfw : true,
         payload: [
@@ -233,14 +222,6 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "gov", 
-        gfw : false,
-        payload: [
-            "DOMAIN-SUFFIX,gov.hk",
-            "DOMAIN-SUFFIX,gov.tw",
-        ]
-    },
-    { 
         name: "pixiv与18comic", 
         gfw : true,
         payload:  [
@@ -250,13 +231,14 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "塔科夫、你画我猜和Steam", 
+        name: "塔科夫、你画我猜、Steam、apex", 
         gfw : true,
         payload:  [
             "DOMAIN-SUFFIX,eft-project.com",
             "DOMAIN-SUFFIX,escapefromtarkov.com",
             "DOMAIN,b47db.playfabapi.com",
-            "IP-CIDR,8.218.91.138/22"
+            "IP-CIDR,8.218.91.138/22",
+            "PROCESS-NAME,r5apex_dx12.exe"
         ],
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
@@ -276,6 +258,13 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,dl.google.com",
             "DOMAIN-SUFFIX,imput.net",
             "DOMAIN-SUFFIX,googlevideo.com",
+        ]
+    },
+    {
+        name: "IDM",
+        gfw : false,
+        payload : [
+            "PROCESS-NAME,IDMan.exe"
         ]
     },
     { 
@@ -514,6 +503,13 @@ const PROXY_RULES = [
         urls: [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Twitter/Twitter_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Facebook/Facebook_No_Resolve.yaml"
+        ]
+    },
+    { 
+        name: "Telegram", 
+        gfw : true,
+        urls: [
+            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml",
         ]
     },
     { 
@@ -1025,7 +1021,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "低质量下载节点-负载均衡测试",
             "type": "load-balance",
-            "strategy": CONFIG.balanceStrategy,
+            "strategy": "round-robin",
             "url": testUrl,
             "interval": CONFIG.testInterval,
             "proxies": [
@@ -1224,7 +1220,7 @@ function main(config) {
 
     const configLen = PROXY_RULES.length;
     for (let i = 0; i < configLen; i++) {
-        const { name, gfw, urls, payload, extraProxies } = PROXY_RULES[i];
+        const { name, gfw, urls, payload, extraProxies, programs} = PROXY_RULES[i];
 
         proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups));
 
