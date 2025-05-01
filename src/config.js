@@ -384,10 +384,8 @@ async function processConfigs() {
         // 保存最终配置
         await fs.writeFile(OUTPUT_FILE, YAML.stringify(finalConfig));
         console.log(`配置已保存到: ${OUTPUT_FILE}`);
-        const clashConfigs = require('../clash-configs.js');
-        const processedConfig = clashConfigs.main(finalConfig);
 
-        await fs.writeFile(PROCESSED_OUTPUT_FILE, YAML.stringify(processedConfig));
+        await fs.writeFile(PROCESSED_OUTPUT_FILE, YAML.stringify(finalConfig));
         console.log(`处理过的配置已保存到: ${PROCESSED_OUTPUT_FILE}`);
         console.log(`成功处理了 ${finalConfig.proxies.length} 个代理节点`);
     } catch (err) {

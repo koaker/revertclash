@@ -617,12 +617,12 @@ function buildDnsConfig(config) {
         "fake-ip-filter": config.fakeIpFilter,
         "default-nameserver": config.defaultDNS,
         nameserver: config.trustDnsList,
-        "proxy-server-nameserver": config.cnDnsList, // 直接引用以避免数组复制
+        "proxy-server-nameserver": [...config.cnDnsList], // 创建副本
         "nameserver-policy": {
             "geosite:private": "system",
-            "geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn": config.cnDnsList,
+            "geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn": [...config.cnDnsList], // 创建副本
         },
-        fallback: config.trustDnsList,
+        fallback: [...config.trustDnsList], // 创建副本
         "fallback-filter": {
             geoip: true,
             "geoip-code": "CN",
