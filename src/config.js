@@ -368,6 +368,10 @@ async function processConfigs() {
         
         let finalConfig = mergedConfig;
         
+        // 保存最终配置
+        await fs.writeFile(OUTPUT_FILE, YAML.stringify(finalConfig));
+        console.log(`配置已保存到: ${OUTPUT_FILE}`);
+
         // 如果启用了clash-configs处理
         if (settings.useClashConfig) {
             try {
@@ -380,10 +384,6 @@ async function processConfigs() {
                 finalConfig = mergedConfig;
             }
         }
-
-        // 保存最终配置
-        await fs.writeFile(OUTPUT_FILE, YAML.stringify(finalConfig));
-        console.log(`配置已保存到: ${OUTPUT_FILE}`);
 
         await fs.writeFile(PROCESSED_OUTPUT_FILE, YAML.stringify(finalConfig));
         console.log(`处理过的配置已保存到: ${PROCESSED_OUTPUT_FILE}`);
