@@ -174,7 +174,7 @@ class ProtocolConverter {
       return 'ss';
     } else if (uri.startsWith('vless://')) {
       return 'vless';
-    } else if (uri.startsWith('hysteria2://')) {
+    } else if (uri.startsWith('hysteria2://') || uri.startsWith('hy2://')) { // 同时检查 hy2://
       return 'hysteria2';
     } else if (uri.startsWith('vmess://')) {
       return 'vmess';

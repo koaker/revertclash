@@ -705,23 +705,56 @@ function formatDataUsage(download, upload, total) {
                     configContent = YAML.stringify(completeConfig);
                 } catch (err) {
                     console.error('转换YAML失败:', err);
-                    // 如果无法使用YAML库，尝试手动构建
+                    // Fallback logic refinement - Manual YAML generation
                     configContent = 'proxies:\n';
                     for (const proxy of allProxies) {
-                        const jsonString = JSON.stringify(proxy, null, 2);
-                        // 将JSON格式化并添加缩进
-                        const lines = jsonString.split('\n');
-                        const indented = lines.map((line, index) => {
-                            if (index === 0) {
-                                return `  - ${line}`;
-                            } else {
-                                return `    ${line}`;
+                        // Convert proxy object to YAML string individually with proper indentation
+                        let proxyYamlLines = [];
+                        const keys = Object.keys(proxy);
+
+                        // Helper function for basic YAML value formatting
+                        const formatYamlValue = (value) => {
+                            if (typeof value === 'string') {
+                                // Basic check for multiline or special chars, quote if needed
+                                if (value.includes('\n') || value.includes(': ') || value.includes('#')) {
+                                     // Use literal block scalar for multiline strings
+                                     if (value.includes('\n')) {
+                                         // Indent lines correctly for literal block scalar
+                                         return '|\n' + value.split('\n').map(l => `      ${l}`).join('\n');
+                                     } else {
+                                         // Quote simple strings containing special characters
+                                         return JSON.stringify(value);
+                                     }
+                                }
+                                return value; // Return as is if no special handling needed
+                            } else if (typeof value === 'object' && value !== null) {
+                                // Simple approach for nested objects: convert to JSON string
+                                // A proper recursive YAML formatter would be more robust but complex here
+                                // We need to indent the JSON string correctly
+                                const jsonStr = JSON.stringify(value, null, 2); // Pretty print JSON
+                                const jsonLines = jsonStr.split('\n');
+                                // Indent each line of the JSON string
+                                return '\n' + jsonLines.map(l => `      ${l}`).join('\n');
                             }
-                        }).join('\n');
-                        configContent += indented + '\n';
+                            return value; // Numbers, booleans returned as is
+                        };
+
+                        keys.forEach((key, keyIndex) => {
+                            const value = proxy[key];
+                            const formattedValue = formatYamlValue(value);
+                            const indent = keyIndex === 0 ? '  - ' : '    '; // First key starts the list item
+
+                            // Handle multiline or complex values correctly
+                            if (typeof formattedValue === 'string' && (formattedValue.startsWith('|\n') || formattedValue.startsWith('\n'))) {
+                                proxyYamlLines.push(`${indent}${key}: ${formattedValue}`);
+                            } else {
+                                proxyYamlLines.push(`${indent}${key}: ${formattedValue}`);
+                            }
+                        });
+                         configContent += proxyYamlLines.join('\n') + '\n';
                     }
                 }
-                
+
                 // 显示在预览区域
                 document.getElementById('previewResult').value = configContent;
                 
