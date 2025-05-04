@@ -392,3 +392,47 @@ function downloadProcessedConfig() {
     
     window.location.href = '/api/nodes/config/processed';
 }
+
+// 导出选中节点的协议链接
+async function exportSelectedNodeLinks() {
+    if (selectedNodes.size === 0) {
+        alert('请至少选择一个节点');
+        return;
+    }
+
+    showLoading();
+    try {
+        const selectedNodeNames = Array.from(selectedNodes);
+
+        const response = await fetch('/api/nodes/export-links', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ nodeNames: selectedNodeNames })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`导出链接失败: ${response.status} ${errorText || response.statusText}`);
+        }
+
+        const linksText = await response.text();
+
+        // 创建并下载文本文件
+        const blob = new Blob([linksText], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'selected_node_links.txt'; // 下载的文件名
+        document.body.appendChild(link); // 需要添加到DOM才能在某些浏览器中工作
+        link.click();
+        document.body.removeChild(link); // 点击后移除
+        URL.revokeObjectURL(link.href); // 释放内存
+
+    } catch (error) {
+        console.error('导出节点链接失败:', error);
+        alert('导出节点链接失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
