@@ -367,6 +367,51 @@
             return new Date(dateString).toLocaleString();
         }
 
+// 格式化流量使用情况
+function formatDataUsage(download, upload, total) {
+    // 检查 download 和 upload 是否为有效数字
+    if (typeof download !== 'number' || typeof upload !== 'number') {
+        return '流量信息不完整'; // 或者返回空字符串，如果不希望显示不完整信息
+    }
+    const gb = 1024 * 1024 * 1024;
+    const tb = gb * 1024;
+    const format = (bytes) => {
+        if (bytes === 0) return '0 B'; // 显示 0 B 而不是 0 GB
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+        if (bytes < gb) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        if (bytes < tb) return (bytes / gb).toFixed(2) + ' GB';
+        return (bytes / tb).toFixed(2) + ' TB';
+    };
+    const used = download + upload;
+
+    // 检查是否为无限流量 (total 为 0 或非数字)
+    if (typeof total !== 'number' || total === 0) {
+        return `已用: ${format(used)} / 无限`;
+    }
+
+    // 计算百分比
+    const percentage = ((used / total) * 100).toFixed(1);
+    return `已用: ${format(used)} / ${format(total)} (${percentage}%)`;
+}
+
+        // 格式化过期时间
+        function formatExpireDate(timestamp) {
+            if (typeof timestamp !== 'number' || timestamp <= 0) {
+                return '过期时间未知';
+            }
+            // Unix 时间戳通常是秒，需要乘以 1000 转换为毫秒
+            const date = new Date(timestamp * 1000);
+            // 检查日期是否有效
+             if (isNaN(date.getTime())) {
+                return '过期时间无效';
+            }
+            // 判断是否已过期
+            const now = new Date();
+            const isExpired = date < now;
+            const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            return `过期时间: ${formattedDate}${isExpired ? ' (已过期)' : ''}`;
+        }
         // URL管理功能
         async function loadUrls() {
             try {
@@ -376,13 +421,30 @@
                 
                 const tbody = document.querySelector('#urlTable tbody');
                 tbody.innerHTML = '';
-                
-                urls.forEach(({name, url}) => {
+
+                urls.forEach(urlItem => { // 修改变量名以包含 userInfo
+                    const { name, url, userInfo } = urlItem; // 解构获取 userInfo
                     const tr = document.createElement('tr');
+
+                    // 构建用户信息 HTML 字符串
+                    let userInfoHtml = '';
+                    if (userInfo) {
+                        const usageInfo = formatDataUsage(userInfo.download, userInfo.upload, userInfo.total);
+                        const expireInfo = formatExpireDate(userInfo.expire);
+                        userInfoHtml = `
+                            <div style="font-size: 0.8em; color: #666; margin-top: 4px;">
+                                <span>${usageInfo}</span> | <span>${expireInfo}</span>
+                            </div>
+                        `;
+                    }
+
                     tr.innerHTML = `
-                        <td style="width: 150px">${name}</td>
-                        <td class="url-cell" title="${url}">${url}</td>
-                        <td style="width: 150px">
+                        <td style="width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</td>
+                        <td class="url-cell" title="${url}">
+                            ${url}
+                            ${userInfoHtml}
+                        </td>
+                        <td style="width: 150px; min-width: 150px;">
                             <button class="btn" onclick="editUrl('${name}', '${url}')">编辑</button>
                             <button class="btn btn-danger" onclick="deleteUrl('${name}')">删除</button>
                         </td>
