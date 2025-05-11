@@ -63,17 +63,84 @@ function initDatabase() {
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         expires_at TEXT,
                         is_active INTEGER DEFAULT 1,
+                        last_accessed TEXT,
+                        access_count INTEGER DEFAULT 0,
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )
                 `, (err) => {
                     if (err) {
                         console.error('创建订阅token表失败:', err.message);
                         reject(err);
-                    } else {
-                        console.log('订阅token表已就绪');
-                        resolve();
+                        return;
                     }
+                    console.log('订阅token表已就绪');
+                    
+                    // 检查并升级订阅Token表，添加访问统计字段
+                    upgradeSubscriptionTokensTable()
+                        .then(() => resolve())
+                        .catch(err => {
+                            console.error('升级订阅token表失败:', err.message);
+                            reject(err);
+                        });
                 });
+            });
+        });
+    });
+}
+
+// 升级订阅Token表，添加访问统计相关字段
+function upgradeSubscriptionTokensTable() {
+    return new Promise((resolve, reject) => {
+        // 先检查last_accessed字段是否存在
+        db.get("PRAGMA table_info(subscription_tokens)", (err, rows) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            // 查询表结构
+            db.all("PRAGMA table_info(subscription_tokens)", (err, rows) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                // 检查是否需要添加字段
+                const hasLastAccessed = rows.some(row => row.name === 'last_accessed');
+                const hasAccessCount = rows.some(row => row.name === 'access_count');
+                
+                const promises = [];
+                
+                // 添加缺失的字段
+                if (!hasLastAccessed) {
+                    console.log('正在添加last_accessed字段到subscription_tokens表...');
+                    promises.push(
+                        run("ALTER TABLE subscription_tokens ADD COLUMN last_accessed TEXT")
+                    );
+                }
+                
+                if (!hasAccessCount) {
+                    console.log('正在添加access_count字段到subscription_tokens表...');
+                    promises.push(
+                        run("ALTER TABLE subscription_tokens ADD COLUMN access_count INTEGER DEFAULT 0")
+                    );
+                }
+                
+                // 执行所有升级
+                if (promises.length > 0) {
+                    Promise.all(promises)
+                        .then(() => {
+                            console.log('订阅token表升级完成');
+                            resolve();
+                        })
+                        .catch(err => {
+                            console.error('订阅token表升级失败:', err.message);
+                            reject(err);
+                        });
+                } else {
+                    console.log('订阅token表已是最新结构，无需升级');
+                    resolve();
+                }
             });
         });
     });
@@ -122,10 +189,10 @@ function run(sql, params = []) {
     });
 }
 
-// 获取单条记录并返回Promise
+// 执行单行查询
 function get(sql, params = []) {
     return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
+        db.get(sql, params, function(err, row) {
             if (err) {
                 reject(err);
                 return;
@@ -135,10 +202,10 @@ function get(sql, params = []) {
     });
 }
 
-// 获取多条记录并返回Promise
+// 执行多行查询
 function all(sql, params = []) {
     return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
+        db.all(sql, params, function(err, rows) {
             if (err) {
                 reject(err);
                 return;
@@ -148,24 +215,61 @@ function all(sql, params = []) {
     });
 }
 
-// 关闭数据库连接
-function close() {
+// 封装查询函数为Postgres风格的API，便于后续迁移
+function query(sql, params = []) {
     return new Promise((resolve, reject) => {
-        db.close((err) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve();
-        });
+        // 检查SQL是否是SELECT查询
+        if (sql.trim().toUpperCase().startsWith('SELECT') || sql.includes('RETURNING')) {
+            db.all(sql, params, function(err, rows) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve({ rows });
+            });
+        } else {
+            db.run(sql, params, function(err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                // 如果是带RETURNING的语句，尝试获取返回的行
+                if (sql.includes('RETURNING')) {
+                    db.all(`SELECT * FROM (${sql.replace('RETURNING', 'AND')}) LIMIT 1`, params, (err, rows) => {
+                        if (err) {
+                            // 如果失败，至少返回lastID
+                            resolve({ 
+                                rows: [{id: this.lastID}],
+                                lastID: this.lastID,
+                                changes: this.changes
+                            });
+                        } else {
+                            resolve({ 
+                                rows,
+                                lastID: this.lastID,
+                                changes: this.changes
+                            });
+                        }
+                    });
+                } else {
+                    resolve({ 
+                        rows: [],
+                        lastID: this.lastID, 
+                        changes: this.changes 
+                    });
+                }
+            });
+        }
     });
 }
 
+// 确保在导出前初始化数据库
 module.exports = {
+    initDatabase,
+    checkInitialAdmin,
     run,
     get,
     all,
-    close,
-    checkInitialAdmin,
-    initDatabase
+    query
 }; 

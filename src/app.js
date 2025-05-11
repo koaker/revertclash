@@ -11,10 +11,11 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const nodeRoutes = require('./routes/nodes');
 const subscriptionTokenRoutes = require('./routes/subscriptionTokens');
+const subscribeRoutes = require('./routes/subscribe');
 const { processConfigs } = require('./config');
 const fs = require('fs').promises;
 const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE } = require('./config');
-const subscriptionTokenService = require('./services/subscriptionTokenService');
+const rateLimiter = require('./middleware/rateLimiter');
 
 // 创建Express应用
 const app = express();
@@ -41,9 +42,26 @@ app.use(session({
     saveUninitialized: false,
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30天
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7天，原为30天
     }
 }));
+
+// 添加客户端IP获取中间件
+app.use((req, res, next) => {
+    req.clientIp = req.headers['x-forwarded-for'] || 
+                   req.headers['x-real-ip'] || 
+                   req.connection.remoteAddress || 
+                   req.socket.remoteAddress || 
+                   req.connection.socket.remoteAddress || 
+                   '127.0.0.1';
+    
+    // 如果是IPv4-mapped IPv6地址，转换为IPv4格式
+    if (req.clientIp.includes('::ffff:')) {
+        req.clientIp = req.clientIp.split('::ffff:')[1];
+    }
+    
+    next();
+});
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -51,52 +69,12 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // 协议转换器API
 app.use('/api/converter', converterApi);
 
-// 订阅访问API - 无需登录，放在认证中间件前面
-app.get('/subscribe/:token/:configType', async (req, res) => {
-    try {
-        const { token, configType } = req.params;
-        
-        // 验证Token是否有权限访问指定配置类型
-        const isAuthorized = await subscriptionTokenService.isTokenAuthorized(token, configType);
-        
-        if (!isAuthorized) {
-            return res.status(403).json({
-                error: '无效的订阅链接或无权访问该配置类型'
-            });
-        }
-        
-        // 根据配置类型返回相应的配置文件
-        let filePath;
-        switch (configType) {
-            case 'config':
-                filePath = OUTPUT_FILE;
-                break;
-            case 'processed-config':
-                filePath = PROCESSED_OUTPUT_FILE;
-                break;
-            default:
-                return res.status(400).json({
-                    error: '不支持的配置类型'
-                });
-        }
-        
-        const config = await fs.readFile(filePath, 'utf8');
-        res.setHeader('Content-Type', 'text/yaml');
-        res.send(config);
-    } catch (err) {
-        console.error('订阅访问失败:', err);
-        
-        if (err.code === 'ENOENT') {
-            res.status(404).json({
-                error: '配置文件尚未生成'
-            });
-        } else {
-            res.status(500).json({
-                error: '服务器内部错误: ' + err.message
-            });
-        }
-    }
-});
+// 订阅路由 - 无需登录，放在认证中间件前面，但需要频率限制
+app.use('/subscribe', rateLimiter.createLimiter({
+    windowMs: 1 * 60 * 1000,  // 1分钟窗口
+    maxRequests: 10,          // 每IP每窗口最多10次请求
+    message: '请求过于频繁，请稍后再试'
+}), subscribeRoutes);
 
 // 新增登录、设置页面路由 - 放在认证中间件前面
 app.get('/login', (req, res) => {
@@ -120,7 +98,11 @@ app.use('/api/users', userRoutes);
 app.use('/api/urls', urlRoutes);
 app.use('/api/configs', configRoutes);
 app.use('/api/nodes', nodeRoutes);
-app.use('/api/subscription-tokens', subscriptionTokenRoutes);
+app.use('/api/subscription-tokens', rateLimiter.createLimiter({
+    windowMs: 1 * 60 * 1000,  // 1分钟窗口
+    maxRequests: 30,          // 每IP每窗口最多30次请求
+    message: '请求过于频繁，请稍后再试'
+}), subscriptionTokenRoutes);
 
 // 账号管理页面 - 放在认证中间件后面，需要登录才能访问
 app.get('/account', (req, res) => {
@@ -148,12 +130,32 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
-// 兼容原始路径的配置文件访问
+// 为所有API响应添加安全相关的HTTP头
+app.use((req, res, next) => {
+    // 只为API响应和下载添加安全头
+    if (req.path.startsWith('/api/') || req.path.startsWith('/subscribe/')) {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('Content-Security-Policy', "default-src 'none'");
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+    }
+    next();
+});
+
+// 兼容原始路径的配置文件访问 (应用频率限制)
 // 合并后的配置文件访问
-app.get('/config', async (req, res) => {
+app.get('/config', rateLimiter.createLimiter({
+    windowMs: 1 * 60 * 1000,  // 1分钟窗口
+    maxRequests: 5,           // 每IP每窗口最多5次请求
+    message: '请求过于频繁，请稍后再试'
+}), async (req, res) => {
     try {
         const config = await fs.readFile(OUTPUT_FILE, 'utf8');
         res.setHeader('Content-Type', 'text/yaml');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('Content-Security-Policy', "default-src 'none'");
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
         res.send(config);
     } catch (err) {
         if (err.code === 'ENOENT') {
@@ -170,10 +172,18 @@ app.get('/config', async (req, res) => {
 });
 
 // 处理后的配置文件访问
-app.get('/processed-config', async (req, res) => {
+app.get('/processed-config', rateLimiter.createLimiter({
+    windowMs: 1 * 60 * 1000,  // 1分钟窗口
+    maxRequests: 5,           // 每IP每窗口最多5次请求
+    message: '请求过于频繁，请稍后再试'
+}), async (req, res) => {
     try {
         const config = await fs.readFile(PROCESSED_OUTPUT_FILE, 'utf8');
         res.setHeader('Content-Type', 'text/yaml');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('Content-Security-Policy', "default-src 'none'");
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
         res.send(config);
     } catch (err) {
         if (err.code === 'ENOENT') {

@@ -52,7 +52,7 @@ class NavbarComponent {
             const activeClass = this.isActive(item.path) ? 'active' : '';
             return `
                 <li class="nav-item">
-                    <a class="nav-link ${activeClass}" href="${item.path}">
+                    <a class="nav-link ${activeClass}" href="${item.path}" data-navlink="${item.path}">
                         <i class="bi ${item.icon} me-1"></i>${item.text}
                     </a>
                 </li>
@@ -64,7 +64,7 @@ class NavbarComponent {
             <nav class="rc-navbar">
                 <div class="rc-container rc-d-flex rc-justify-between rc-align-center">
                     <div class="rc-d-flex rc-align-center">
-                        <a class="rc-navbar-brand" href="/">RevertClash</a>
+                        <a class="rc-navbar-brand" href="/home">RevertClash</a>
                         
                         <!-- 汉堡菜单按钮 (移动端) -->
                         <button class="rc-navbar-toggle d-md-none" type="button" id="navbarToggler">
@@ -116,6 +116,9 @@ class NavbarComponent {
         
         // 初始化响应式功能
         this.initResponsive();
+        
+        // 增强导航链接点击事件
+        this.enhanceNavLinks();
     }
 
     /**
@@ -152,16 +155,6 @@ class NavbarComponent {
                 navbarContent.classList.toggle('show');
             });
             
-            // 点击导航链接时自动收起菜单（移动端）
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    if (window.innerWidth < 768) {
-                        navbarContent.classList.remove('show');
-                    }
-                });
-            });
-
             // 点击页面其他地方时收起菜单
             document.addEventListener('click', (event) => {
                 if (window.innerWidth < 768 && 
@@ -172,6 +165,44 @@ class NavbarComponent {
                 }
             });
         }
+    }
+    
+    /**
+     * 增强导航链接点击事件
+     * 解决三个界面粘在一起的问题
+     */
+    enhanceNavLinks() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        const navbarContent = document.getElementById('navbarContent');
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // 获取目标页面路径
+                const targetPath = this.getAttribute('data-navlink');
+                
+                // 如果是当前页面，则不做任何操作
+                if (targetPath === window.location.pathname) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                // 在移动设备上，先收起菜单
+                if (window.innerWidth < 768 && navbarContent) {
+                    navbarContent.classList.remove('show');
+                }
+                
+                // 添加页面切换效果
+                document.body.style.opacity = '0.8';
+                
+                // 延迟跳转，确保UI效果和菜单关闭
+                if (targetPath && targetPath !== window.location.pathname) {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        window.location.href = targetPath;
+                    }, 100);
+                }
+            });
+        });
     }
 
     /**
@@ -189,8 +220,11 @@ class NavbarComponent {
             const data = await response.json();
             
             if (response.ok) {
-                alert('已成功退出登录');
-                window.location.href = data.redirect || '/login';
+                // 添加过渡效果
+                document.body.style.opacity = '0.8';
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/login';
+                }, 100);
             } else {
                 alert('退出登录失败: ' + (data.error || '未知错误'));
             }
@@ -212,4 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const containerId = autoInit.getAttribute('data-rc-navbar-container') || 'navbar-container';
         rcNavbar.init(containerId);
     }
+    
+    // 添加页面过渡效果
+    document.body.style.transition = 'opacity 0.2s ease';
+    document.body.style.opacity = '1';
 }); 
