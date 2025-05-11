@@ -97,9 +97,10 @@ const LOW_QUALITY_KEYWORDS = [
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
 ];
-const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友", "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测"
+const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友",
+     "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测", "已墙", "巴西"
 ];
-const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生", "高级", "精品"]
+const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生"]
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
      "need-dialer"
@@ -514,14 +515,11 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "OneDrive", 
+        name: "Microsoft与bing服务、OneDrive", 
         gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml" 
-    },
-    { 
-        name: "Microsoft与bing服务", 
-        gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml" 
+        urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml" 
+        ]
     },
     { 
         name: "Cloudflare", 
@@ -1039,13 +1037,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "负载均衡", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["负载均衡",  "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
@@ -1072,15 +1070,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "DIRECT",
                 ...(householdProxiesName.length > 0 ? householdProxiesName : [])
             ]
-        },
-        {
-            "name": "负载均衡",
-            "type": "load-balance",
-            "include-all": true,
-            "strategy": CONFIG.balanceStrategy,
-            "url": testUrl,
-            "interval": CONFIG.testInterval
-        },
+        }
     ]);
     
     finalBaseProxyGroups.push(...baseProxyGroups);
