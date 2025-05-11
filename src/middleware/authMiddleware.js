@@ -14,6 +14,12 @@ const sessionAuthMiddleware = (req, res, next) => {
         '/status'  // 添加基础状态检查到跳过列表
     ];
     
+    // 检查是否为订阅访问路径
+    if (req.path.startsWith('/subscribe/')) {
+        console.log(`[会话认证] 订阅访问路径: ${req.path}，跳过认证`);
+        return next();
+    }
+    
     if (skipPaths.includes(req.path) || req.path.startsWith('/auth/')) {
         console.log(`[会话认证] 跳过路径: ${req.path}`);
         return next();
@@ -64,6 +70,12 @@ const setupRedirectMiddleware = (req, res, next) => {
     // 设置默认值，避免初始化问题
     if (global.needInitialSetup === undefined) {
         global.needInitialSetup = true;
+    }
+    
+    // 跳过订阅访问路径的重定向
+    if (req.path.startsWith('/subscribe/')) {
+        console.log(`[设置重定向] 订阅访问路径: ${req.path}，跳过重定向`);
+        return next();
     }
     
     // 如果系统需要初始设置且请求不是设置页面或API

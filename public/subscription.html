@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订阅链接管理 - RevertClash</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/revertclash.css">
+</head>
+<body>
+    <!-- 导航栏容器 -->
+    <div id="navbar-container" data-rc-navbar-auto-init="true"></div>
+
+    <!-- 主内容区域 -->
+    <div class="rc-content">
+        <div class="rc-container">
+            <div class="rc-card rc-mb-4">
+                <div class="rc-card-header d-flex justify-content-between align-items-center">
+                    <h5 class="rc-mb-0">订阅链接管理</h5>
+                    <button id="createTokenBtn" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus-circle"></i> 创建订阅链接
+                    </button>
+                </div>
+                <div class="rc-card-body">
+                    <p class="rc-mb-3">您可以创建订阅链接，供 Clash、Shadowrocket 等客户端直接使用，无需登录。</p>
+                    
+                    <div id="tokenList" class="rc-mb-3">
+                        <div class="rc-alert rc-alert-info">
+                            <i class="bi bi-info-circle"></i> 正在加载订阅链接...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建订阅链接模态框 -->
+    <div class="modal fade" id="createTokenModal" tabindex="-1" aria-labelledby="createTokenModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createTokenModalLabel">创建订阅链接</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTokenForm">
+                        <div class="mb-3">
+                            <label for="tokenName" class="form-label">名称</label>
+                            <input type="text" class="form-control" id="tokenName" required>
+                            <div class="form-text">为订阅链接指定一个易于识别的名称</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">配置类型</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="config" id="configType1" checked>
+                                <label class="form-check-label" for="configType1">
+                                    标准配置 (config)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="processed-config" id="configType2">
+                                <label class="form-check-label" for="configType2">
+                                    处理后的配置 (processed-config)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tokenExpiry" class="form-label">过期时间（可选）</label>
+                            <input type="date" class="form-control" id="tokenExpiry">
+                            <div class="form-text">留空表示永不过期</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="submitCreateToken">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/navbar.js"></script>
+    <script>
+        // DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const tokenList = document.getElementById('tokenList');
+            const createTokenBtn = document.getElementById('createTokenBtn');
+            const createTokenModal = new bootstrap.Modal(document.getElementById('createTokenModal'));
+            const createTokenForm = document.getElementById('createTokenForm');
+            const submitCreateTokenBtn = document.getElementById('submitCreateToken');
+            
+            // 加载订阅链接列表
+            loadTokens();
+            
+            // 为创建按钮添加事件监听器
+            createTokenBtn.addEventListener('click', function() {
+                // 重置表单
+                createTokenForm.reset();
+                createTokenModal.show();
+            });
+            
+            // 为提交创建按钮添加事件监听器
+            submitCreateTokenBtn.addEventListener('click', createToken);
+            
+            // 加载订阅链接列表
+            function loadTokens() {
+                tokenList.innerHTML = `
+                    <div class="rc-alert rc-alert-info">
+                        <i class="bi bi-info-circle"></i> 正在加载订阅链接...
+                    </div>
+                `;
+                
+                fetch('/api/subscription-tokens')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('网络请求失败');
+                        }
+                        return response.json();
+                    })
+                    .then(tokens => {
+                        if (tokens.length === 0) {
+                            tokenList.innerHTML = `
+                                <div class="rc-alert rc-alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 您还没有创建任何订阅链接
+                                </div>
+                            `;
+                        } else {
+                            renderTokenList(tokens);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取订阅链接失败:', error);
+                        tokenList.innerHTML = `
+                            <div class="rc-alert rc-alert-danger">
+                                <i class="bi bi-x-circle"></i> 获取订阅链接失败: ${error.message}
+                            </div>
+                        `;
+                    });
+            }
+            
+            // 渲染订阅链接列表
+            function renderTokenList(tokens) {
+                let html = '<div class="list-group">';
+                
+                tokens.forEach(token => {
+                    const isExpired = token.expiresAt && new Date(token.expiresAt) < new Date();
+                    const statusBadge = token.isActive 
+                        ? (isExpired 
+                            ? '<span class="badge bg-warning">已过期</span>' 
+                            : '<span class="badge bg-success">有效</span>')
+                        : '<span class="badge bg-danger">已禁用</span>';
+                    
+                    const expiryInfo = token.expiresAt 
+                        ? `过期时间: ${new Date(token.expiresAt).toLocaleDateString()}`
+                        : '永不过期';
+                    
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-1">${token.name} ${statusBadge}</h5>
+                                <div>
+                                    <button class="rc-btn rc-btn-sm rc-btn-outline-danger delete-token" data-token-id="${token.id}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <button class="rc-btn rc-btn-sm rc-btn-outline-primary regenerate-token" data-token-id="${token.id}">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="mb-1">创建时间: ${new Date(token.createdAt).toLocaleString()}</p>
+                            <p class="mb-1">${expiryInfo}</p>
+                            <p class="mb-1">配置类型: ${token.configTypes.join(', ')}</p>
+                            
+                            <div class="mt-2">
+                                <div class="accordion" id="accordion-${token.id}">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${token.id}">
+                                                显示订阅链接
+                                            </button>
+                                        </h2>
+                                        <div id="collapse-${token.id}" class="accordion-collapse collapse" data-bs-parent="#accordion-${token.id}">
+                                            <div class="accordion-body">
+                                                <div class="list-group">
+                                                    ${token.subscribeUrls.map(urlInfo => `
+                                                        <div class="list-group-item">
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <h6 class="mb-1">${urlInfo.type}</h6>
+                                                                    <p class="mb-1 text-break">${urlInfo.url}</p>
+                                                                </div>
+                                                                <button class="rc-btn rc-btn-sm rc-btn-outline-primary copy-url" data-url="${urlInfo.url}">
+                                                                    <i class="bi bi-clipboard"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                tokenList.innerHTML = html;
+                
+                // 为复制按钮添加事件监听器
+                document.querySelectorAll('.copy-url').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const url = this.getAttribute('data-url');
+                        navigator.clipboard.writeText(url)
+                            .then(() => {
+                                const originalText = this.innerHTML;
+                                this.innerHTML = '<i class="bi bi-check"></i>';
+                                setTimeout(() => {
+                                    this.innerHTML = originalText;
+                                }, 1500);
+                            })
+                            .catch(err => {
+                                console.error('复制失败:', err);
+                                alert('复制失败，请手动复制');
+                            });
+                    });
+                });
+                
+                // 为删除按钮添加事件监听器
+                document.querySelectorAll('.delete-token').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const tokenId = this.getAttribute('data-token-id');
+                        if (confirm('确定要删除此订阅链接吗？此操作无法撤销。')) {
+                            deleteToken(tokenId);
+                        }
+                    });
+                });
+                
+                // 为重新生成按钮添加事件监听器
+                document.querySelectorAll('.regenerate-token').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const tokenId = this.getAttribute('data-token-id');
+                        if (confirm('确定要重新生成此订阅链接吗？旧链接将失效，需要更新客户端。')) {
+                            regenerateToken(tokenId);
+                        }
+                    });
+                });
+            }
+            
+            // 创建订阅链接
+            function createToken() {
+                // 获取表单数据
+                const name = document.getElementById('tokenName').value.trim();
+                const expiryInput = document.getElementById('tokenExpiry').value;
+                const expiresAt = expiryInput ? new Date(expiryInput).toISOString() : null;
+                
+                // 获取选中的配置类型
+                const configTypes = [];
+                document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                    configTypes.push(checkbox.value);
+                });
+                
+                // 验证数据
+                if (!name) {
+                    alert('请输入名称');
+                    return;
+                }
+                
+                if (configTypes.length === 0) {
+                    alert('请至少选择一种配置类型');
+                    return;
+                }
+                
+                // 发送请求
+                fetch('/api/subscription-tokens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        configTypes,
+                        expiresAt
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || '创建失败'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    createTokenModal.hide();
+                    loadTokens();
+                })
+                .catch(error => {
+                    console.error('创建订阅链接失败:', error);
+                    alert('创建订阅链接失败: ' + error.message);
+                });
+            }
+            
+            // 删除订阅链接
+            function deleteToken(tokenId) {
+                fetch(`/api/subscription-tokens/${tokenId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || '删除失败'); });
+                    }
+                    loadTokens();
+                })
+                .catch(error => {
+                    console.error('删除订阅链接失败:', error);
+                    alert('删除订阅链接失败: ' + error.message);
+                });
+            }
+            
+            // 重新生成订阅链接
+            function regenerateToken(tokenId) {
+                fetch(`/api/subscription-tokens/${tokenId}/regenerate`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || '重新生成失败'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadTokens();
+                })
+                .catch(error => {
+                    console.error('重新生成订阅链接失败:', error);
+                    alert('重新生成订阅链接失败: ' + error.message);
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

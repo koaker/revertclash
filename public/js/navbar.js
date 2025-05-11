@@ -43,6 +43,7 @@ class NavbarComponent {
             { path: '/home', icon: 'bi-house', text: '首页' },
             { path: '/nodes', icon: 'bi-diagram-3', text: '节点管理' },
             { path: '/manage', icon: 'bi-gear-wide-connected', text: '配置管理' },
+            { path: '/subscription', icon: 'bi-link', text: '订阅链接' },
             { path: '/account', icon: 'bi-person', text: '账号设置' }
         ];
 

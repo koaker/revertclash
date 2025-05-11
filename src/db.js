@@ -48,10 +48,32 @@ function initDatabase() {
                 if (err) {
                     console.error('创建用户表失败:', err.message);
                     reject(err);
-                } else {
-                    console.log('用户表已就绪');
-                    resolve();
+                    return;
                 }
+                console.log('用户表已就绪');
+                
+                // 创建订阅token表
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS subscription_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        token TEXT UNIQUE NOT NULL,
+                        name TEXT NOT NULL,
+                        config_types TEXT NOT NULL, 
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TEXT,
+                        is_active INTEGER DEFAULT 1,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                `, (err) => {
+                    if (err) {
+                        console.error('创建订阅token表失败:', err.message);
+                        reject(err);
+                    } else {
+                        console.log('订阅token表已就绪');
+                        resolve();
+                    }
+                });
             });
         });
     });
