@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>配置管理</title>
+    <title>RevertClash 配置管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/revertclash.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -159,77 +162,104 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- 导航栏容器 -->
+    <div id="navbar-container" data-rc-navbar-auto-init="true"></div>
+
+    <div class="rc-container">
         <!-- 提示框 -->
-        <div id="alert" class="alert"></div>
+        <div id="alert" class="rc-alert"></div>
 
         <!-- 顶部操作栏 -->
-        <div class="section" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <button class="btn" onclick="updateConfig()" style="font-size: 16px; padding: 10px 20px;">
-                    <span id="updateBtnText">立即更新配置</span>
-                    <span id="updateSpinner" style="display: none;">更新中...</span>
-                </button>
-                <a href="/home" class="btn" style="background-color: #6c757d; text-decoration: none;">返回首页</a>
+        <div class="rc-card" style="margin-bottom: 20px;">
+            <div class="rc-card-body">
+                <div class="rc-d-flex rc-justify-between rc-align-center">
+                    <button class="rc-btn rc-btn-primary" onclick="updateConfig()" style="font-size: 16px; padding: 10px 20px;">
+                        <span id="updateBtnText">立即更新配置</span>
+                        <span id="updateSpinner" style="display: none;">更新中...</span>
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- URL管理部分 -->
-        <div class="section">
-            <h2>URL管理</h2>
-            <button class="btn" onclick="showAddUrlModal()">添加URL</button>
-            <table class="table" id="urlTable">
-                <thead>
-                    <tr>
-                        <th>名称</th>
-                        <th>URL</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <i class="bi bi-link me-2"></i>
+                URL管理
+            </div>
+            <div class="rc-card-body">
+                <button class="rc-btn rc-btn-primary rc-mb-3" onclick="showAddUrlModal()">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    添加URL
+                </button>
+                <div class="table-responsive">
+                    <table class="table" id="urlTable">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>URL</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- 配置文件管理部分 -->
-        <div class="section">
-            <h2>配置文件管理</h2>
-            <button class="btn" onclick="showAddConfigModal()">添加配置</button>
-            <table class="table" id="configTable">
-                <thead>
-                    <tr>
-                        <th>名称</th>
-                        <th>大小</th>
-                        <th>修改时间</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+        <div class="rc-card rc-mt-4">
+            <div class="rc-card-header">
+                <i class="bi bi-file-code me-2"></i>
+                配置文件管理
+            </div>
+            <div class="rc-card-body">
+                <button class="rc-btn rc-btn-primary rc-mb-3" onclick="showAddConfigModal()">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    添加配置
+                </button>
+                <div class="table-responsive">
+                    <table class="table" id="configTable">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>大小</th>
+                                <th>修改时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- 协议转换部分 -->
-        <div class="section" id="protocol-converter">
-            <h2>协议转换</h2>
-            <p>在不同协议之间转换，支持SS、VLESS和Hysteria2等协议。</p>
-            
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">导入非Clash订阅链接</h5>
-                </div>
-                <div class="card-body">
-                    <button class="btn btn-primary mb-3" onclick="showImportNonClashModal()">
-                        <i class="bi bi-plus-circle"></i> 导入非Clash链接
-                    </button>
-                    
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 您可以将非Clash格式的订阅链接转换为Clash配置文件并保存。
+        <div class="rc-card rc-mt-4" id="protocol-converter">
+            <div class="rc-card-header">
+                <i class="bi bi-arrow-repeat me-2"></i>
+                协议转换
+            </div>
+            <div class="rc-card-body">
+                <p>在不同协议之间转换，支持SS、VLESS和Hysteria2等协议。</p>
+                
+                <div class="rc-card rc-mb-4">
+                    <div class="rc-card-header">
+                        <h5 class="rc-mb-0">导入非Clash订阅链接</h5>
+                    </div>
+                    <div class="rc-card-body">
+                        <button class="rc-btn rc-btn-primary rc-mb-3" onclick="showImportNonClashModal()">
+                            <i class="bi bi-plus-circle"></i> 导入非Clash链接
+                        </button>
+                        
+                        <div class="rc-alert rc-alert-info">
+                            <i class="bi bi-info-circle"></i> 您可以将非Clash格式的订阅链接转换为Clash配置文件并保存。
+                        </div>
                     </div>
                 </div>
             </div>
-            
-
         </div>
 
         <!-- URL模态框 -->
@@ -239,15 +269,15 @@
                 <h3>URL配置</h3>
                 <form id="urlForm">
                     <input type="hidden" id="urlOldName">
-                    <div class="form-group">
-                        <label for="urlName">名称</label>
-                        <input type="text" id="urlName" class="form-control" required>
+                    <div class="rc-form-group">
+                        <label for="urlName" class="rc-form-label">名称</label>
+                        <input type="text" id="urlName" class="rc-form-control" required>
                     </div>
-                    <div class="form-group">
-                        <label for="urlValue">URL</label>
-                        <input type="text" id="urlValue" class="form-control" required>
+                    <div class="rc-form-group">
+                        <label for="urlValue" class="rc-form-label">URL</label>
+                        <input type="text" id="urlValue" class="rc-form-control" required>
                     </div>
-                    <button type="submit" class="btn">保存</button>
+                    <button type="submit" class="rc-btn rc-btn-primary">保存</button>
                 </form>
             </div>
         </div>
@@ -258,15 +288,15 @@
                 <span class="close" onclick="closeConfigModal()">&times;</span>
                 <h3>配置文件</h3>
                 <form id="configForm">
-                    <div class="form-group">
-                        <label for="configName">文件名 (.yaml)</label>
-                        <input type="text" id="configName" class="form-control" required>
+                    <div class="rc-form-group">
+                        <label for="configName" class="rc-form-label">文件名 (.yaml)</label>
+                        <input type="text" id="configName" class="rc-form-control" required>
                     </div>
-                    <div class="form-group">
-                        <label for="configContent">内容</label>
-                        <textarea id="configContent" class="form-control" required></textarea>
+                    <div class="rc-form-group">
+                        <label for="configContent" class="rc-form-label">内容</label>
+                        <textarea id="configContent" class="rc-form-control" required style="min-height: 200px; font-family: monospace;"></textarea>
                     </div>
-                    <button type="submit" class="btn">保存</button>
+                    <button type="submit" class="rc-btn rc-btn-primary">保存</button>
                 </form>
             </div>
         </div>
@@ -276,27 +306,27 @@
             <div class="modal-content" style="width: 80%; max-width: 1200px;">
                 <span class="close" onclick="closeImportNonClashModal()">&times;</span>
                 <h3>导入非Clash订阅链接</h3>
-                <div class="form-group">
-                    <label for="nonClashConfigName">配置文件名称</label>
-                    <input type="text" id="nonClashConfigName" class="form-control" required placeholder="输入配置文件名称（不需要添加.yaml后缀）">
+                <div class="rc-form-group">
+                    <label for="nonClashConfigName" class="rc-form-label">配置文件名称</label>
+                    <input type="text" id="nonClashConfigName" class="rc-form-control" required placeholder="输入配置文件名称（不需要添加.yaml后缀）">
                 </div>
-                <div style="display: flex; gap: 20px; margin-top: 15px;">
+                <div style="display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap;">
                     <!-- 左侧：订阅链接输入 -->
-                    <div style="flex: 1;">
-                        <div class="form-group">
-                            <label for="nonClashLinks">订阅链接</label>
-                            <textarea id="nonClashLinks" class="form-control" style="height: 300px;" placeholder="输入非Clash格式的订阅链接，每行一个，支持SS、VLESS、Hysteria2等协议"></textarea>
+                    <div style="flex: 1; min-width: 300px;">
+                        <div class="rc-form-group">
+                            <label for="nonClashLinks" class="rc-form-label">订阅链接</label>
+                            <textarea id="nonClashLinks" class="rc-form-control" style="height: 300px;" placeholder="输入非Clash格式的订阅链接，每行一个，支持SS、VLESS、Hysteria2等协议"></textarea>
                         </div>
-                        <button type="button" id="convertBtn" class="btn" style="margin-top: 10px;">转换</button>
+                        <button type="button" id="convertBtn" class="rc-btn rc-btn-primary" style="margin-top: 10px;">转换</button>
                     </div>
                     
                     <!-- 右侧：预览结果 -->
-                    <div style="flex: 1;">
-                        <div class="form-group">
-                            <label for="previewResult">预览结果 (可编辑)</label>
-                            <textarea id="previewResult" class="form-control" style="height: 300px; font-family: monospace;"></textarea>
+                    <div style="flex: 1; min-width: 300px;">
+                        <div class="rc-form-group">
+                            <label for="previewResult" class="rc-form-label">预览结果 (可编辑)</label>
+                            <textarea id="previewResult" class="rc-form-control" style="height: 300px; font-family: monospace;"></textarea>
                         </div>
-                        <button type="button" id="saveConfigBtn" class="btn" style="margin-top: 10px; float: right;">保存为配置文件</button>
+                        <button type="button" id="saveConfigBtn" class="rc-btn rc-btn-primary" style="margin-top: 10px; float: right;">保存为配置文件</button>
                     </div>
                 </div>
             </div>
@@ -304,6 +334,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/navbar.js"></script>
     <script>
         // 更新配置函数
         async function updateConfig() {
@@ -347,7 +378,7 @@
         function showAlert(message, type = 'danger') {
             const alert = document.getElementById('alert');
             alert.textContent = message;
-            alert.className = `alert alert-${type}`;
+            alert.className = `rc-alert rc-alert-${type}`;
             alert.style.display = 'block';
             setTimeout(() => alert.style.display = 'none', 3000);
         }

@@ -90,9 +90,12 @@ const HIGH_QUALITY_KEYWORDS = [
     
     // 在此添加更多关键词...
 ];
-
+// 非常低质量的节点，专门用多线程下载器下载，优先匹配0.0几和0.1的节点。
+const LOW_LOW_QUALITY_KEYWORDS = [
+    "无限", "0\\.0\\d+","低质", "0\\.1", 
+];
 const LOW_QUALITY_KEYWORDS = [
-    "无限", "x0.","低质","低价"
+    "0\\.\\d","低价"
 ];
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
@@ -586,6 +589,7 @@ const DNS_CONFIG = {
 const REGEX_CACHE = {
     highQuality: new RegExp(HIGH_QUALITY_KEYWORDS.join("|"), "i"),
     lowQuality: new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i"),
+    lowLowQuality: new RegExp(LOW_LOW_QUALITY_KEYWORDS.join("|"), "i"),
     notProxy: new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i"),
     needDialer: new RegExp(NEED_DIALER_KEYWORDS.join("|"), "i"),
     lowQualityProvider: new RegExp(LOW_QUALITY__PROVIDER_KEYWORDS.join("|"), "i"),
@@ -742,18 +746,18 @@ function filtersocks5ProxiesName(proxies) {
  * @returns {Array} 符合条件的节点名称列表
  */
 function filterNotProxies(proxies) {
-    console.log("传入的节点", proxies)
+    //console.log("传入的节点", proxies)
     if (!proxies || !Array.isArray(proxies)) {
-        console.log("空节点")
+        //console.log("空节点")
         return [];
     }
-    console.log("非空节点")
+    //console.log("非空节点")
     const countryRegex = REGEX_CACHE.notProxy;
     proxies = proxies.filter(proxy => {
         const proxyName = proxy.name || "";
         return !countryRegex.test(proxyName);
     });
-    console.log("筛选后的节点", proxies)
+    //console.log("筛选后的节点", proxies)
     return proxies;
 }
 
@@ -825,6 +829,7 @@ function filterAllProxies(proxies) {
     //console.log(proxies)
     const returnedProxies = {
         lowQualityProxies: [...filteredProvidersProxies.lowQualityProviderProxies],
+        lowLowQualityProxies: [],
         highQualityProxies: [],
         householdProxies: [],
         otherProxies: [],
@@ -834,9 +839,14 @@ function filterAllProxies(proxies) {
         const proxy = proxies[i];
         const proxyName = proxy.name || "";
         var flag = false;
-        if (REGEX_CACHE.lowQuality.test(proxyName)) {
+        console.log(proxyName+"\n")
+        if (REGEX_CACHE.lowLowQuality.test(proxyName)) {
+            returnedProxies.lowLowQualityProxies.push(proxy);
+            console.log(proxyName+"lowlow")
+            flag = true;
+        } else if (REGEX_CACHE.lowQuality.test(proxyName)) {
             returnedProxies.lowQualityProxies.push(proxy);
-            //console.log(proxyName+"low")
+            console.log(proxyName+"low")
             flag = true;
         } else if (REGEX_CACHE.highQuality.test(proxyName)) {
             returnedProxies.highQualityProxies.push(proxy);
@@ -851,6 +861,7 @@ function filterAllProxies(proxies) {
            // console.log(proxyName+"other")
         }
     }
+
 
     return returnedProxies;
 }
@@ -928,13 +939,14 @@ function buildBaseProxyGroups(testUrl, proxies) {
     }
     // 筛选所有节点
     const filteredProxiesName = filterNameByRules(proxies, null)
-    console.log(proxies)
+    //console.log(proxies)
     const typedProxies = filterAllProxies(proxies);
-    console.log(typedProxies)
+    //console.log(typedProxies)
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
-    const lowQualityProxiesName = filterNameByRules(typedProxies.lowQualityProxies, REGEX_CACHE.lowQuality);
-
+    
+    const lowQualityProxiesName = filterNameByRules(typedProxies.lowQualityProxies);
+    const lowLowQualityProxiesName = filterNameByRules(typedProxies.lowLowQualityProxies);
     // 这里需要保证剩余的节点线路质量很高
     // 筛选高质量节点
     const highQualityProxiesName = filterNameByRules(typedProxies.highQualityProxies);
@@ -944,7 +956,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 筛选国家或者地区节点 
     const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
     const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies]);
-    console.log(countryOrRegionProxiesGroups)
+    //console.log(countryOrRegionProxiesGroups)
     const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
     const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
@@ -1018,13 +1030,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
             ]
         },
         {
-            "name": "低质量下载节点-负载均衡测试",
+            "name": "极低质量下载节点-负载均衡测试",
             "type": "load-balance",
             "strategy": "round-robin",
             "url": testUrl,
             "interval": CONFIG.testInterval,
             "proxies": [
-                ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
+                ...(lowLowQualityProxiesName.length > 0 ? lowLowQualityProxiesName : []),
                 "DIRECT"
             ]
         },
@@ -1037,13 +1049,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
@@ -1110,7 +1122,7 @@ function main(config) {
     const testUrl = CONFIG.testUrl;
     // 过滤不是正常节点的节点
     proxies = filterNotProxies(proxies)
-    console.log("过滤后的节点", proxies)
+    //console.log("过滤后的节点", proxies)
     // 初始化规则和代理组
     const rules = USER_RULES.slice();
     const proxyGroups = [];
@@ -1204,7 +1216,7 @@ function main(config) {
         }
     };
 
-    console.log(testUrl,proxies)
+    //console.log(testUrl,proxies)
     // 构建基本代理组
     const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies);
 

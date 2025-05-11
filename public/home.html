@@ -9,42 +9,8 @@
     <link rel="stylesheet" href="/css/revertclash.css">
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav class="rc-navbar">
-        <div class="rc-container rc-d-flex rc-justify-between rc-align-center">
-            <a class="brand" href="/">RevertClash</a>
-            
-            <!-- 汉堡菜单按钮 (移动端) -->
-            <button class="rc-navbar-toggler d-md-none" type="button" id="navbarToggler">
-                <i class="bi bi-list" style="font-size: 1.5rem;"></i>
-            </button>
-            
-            <!-- 导航菜单 -->
-            <div class="rc-navbar-collapse" id="navbarContent">
-                <ul class="rc-navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/home">首页</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/nodes">节点管理</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/manage">配置管理</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/account">账号设置</a>
-                    </li>
-                </ul>
-                
-                <!-- 导航栏右侧操作区 -->
-                <div class="rc-navbar-actions ms-auto">
-                    <button onclick="logout()" class="rc-btn rc-btn-outline-danger rc-btn-sm">
-                        <i class="bi bi-box-arrow-right me-1"></i>退出登录
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- 导航栏容器 -->
+    <div id="navbar-container" data-rc-navbar-auto-init="true"></div>
 
     <!-- 主内容区域 -->
     <div class="rc-content">
@@ -130,73 +96,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // 页面加载时检查用户状态和初始化导航栏
-        document.addEventListener('DOMContentLoaded', function() {
-            checkUserStatus();
-            initNavbar();
-        });
-        
-        // 初始化导航栏响应式功能
-        function initNavbar() {
-            const toggler = document.getElementById('navbarToggler');
-            const navbarContent = document.getElementById('navbarContent');
-            
-            if (toggler && navbarContent) {
-                toggler.addEventListener('click', function() {
-                    navbarContent.classList.toggle('show');
-                });
-                
-                // 点击导航链接时自动收起菜单（移动端）
-                const navLinks = document.querySelectorAll('.nav-link');
-                navLinks.forEach(link => {
-                    link.addEventListener('click', function() {
-                        if (window.innerWidth < 768) {
-                            navbarContent.classList.remove('show');
-                        }
-                    });
-                });
-            }
-        }
-        
-        // 检查用户登录状态
-        async function checkUserStatus() {
-            try {
-                const response = await fetch('/auth/status');
-                const data = await response.json();
-                
-                // 如果未登录，跳转到登录页
-                if (!data.loggedIn) {
-                    window.location.href = '/login';
-                }
-            } catch (error) {
-                console.error('获取用户状态失败:', error);
-            }
-        }
-        
-        // 退出登录
-        async function logout() {
-            try {
-                const response = await fetch('/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    alert('已成功退出登录');
-                    window.location.href = data.redirect || '/login';
-                } else {
-                    alert('退出登录失败: ' + (data.error || '未知错误'));
-                }
-            } catch (error) {
-                console.error('退出登录请求失败:', error);
-                alert('退出登录请求失败，请稍后重试');
-            }
-        }
-    </script>
+    <script src="/js/navbar.js"></script>
 </body>
 </html>

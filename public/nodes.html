@@ -6,26 +6,8 @@
     <title>节点管理 - RevertClash</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/revertclash.css">
     <style>
-        body {
-            font-family: 'Microsoft YaHei', sans-serif;
-            background-color: #f8f9fa;
-            padding-top: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .card-header {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            padding: 15px 20px;
-        }
         .table {
             margin-bottom: 0;
         }
@@ -57,21 +39,6 @@
             min-width: 70px;
             text-align: center;
         }
-        .navbar {
-            margin-bottom: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .navbar-brand {
-            font-weight: bold;
-        }
-        .nav-link {
-            color: #495057;
-        }
-        .nav-link.active {
-            font-weight: bold;
-            color: #007bff;
-        }
         .loading {
             position: fixed;
             top: 0;
@@ -91,106 +58,88 @@
     </style>
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">RevertClash</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/home">首页</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/nodes">节点管理</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/manage">配置管理</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <!-- 导航栏容器 -->
+    <div id="navbar-container" data-rc-navbar-auto-init="true"></div>
 
-    <div class="container">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">节点管理</h5>
-                <div>
-                    <button class="btn btn-primary btn-sm" onclick="reloadNodes()">
-                        <i class="bi bi-arrow-clockwise"></i> 重新加载节点
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                <!-- 搜索和筛选 -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="input-group search-box">
-                            <input type="text" class="form-control" id="searchInput" placeholder="搜索节点名称...">
-                            <button class="btn btn-outline-secondary" type="button" onclick="searchNodes()">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="filter-box">
-                            <label for="typeFilter" class="form-label mb-0">类型筛选:</label>
-                            <select class="form-select form-select-sm" id="typeFilter" onchange="filterByType()">
-                                <option value="all">全部</option>
-                                <!-- 类型选项将通过JS动态添加 -->
-                            </select>
-                            <span class="node-count">
-                                已选择: <span id="selectedCount">0</span> / <span id="totalCount">0</span>
-                            </span>
-                        </div>
+    <div class="rc-content">
+        <div class="rc-container">
+            <div class="rc-card">
+                <div class="rc-card-header rc-d-flex rc-justify-between rc-align-center">
+                    <h5 class="rc-mb-0">节点管理</h5>
+                    <div>
+                        <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="reloadNodes()">
+                            <i class="bi bi-arrow-clockwise"></i> 重新加载节点
+                        </button>
                     </div>
                 </div>
-
-                <!-- 批量操作 -->
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAll()">
-                                <i class="bi bi-check-all"></i> 全选
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAll()">
-                                <i class="bi bi-x-lg"></i> 取消全选
-                            </button>
-                            <button type="button" class="btn btn-outline-success btn-sm" onclick="downloadSelectedConfig()">
-                                <i class="bi bi-download"></i> 下载选中节点配置
-                            </button>
-                            <button type="button" class="btn btn-outline-info btn-sm" onclick="downloadProcessedConfig()">
-                                <i class="bi bi-gear"></i> 下载处理后配置
-                            </button>
-                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="exportSelectedNodeLinks()">
-                                <i class="bi bi-link-45deg"></i> 导出选中节点链接
-                            </button>
+                <div class="rc-card-body">
+                    <!-- 搜索和筛选 -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group search-box">
+                                <input type="text" class="form-control" id="searchInput" placeholder="搜索节点名称...">
+                                <button class="btn btn-outline-secondary" type="button" onclick="searchNodes()">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="filter-box">
+                                <label for="typeFilter" class="form-label mb-0">类型筛选:</label>
+                                <select class="form-select form-select-sm" id="typeFilter" onchange="filterByType()">
+                                    <option value="all">全部</option>
+                                    <!-- 类型选项将通过JS动态添加 -->
+                                </select>
+                                <span class="node-count">
+                                    已选择: <span id="selectedCount">0</span> / <span id="totalCount">0</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 节点表格 -->
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th width="5%">
-                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
-                                </th>
-                                <th width="30%">名称</th>
-                                <th width="15%">类型</th>
-                                <th width="20%">服务器</th>
-                                <th width="10%">端口</th>
-                                <th width="20%">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="nodeList">
-                            <!-- 节点列表将通过JS动态添加 -->
-                        </tbody>
-                    </table>
+                    <!-- 批量操作 -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="rc-btn rc-btn-outline-primary rc-btn-sm" onclick="selectAll()">
+                                    <i class="bi bi-check-all"></i> 全选
+                                </button>
+                                <button type="button" class="rc-btn rc-btn-outline-secondary rc-btn-sm" onclick="deselectAll()">
+                                    <i class="bi bi-x-lg"></i> 取消全选
+                                </button>
+                                <button type="button" class="rc-btn rc-btn-outline-success rc-btn-sm" onclick="downloadSelectedConfig()">
+                                    <i class="bi bi-download"></i> 下载选中节点配置
+                                </button>
+                                <button type="button" class="rc-btn rc-btn-outline-info rc-btn-sm" onclick="downloadProcessedConfig()">
+                                    <i class="bi bi-gear"></i> 下载处理后配置
+                                </button>
+                                <button type="button" class="rc-btn rc-btn-outline-warning rc-btn-sm" onclick="exportSelectedNodeLinks()">
+                                    <i class="bi bi-link-45deg"></i> 导出选中节点链接
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 节点表格 -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="5%">
+                                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th width="30%">名称</th>
+                                    <th width="15%">类型</th>
+                                    <th width="20%">服务器</th>
+                                    <th width="10%">端口</th>
+                                    <th width="20%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodeList">
+                                <!-- 节点列表将通过JS动态添加 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -198,30 +147,31 @@
 
     <!-- 节点详情模态框 -->
     <div class="modal fade" id="nodeDetailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">节点详情</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <pre id="nodeDetailContent" class="bg-light p-3 rounded"></pre>
+                <div class="modal-body" id="nodeDetailBody">
+                    <!-- 节点详情将通过JS动态添加 -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="rc-btn rc-btn-secondary" data-bs-dismiss="modal">关闭</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 加载中遮罩 -->
-    <div class="loading" id="loadingOverlay" style="display: none;">
-        <div class="spinner-border text-primary loading-spinner" role="status">
+    <!-- 加载提示 -->
+    <div class="loading" id="loadingIndicator" style="display: none;">
+        <div class="spinner-border loading-spinner text-primary" role="status">
             <span class="visually-hidden">加载中...</span>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/nodeManager.js"></script>
+    <script src="/js/navbar.js"></script>
+    <script src="/js/nodeManager.js"></script>
 </body>
 </html>

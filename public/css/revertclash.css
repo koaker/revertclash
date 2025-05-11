@@ -36,6 +36,41 @@
     --spacing-xl: 2rem;
     --border-radius: 0.375rem;
     --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+
+    /* 品牌颜色 */
+    --rc-primary: #3a86ff;
+    --rc-primary-hover: #2a75e8;
+    --rc-secondary: #6c757d;
+    --rc-secondary-hover: #5a6268;
+    --rc-success: #28a745;
+    --rc-danger: #dc3545;
+    --rc-warning: #ffc107;
+    --rc-info: #17a2b8;
+    --rc-light: #f8f9fa;
+    --rc-dark: #343a40;
+    
+    /* 文本颜色 */
+    --rc-text: #212529;
+    --rc-text-muted: #6c757d;
+    --rc-text-light: #f8f9fa;
+    
+    /* 背景颜色 */
+    --rc-bg-light: #f8f9fa;
+    --rc-bg-white: #ffffff;
+    --rc-bg-card: #ffffff;
+    
+    /* 阴影 */
+    --rc-shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
+    --rc-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    
+    /* 布局 */
+    --rc-navbar-height: 60px;
+    --rc-sidebar-width: 250px;
+    --rc-content-padding: 1.5rem;
+    --rc-card-radius: 0.5rem;
+
+    /* 动画 */
+    --rc-transition: all 0.3s ease;
 }
 
 /* ===== 基础样式 ===== */
@@ -100,127 +135,155 @@ a:hover {
 
 /* 导航栏 */
 .rc-navbar {
-    background-color: white;
-    box-shadow: var(--box-shadow);
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: var(--navbar-height);
-    z-index: 1000;
+    height: var(--rc-navbar-height);
+    background-color: var(--rc-bg-white);
+    box-shadow: var(--rc-shadow-sm);
+    z-index: 1030;
+    transition: var(--rc-transition);
     display: flex;
     align-items: center;
-    padding: 0 var(--spacing-md);
+    padding: 0 1rem;
 }
 
-.rc-navbar .brand {
+.rc-navbar-brand {
     font-weight: bold;
-    font-size: 1.25rem;
-    color: var(--primary-color);
+    color: var(--rc-primary);
     text-decoration: none;
-    margin-right: var(--spacing-lg);
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    margin-right: 1.5rem;
+}
+
+.rc-navbar-brand:hover {
+    color: var(--rc-primary-hover);
+}
+
+.rc-navbar .rc-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: none;
+    padding: 0;
 }
 
 .rc-navbar-nav {
     display: flex;
-    list-style: none;
+    margin: 0;
     padding: 0;
+    list-style: none;
+}
+
+.rc-navbar-nav li {
     margin: 0;
 }
 
-.rc-navbar-nav .nav-item {
-    margin-right: var(--spacing-md);
-}
-
-.rc-navbar-nav .nav-link {
+.rc-navbar-nav a {
     display: block;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    color: var(--secondary);
+    padding: 0.5rem 1rem;
+    color: var(--rc-text);
     text-decoration: none;
-    transition: color 0.15s ease-in-out;
+    transition: var(--rc-transition);
 }
 
-.rc-navbar-nav .nav-link:hover {
-    color: var(--primary-color);
-    text-decoration: none;
+.rc-navbar-nav a:hover,
+.rc-navbar-nav a.active {
+    color: var(--rc-primary);
 }
 
-.rc-navbar-nav .nav-link.active {
-    color: var(--primary-color);
-    font-weight: 600;
+.rc-navbar-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
-.rc-navbar-toggler {
-    display: none;
-    border: none;
-    background: transparent;
-    padding: var(--spacing-xs);
-    cursor: pointer;
+.rc-navbar-menu {
+    flex-grow: 1;
+    display: flex;
 }
 
 .rc-navbar-collapse {
     display: flex;
-    flex-grow: 1;
+    flex: 1;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rc-navbar-actions {
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+}
+
+.rc-navbar-user {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+}
+
+.rc-navbar-username {
+    margin-right: 1rem;
+}
+
+.rc-navbar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--rc-text);
+    cursor: pointer;
+    padding: 0.25rem;
 }
 
 /* 侧边栏 */
 .rc-sidebar {
-    width: var(--sidebar-width);
-    background-color: white;
-    border-right: 1px solid var(--border-color);
+    width: var(--rc-sidebar-width);
+    background-color: var(--rc-bg-white);
+    border-right: 1px solid var(--rc-border);
     position: fixed;
-    top: var(--navbar-height);
+    top: var(--rc-navbar-height);
     left: 0;
     bottom: 0;
-    z-index: 900;
+    z-index: 1020;
     overflow-y: auto;
-    padding-top: var(--spacing-lg);
 }
 
 .rc-sidebar-menu {
     list-style: none;
-    padding: 0;
+    padding: 1.5rem 0;
     margin: 0;
-}
-
-.rc-sidebar-menu li {
-    margin-bottom: var(--spacing-xs);
 }
 
 .rc-sidebar-menu a {
     display: block;
-    padding: var(--spacing-md) var(--spacing-lg);
-    color: var(--secondary);
+    padding: 0.75rem 1.5rem;
+    color: var(--rc-text);
     text-decoration: none;
+    transition: var(--rc-transition);
     border-left: 3px solid transparent;
-    transition: all 0.2s ease;
 }
 
 .rc-sidebar-menu a:hover {
-    background-color: var(--light-gray);
-    color: var(--primary-color);
-    text-decoration: none;
+    background-color: var(--rc-bg-light);
+    color: var(--rc-primary);
 }
 
 .rc-sidebar-menu a.active {
-    background-color: var(--primary-light);
-    color: var(--primary-color);
-    border-left-color: var(--primary-color);
-    font-weight: 600;
+    background-color: rgba(58, 134, 255, 0.1);
+    color: var(--rc-primary);
+    border-left-color: var(--rc-primary);
 }
 
-.rc-sidebar-menu i {
-    margin-right: var(--spacing-sm);
-    width: 1.25rem;
-    text-align: center;
-}
-
-/* 主内容区域 */
 .rc-main-content {
     flex: 1;
-    margin-left: var(--sidebar-width);
-    padding: var(--spacing-lg);
-    margin-top: var(--navbar-height);
+    margin-left: var(--rc-sidebar-width);
+    padding: var(--rc-content-padding);
 }
 
 /* 无侧边栏的内容区域 */
@@ -234,97 +297,83 @@ a:hover {
 
 /* 卡片 */
 .rc-card {
-    background-color: white;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    margin-bottom: var(--spacing-lg);
+    background-color: var(--rc-bg-card);
+    border-radius: var(--rc-card-radius);
+    box-shadow: var(--rc-shadow-sm);
+    margin-bottom: 1.5rem;
     overflow: hidden;
 }
 
 .rc-card-header {
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-bottom: 1px solid var(--border-color);
-    background-color: white;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--rc-border);
+    background-color: var(--rc-bg-white);
     font-weight: 600;
 }
 
 .rc-card-body {
-    padding: var(--spacing-lg);
+    padding: 1.25rem;
 }
 
 .rc-card-footer {
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-top: 1px solid var(--border-color);
-    background-color: var(--light-gray);
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--rc-border);
+    background-color: var(--rc-bg-light);
 }
 
 /* 按钮 */
 .rc-btn {
     display: inline-block;
+    padding: 0.375rem 0.75rem;
+    border: none;
+    border-radius: 0.25rem;
     font-weight: 400;
     text-align: center;
-    white-space: nowrap;
+    text-decoration: none;
     vertical-align: middle;
-    user-select: none;
-    border: 1px solid transparent;
-    padding: 0.375rem 0.75rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    border-radius: var(--border-radius);
-    transition: all 0.15s ease-in-out;
     cursor: pointer;
-}
-
-.rc-btn:focus {
-    outline: 0;
-    box-shadow: 0 0 0 0.2rem rgba(58, 134, 255, 0.25);
+    line-height: 1.5;
+    transition: var(--rc-transition);
 }
 
 .rc-btn-primary {
+    background-color: var(--rc-primary);
     color: white;
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
 }
 
 .rc-btn-primary:hover {
-    background-color: var(--primary-hover);
-    border-color: var(--primary-hover);
+    background-color: var(--rc-primary-hover);
+    color: white;
+}
+
+.rc-btn-secondary {
+    background-color: var(--rc-secondary);
+    color: white;
+}
+
+.rc-btn-secondary:hover {
+    background-color: var(--rc-secondary-hover);
+    color: white;
 }
 
 .rc-btn-success {
+    background-color: var(--rc-success);
     color: white;
-    background-color: var(--success-color);
-    border-color: var(--success-color);
 }
 
 .rc-btn-danger {
+    background-color: var(--rc-danger);
     color: white;
-    background-color: var(--danger-color);
-    border-color: var(--danger-color);
 }
 
-.rc-btn-outline {
-    background-color: transparent;
+.rc-btn-warning {
+    background-color: var(--rc-warning);
+    color: var(--rc-dark);
 }
 
-.rc-btn-outline-primary {
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.rc-btn-outline-primary:hover {
+.rc-btn-info {
+    background-color: var(--rc-info);
     color: white;
-    background-color: var(--primary-color);
-}
-
-.rc-btn-outline-danger {
-    color: var(--danger-color);
-    border-color: var(--danger-color);
-}
-
-.rc-btn-outline-danger:hover {
-    color: white;
-    background-color: var(--danger-color);
 }
 
 .rc-btn-sm {
@@ -337,20 +386,36 @@ a:hover {
     font-size: 1.25rem;
 }
 
-.rc-btn-block {
-    display: block;
-    width: 100%;
+.rc-btn-outline-primary {
+    background-color: transparent;
+    border: 1px solid var(--rc-primary);
+    color: var(--rc-primary);
+}
+
+.rc-btn-outline-primary:hover {
+    background-color: var(--rc-primary);
+    color: white;
+}
+
+.rc-btn-outline-danger {
+    background-color: transparent;
+    border: 1px solid var(--rc-danger);
+    color: var(--rc-danger);
+}
+
+.rc-btn-outline-danger:hover {
+    background-color: var(--rc-danger);
+    color: white;
 }
 
 /* 表单控件 */
 .rc-form-group {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 1rem;
 }
 
 .rc-form-label {
     display: inline-block;
-    margin-bottom: var(--spacing-xs);
-    font-weight: 500;
+    margin-bottom: 0.5rem;
 }
 
 .rc-form-control {
@@ -359,65 +424,62 @@ a:hover {
     padding: 0.375rem 0.75rem;
     font-size: 1rem;
     line-height: 1.5;
-    color: var(--dark);
+    color: var(--rc-text);
     background-color: white;
-    background-clip: padding-box;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    border: 1px solid var(--rc-border);
+    border-radius: 0.25rem;
+    transition: var(--rc-transition);
 }
 
 .rc-form-control:focus {
-    color: var(--dark);
-    background-color: white;
-    border-color: var(--primary-color);
-    outline: 0;
+    border-color: var(--rc-primary);
+    outline: none;
     box-shadow: 0 0 0 0.2rem rgba(58, 134, 255, 0.25);
 }
 
 .rc-form-control::placeholder {
-    color: var(--secondary);
+    color: var(--rc-text-muted);
     opacity: 1;
 }
 
 .rc-form-text {
-    display: block;
     margin-top: 0.25rem;
     font-size: 0.875rem;
-    color: var(--secondary);
+    color: var(--rc-text-muted);
 }
 
 /* 警告框 */
 .rc-alert {
     position: relative;
-    padding: var(--spacing-md) var(--spacing-lg);
-    margin-bottom: var(--spacing-md);
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
     border: 1px solid transparent;
-    border-radius: var(--border-radius);
+    border-radius: 0.25rem;
+    display: none;
 }
 
 .rc-alert-success {
-    color: #155724;
     background-color: #d4edda;
     border-color: #c3e6cb;
+    color: #155724;
 }
 
 .rc-alert-danger {
-    color: #721c24;
     background-color: #f8d7da;
     border-color: #f5c6cb;
+    color: #721c24;
 }
 
 .rc-alert-warning {
-    color: #856404;
     background-color: #fff3cd;
     border-color: #ffeeba;
+    color: #856404;
 }
 
 .rc-alert-info {
-    color: #0c5460;
     background-color: #d1ecf1;
     border-color: #bee5eb;
+    color: #0c5460;
 }
 
 /* 自定义组件 */
@@ -557,58 +619,30 @@ a:hover {
 
 /* 响应式辅助类 */
 @media (max-width: 767.98px) {
-    .rc-sidebar {
-        position: static;
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        padding-top: var(--spacing-md);
-    }
-    
-    .rc-main-content {
-        margin-left: 0;
-    }
-    
-    .rc-layout-with-sidebar {
-        flex-direction: column;
-    }
-    
-    .rc-auth-container {
-        width: 100%;
-        padding: var(--spacing-lg);
-    }
-    
-    .rc-centered-container {
-        padding: var(--spacing-md);
-    }
-    
-    .rc-d-none-sm {
-        display: none !important;
-    }
-    
-    /* 响应式导航栏 */
-    .rc-navbar {
-        padding: 0 var(--spacing-sm);
-    }
-    
-    .rc-navbar-toggler {
+    .rc-navbar-toggle {
         display: block;
     }
     
     .rc-navbar-collapse {
-        position: absolute;
-        top: var(--navbar-height);
+        position: fixed;
+        top: var(--rc-navbar-height);
         left: 0;
         right: 0;
-        background-color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        padding: var(--spacing-md);
+        background-color: var(--rc-bg-white);
+        box-shadow: var(--rc-shadow);
+        z-index: 1025;
+        padding: 1rem;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
         flex-direction: column;
-        display: none;
+        align-items: flex-start;
+        display: flex;
     }
     
     .rc-navbar-collapse.show {
-        display: flex;
+        max-height: calc(100vh - var(--rc-navbar-height));
+        overflow-y: auto;
     }
     
     .rc-navbar-nav {
@@ -616,14 +650,46 @@ a:hover {
         width: 100%;
     }
     
-    .rc-navbar-nav .nav-item {
-        margin-right: 0;
-        margin-bottom: var(--spacing-xs);
+    .rc-navbar-menu {
+        flex-direction: column;
+        width: 100%;
     }
     
     .rc-navbar-actions {
-        margin-top: var(--spacing-md);
+        margin-left: 0;
+        margin-top: 1rem;
         width: 100%;
+    }
+    
+    .rc-navbar-user {
+        margin-bottom: 0.5rem;
+    }
+    
+    .rc-sidebar {
+        width: 100%;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--rc-border);
+    }
+    
+    .rc-main-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+    
+    .rc-layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    /* 确保内容不被导航栏遮挡 */
+    .rc-container,
+    .rc-layout-with-sidebar {
+        padding-top: calc(var(--rc-navbar-height) + 10px);
+    }
+    
+    /* 响应式表格处理 */
+    .table-responsive {
+        overflow-x: auto;
     }
 }
 
