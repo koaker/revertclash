@@ -19,12 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 显示加载中遮罩
 function showLoading() {
-    document.getElementById('loadingOverlay').style.display = 'flex';
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+    }
 }
 
 // 隐藏加载中遮罩
 function hideLoading() {
-    document.getElementById('loadingOverlay').style.display = 'none';
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
 }
 
 // 加载节点列表
@@ -110,7 +116,7 @@ function displayNodes(nodes) {
             <td>${node.server || '未知'}</td>
             <td>${node.port || '未知'}</td>
             <td>
-                <button class="btn btn-outline-primary btn-sm" onclick="viewNodeDetails('${node.name}')">
+                <button class="rc-btn rc-btn-outline-primary rc-btn-sm" onclick="viewNodeDetails('${node.name}')">
                     <i class="bi bi-info-circle"></i> 详情
                 </button>
             </td>
@@ -324,17 +330,49 @@ function searchNodes() {
 async function viewNodeDetails(nodeName) {
     showLoading();
     try {
-        const response = await fetch(`/api/nodes/${encodeURIComponent(nodeName)}`);
-        
+        const response = await fetch(`/api/nodes/${nodeName}`);
         if (!response.ok) {
             throw new Error('获取节点详情失败');
         }
         
-        const nodeDetails = await response.json();
+        const node = await response.json();
+        const detailBody = document.getElementById('nodeDetailBody');
         
-        // 显示节点详情
-        const detailContent = document.getElementById('nodeDetailContent');
-        detailContent.textContent = JSON.stringify(nodeDetails, null, 2);
+        // 格式化节点详情显示
+        let detailHtml = '<div class="node-details">';
+        
+        // 基本信息部分
+        detailHtml += '<h6>基本信息</h6>';
+        detailHtml += `<div class="mb-3">`;
+        detailHtml += `<p><strong>名称:</strong> ${node.name}</p>`;
+        detailHtml += `<p><strong>类型:</strong> ${node.type || '未知'}</p>`;
+        detailHtml += `<p><strong>服务器:</strong> ${node.server || '未知'}</p>`;
+        detailHtml += `<p><strong>端口:</strong> ${node.port || '未知'}</p>`;
+        
+        // 如果有协议特定的配置，显示详细配置
+        if (node.config && typeof node.config === 'object') {
+            detailHtml += '<h6 class="mt-4">详细配置</h6>';
+            detailHtml += '<div class="table-responsive"><table class="table table-sm">';
+            detailHtml += '<thead><tr><th>属性</th><th>值</th></tr></thead><tbody>';
+            
+            for (const [key, value] of Object.entries(node.config)) {
+                if (key !== 'name' && key !== 'type' && key !== 'server' && key !== 'port') {
+                    detailHtml += `<tr><td>${key}</td><td>${value}</td></tr>`;
+                }
+            }
+            
+            detailHtml += '</tbody></table></div>';
+        }
+        
+        // 如果有原始URI，显示URI
+        if (node.uri) {
+            detailHtml += '<h6 class="mt-4">原始URI</h6>';
+            detailHtml += `<div class="border p-2 bg-light" style="word-break: break-all;"><code>${node.uri}</code></div>`;
+        }
+        
+        detailHtml += '</div>';
+        
+        detailBody.innerHTML = detailHtml;
         
         // 显示模态框
         const modal = new bootstrap.Modal(document.getElementById('nodeDetailModal'));
