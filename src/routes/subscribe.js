@@ -47,43 +47,6 @@ function isValidConfigType(configType) {
 }
 
 /**
- * 非路由使用的辅助函数：获取并验证订阅Token
- * @param {string} tokenString - Token字符串
- * @returns {Promise<Object|null>} - 返回Token对象或null
- */
-async function getAndValidateToken(tokenString) {
-    if (!isValidTokenString(tokenString)) {
-        return null;
-    }
-    
-    try {
-        const token = await subscriptionTokenService.getTokenByString(tokenString);
-        
-        if (!token) {
-            return null;
-        }
-        
-        // 检查Token是否已过期
-        if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
-            return null;
-        }
-        
-        // 检查Token是否处于活动状态
-        if (!token.isActive) {
-            return null;
-        }
-        
-        // 更新最后访问时间
-        await subscriptionTokenService.updateLastAccessed(token.id);
-        
-        return token;
-    } catch (error) {
-        console.error('验证Token失败:', error);
-        return null;
-    }
-}
-
-/**
  * 通过订阅链接获取配置内容
  * GET /subscribe/:token/:type
  */
@@ -91,6 +54,7 @@ router.get('/:token/:type', async (req, res) => {
     try {
         const tokenString = req.params.token;
         const configType = req.params.type;
+        const clientIp = req.clientIp || req.ip;
         
         // 验证Token格式
         if (!isValidTokenString(tokenString)) {
@@ -101,18 +65,22 @@ router.get('/:token/:type', async (req, res) => {
         if (!isValidConfigType(configType)) {
             return res.status(400).json({ error: '无效的配置类型' });
         }
-        
-        // 获取并验证Token
-        const token = await getAndValidateToken(tokenString);
-        
-        if (!token) {
-            return res.status(404).json({ error: '订阅Token不存在、已过期或已禁用' });
+
+        // IP访问频率限制检查
+        if (!subscriptionTokenService.accessLimiter.checkAccess(clientIp)) {
+            console.warn(`[安全警告] IP访问频率超限: ${clientIp}`);
+            return res.status(429).json({ error: '请求过于频繁，请稍后再试' });
         }
         
-        // 检查请求的配置类型是否被允许
-        if (!token.configTypes.includes(configType)) {
-            return res.status(403).json({ error: '该订阅Token不支持请求的配置类型' });
+        // 验证Token是否有权限访问该配置类型
+        const isAuthorized = await subscriptionTokenService.isTokenAuthorized(tokenString, configType, clientIp);
+        
+        if (!isAuthorized) {
+            return res.status(403).json({ error: '无效的Token或无权访问该配置类型' });
         }
+        
+        // 获取Token详细信息
+        const token = await subscriptionTokenService.getTokenByString(tokenString);
         
         // 获取用户ID对应的配置
         const config = await configService.getLatestConfigByUserId(token.userId, configType);
@@ -121,10 +89,16 @@ router.get('/:token/:type', async (req, res) => {
             return res.status(404).json({ error: '未找到配置' });
         }
         
+        // 添加安全相关的HTTP头
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('Content-Security-Policy', "default-src 'none'");
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+        
         // 如果是config类型，则设置正确的Content-Type和文件名
-        if (configType === 'config') {
+        if (configType === 'config' || configType === 'processed-config') {
             res.setHeader('Content-Type', 'application/octet-stream');
-            res.setHeader('Content-Disposition', 'attachment; filename="config.yaml"');
+            res.setHeader('Content-Disposition', `attachment; filename="${configType}.yaml"`);
             return res.send(config.content);
         }
         
@@ -144,19 +118,45 @@ router.get('/:token/:type', async (req, res) => {
 router.get('/validate/:token', async (req, res) => {
     try {
         const tokenString = req.params.token;
+        const clientIp = req.clientIp || req.ip;
         
         // 验证Token格式
         if (!isValidTokenString(tokenString)) {
             return res.status(400).json({ error: '无效的订阅Token格式' });
         }
         
-        // 获取并验证Token
-        const token = await getAndValidateToken(tokenString);
+        // IP访问频率限制检查
+        if (!subscriptionTokenService.accessLimiter.checkAccess(clientIp)) {
+            console.warn(`[安全警告] IP访问频率超限: ${clientIp}`);
+            return res.status(429).json({ 
+                valid: false, 
+                error: '请求过于频繁，请稍后再试' 
+            });
+        }
+        
+        // 获取Token详细信息
+        const token = await subscriptionTokenService.getTokenByString(tokenString);
         
         if (!token) {
             return res.json({ 
                 valid: false, 
                 error: '订阅Token不存在、已过期或已禁用' 
+            });
+        }
+        
+        // 检查Token是否过期
+        if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
+            return res.json({ 
+                valid: false, 
+                error: '订阅Token已过期' 
+            });
+        }
+        
+        // 检查Token是否激活
+        if (!token.isActive) {
+            return res.json({ 
+                valid: false, 
+                error: '订阅Token已被禁用' 
             });
         }
         

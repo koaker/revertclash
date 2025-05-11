@@ -69,6 +69,11 @@ function generateTokenString() {
  */
 async function getTokensByUserId(userId) {
     try {
+        if (!isValidInput(userId, 'userId')) {
+            logSecurityEvent('INVALID_USER_ID', { userId });
+            throw new Error('无效的用户ID');
+        }
+
         const tokens = await db.query(
             `SELECT id, user_id as "userId", name, token, config_types as "configTypes", 
             created_at as "createdAt", expires_at as "expiresAt", last_accessed as "lastAccessed", 
@@ -78,7 +83,13 @@ async function getTokensByUserId(userId) {
             ORDER BY created_at DESC`,
             [userId]
         );
-        return tokens.rows;
+        
+        // 确保configTypes是数组
+        return tokens.rows.map(token => ({
+            ...token,
+            configTypes: Array.isArray(token.configTypes) ? token.configTypes : 
+                         (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config'])
+        }));
     } catch (err) {
         console.error('获取用户订阅Token失败:', err);
         throw err;
@@ -92,6 +103,11 @@ async function getTokensByUserId(userId) {
  */
 async function getTokenByString(tokenString) {
     try {
+        if (!isValidInput(tokenString, 'string')) {
+            logSecurityEvent('INVALID_TOKEN_STRING', { tokenString: 'REDACTED' });
+            throw new Error('无效的Token字符串');
+        }
+
         const result = await db.query(
             `SELECT id, user_id as "userId", name, token, config_types as "configTypes", 
             created_at as "createdAt", expires_at as "expiresAt", last_accessed as "lastAccessed", 
@@ -101,7 +117,17 @@ async function getTokenByString(tokenString) {
             [tokenString]
         );
         
-        return result.rows.length > 0 ? result.rows[0] : null;
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        // 确保configTypes是数组
+        const token = result.rows[0];
+        return {
+            ...token,
+            configTypes: Array.isArray(token.configTypes) ? token.configTypes : 
+                         (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config'])
+        };
     } catch (err) {
         console.error('根据字符串获取Token失败:', err);
         throw err;
@@ -323,67 +349,133 @@ async function cleanupExpiredTokens(unusedDays = 90) {
     }
 }
 
-// 限制单个IP地址在一段时间内对订阅的访问次数，防止滥用
+/**
+ * IP访问频率限制器
+ * 用于限制单个IP的访问频率，防止滥用
+ */
 const accessLimiter = {
-    // 存储IP访问记录：{ ip: { count: number, resetTime: timestamp } }
-    ipRecords: {},
-    // 单个IP在5分钟内的最大请求次数
-    maxRequests: 300,
-    // 重置时间间隔（毫秒），5分钟
-    resetInterval: 5 * 60 * 1000,
+    // 存储IP和访问记录的映射
+    ipMap: new Map(),
+    
+    // 访问窗口时间（毫秒）
+    windowMs: 60 * 1000, // 1分钟
+    
+    // 窗口内最大请求次数
+    maxRequests: 30,
     
     /**
-     * 检查并记录IP访问
-     * @param {string} ip - IP地址
+     * 检查指定IP是否超过访问限制
+     * @param {string} ip - 客户端IP地址
      * @returns {boolean} 是否允许访问
      */
     checkAccess(ip) {
         const now = Date.now();
         
-        // 初始化记录
-        if (!this.ipRecords[ip]) {
-            this.ipRecords[ip] = {
+        // 如果IP没有记录，创建新记录
+        if (!this.ipMap.has(ip)) {
+            this.ipMap.set(ip, {
                 count: 1,
-                resetTime: now + this.resetInterval
-            };
+                firstAccess: now,
+                lastAccess: now
+            });
             return true;
         }
         
-        const record = this.ipRecords[ip];
+        const record = this.ipMap.get(ip);
         
-        // 检查是否需要重置
-        if (now >= record.resetTime) {
+        // 如果已经超过窗口时间，重置计数
+        if (now - record.firstAccess > this.windowMs) {
             record.count = 1;
-            record.resetTime = now + this.resetInterval;
+            record.firstAccess = now;
+            record.lastAccess = now;
             return true;
         }
         
-        // 检查是否超出限制
-        if (record.count >= this.maxRequests) {
-            logSecurityEvent('IP访问频率过高', { ip, count: record.count });
-            return false;
-        }
-        
-        // 增加计数
+        // 更新访问记录
         record.count++;
-        return true;
+        record.lastAccess = now;
+        
+        // 检查是否超过限制
+        return record.count <= this.maxRequests;
     },
     
     /**
-     * 清理过期记录
+     * 清理过期的IP记录
      */
     cleanup() {
         const now = Date.now();
-        for (const ip in this.ipRecords) {
-            if (now >= this.ipRecords[ip].resetTime) {
-                delete this.ipRecords[ip];
+        const expireTime = now - this.windowMs * 2; // 清理超过2个窗口时间的记录
+        
+        for (const [ip, record] of this.ipMap.entries()) {
+            if (record.lastAccess < expireTime) {
+                this.ipMap.delete(ip);
             }
         }
     }
 };
 
 // 定期清理过期记录
-setInterval(() => accessLimiter.cleanup(), 10 * 60 * 1000);
+setInterval(() => accessLimiter.cleanup(), 10 * 60 * 1000); // 每10分钟清理一次
+
+/**
+ * 检查Token是否有权限访问指定的配置类型
+ * @param {string} tokenString - Token字符串
+ * @param {string} configType - 配置类型
+ * @param {string} clientIp - 客户端IP地址
+ * @returns {Promise<boolean>} 是否有权限
+ */
+async function isTokenAuthorized(tokenString, configType, clientIp) {
+    try {
+        // 检查请求频率，这里用全局accessLimiter，而不是this.accessLimiter
+        if (!accessLimiter.checkAccess(clientIp)) {
+            logSecurityEvent('ACCESS_LIMIT_EXCEEDED', { clientIp, tokenString: 'REDACTED' });
+            return false;
+        }
+
+        // 获取Token
+        const token = await getTokenByString(tokenString);
+        
+        // 如果Token不存在
+        if (!token) {
+            logSecurityEvent('TOKEN_NOT_FOUND', { tokenString: 'REDACTED' });
+            return false;
+        }
+        
+        // 检查Token是否过期
+        if (token.expiresAt && new Date(token.expiresAt) < new Date()) {
+            logSecurityEvent('TOKEN_EXPIRED', { tokenId: token.id, userId: token.userId });
+            return false;
+        }
+        
+        // 检查Token是否激活
+        if (!token.isActive) {
+            logSecurityEvent('TOKEN_INACTIVE', { tokenId: token.id, userId: token.userId });
+            return false;
+        }
+        
+        // 检查配置类型是否被允许
+        const configTypes = Array.isArray(token.configTypes) ? token.configTypes : 
+                           (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config']);
+        
+        if (!configTypes.includes(configType)) {
+            logSecurityEvent('CONFIG_TYPE_NOT_ALLOWED', { 
+                tokenId: token.id, 
+                userId: token.userId,
+                requestedType: configType,
+                allowedTypes: configTypes
+            });
+            return false;
+        }
+        
+        // 更新最后访问时间
+        await updateLastAccessed(token.id);
+        
+        return true;
+    } catch (err) {
+        console.error('验证Token授权失败:', err);
+        return false;
+    }
+}
 
 module.exports = {
     getTokensByUserId,
@@ -395,5 +487,6 @@ module.exports = {
     updateLastAccessed,
     getTokenUsageStats,
     cleanupExpiredTokens,
-    accessLimiter
+    accessLimiter,
+    isTokenAuthorized
 }; 
