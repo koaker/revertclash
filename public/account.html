@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevertClash 账号管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3a86ff;
+            --sidebar-width: 250px;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .container-fluid {
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+        .sidebar {
+            width: var(--sidebar-width);
+            position: fixed;
+            top: 56px;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            background-color: white;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            padding-top: 1.5rem;
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-menu li {
+            margin-bottom: 0.25rem;
+        }
+        .sidebar-menu a {
+            display: block;
+            padding: 0.75rem 1.5rem;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+        .sidebar-menu a:hover {
+            background-color: #f8f9fa;
+            color: var(--primary-color);
+        }
+        .sidebar-menu a.active {
+            background-color: #e9f0ff;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .sidebar-menu i {
+            margin-right: 0.5rem;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 1.5rem;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #f0f0f0;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            background-color: #2a75e8;
+            border-color: #2a75e8;
+        }
+        .alert {
+            margin-top: 1rem;
+            display: none;
+        }
+        @media (max-width: 767.98px) {
+            .sidebar {
+                width: 100%;
+                position: static;
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+                margin-bottom: 1.5rem;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/home">RevertClash</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/manage">配置管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/nodes">节点管理</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <span class="navbar-text me-3">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span id="username-display">用户名</span>
+                    </span>
+                    <button class="btn btn-outline-danger btn-sm" id="logout-btn">
+                        <i class="bi bi-box-arrow-right me-1"></i>
+                        退出
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row" style="margin-top: 56px;">
+        <!-- 侧边栏 -->
+        <div class="sidebar d-none d-md-block">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="#password" class="active" data-bs-target="#password-section">
+                        <i class="bi bi-key"></i>
+                        修改密码
+                    </a>
+                </li>
+                <li id="admin-menu-item" style="display: none;">
+                    <a href="#users" data-bs-target="#users-section">
+                        <i class="bi bi-people"></i>
+                        用户管理
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容 -->
+        <div class="main-content">
+            <h4 class="mb-4">账号管理</h4>
+            
+            <!-- 修改密码区域 -->
+            <div class="card section active" id="password-section">
+                <div class="card-header py-3">
+                    <i class="bi bi-key me-2"></i>
+                    修改密码
+                </div>
+                <div class="card-body">
+                    <form id="password-form">
+                        <div class="mb-3">
+                            <label for="current-password" class="form-label">当前密码</label>
+                            <input type="password" class="form-control" id="current-password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-password" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="new-password" required>
+                            <div class="form-text">密码长度至少6个字符</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm-password" class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="confirm-password" required>
+                        </div>
+                        
+                        <div class="alert alert-success" id="password-success"></div>
+                        <div class="alert alert-danger" id="password-error"></div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>
+                            保存修改
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 用户管理区域（仅管理员可见） -->
+            <div class="card section" id="users-section" style="display: none;">
+                <div class="card-header py-3">
+                    <i class="bi bi-people me-2"></i>
+                    用户管理
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">用户列表</h5>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                            <i class="bi bi-person-plus me-1"></i>
+                            添加用户
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>角色</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- 用户列表将通过JS动态添加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加用户模态框 -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加新用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-user-form">
+                        <div class="mb-3">
+                            <label for="new-username" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="new-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-user-password" class="form-label">密码</label>
+                            <input type="password" class="form-control" id="new-user-password" required>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="new-user-admin">
+                            <label class="form-check-label" for="new-user-admin">设为管理员</label>
+                        </div>
+                        
+                        <div class="alert alert-danger" id="add-user-error"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="add-user-btn">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 获取当前用户信息
+        async function getCurrentUser() {
+            try {
+                const response = await fetch('/auth/status');
+                const data = await response.json();
+                
+                if (!data.loggedIn) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // 设置用户名显示
+                document.getElementById('username-display').textContent = data.user.username;
+                
+                // 如果是管理员，显示管理员专属菜单
+                if (data.user.isAdmin) {
+                    document.getElementById('admin-menu-item').style.display = 'block';
+                    document.getElementById('users-section').style.display = 'block';
+                    loadUsers();
+                }
+                
+                return data.user;
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                window.location.href = '/login';
+            }
+        }
+        
+        // 加载用户列表（管理员功能）
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                
+                const tableBody = document.getElementById('users-table-body');
+                tableBody.innerHTML = '';
+                
+                data.users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.username}</td>
+                        <td>${user.isAdmin ? '<span class="badge bg-primary">管理员</span>' : '<span class="badge bg-secondary">普通用户</span>'}</td>
+                        <td>${new Date(user.createdAt).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+            }
+        }
+        
+        // 修改密码
+        async function changePassword() {
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            const successAlert = document.getElementById('password-success');
+            const errorAlert = document.getElementById('password-error');
+            
+            // 重置提示
+            successAlert.style.display = 'none';
+            errorAlert.style.display = 'none';
+            
+            // 验证新密码
+            if (newPassword !== confirmPassword) {
+                errorAlert.textContent = '两次输入的新密码不一致';
+                errorAlert.style.display = 'block';
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                errorAlert.textContent = '密码长度不能少于6个字符';
+                errorAlert.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/auth/password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 修改成功
+                    successAlert.textContent = data.message;
+                    successAlert.style.display = 'block';
+                    
+                    // 清空表单
+                    document.getElementById('password-form').reset();
+                } else {
+                    // 修改失败
+                    errorAlert.textContent = data.error;
+                    errorAlert.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('修改密码失败:', error);
+                errorAlert.textContent = '请求失败，请稍后重试';
+                errorAlert.style.display = 'block';
+            }
+        }
+        
+        // 添加新用户（管理员功能）
+        async function addUser() {
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-user-password').value;
+            const isAdmin = document.getElementById('new-user-admin').checked;
+            
+            const errorAlert = document.getElementById('add-user-error');
+            errorAlert.style.display = 'none';
+            
+            if (!username || !password) {
+                errorAlert.textContent = '用户名和密码不能为空';
+                errorAlert.style.display = 'block';
+                return;
+            }
+            
+            if (password.length < 6) {
+                errorAlert.textContent = '密码长度不能少于6个字符';
+                errorAlert.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        isAdmin
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 添加成功，关闭模态框并刷新用户列表
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+                    modal.hide();
+                    document.getElementById('add-user-form').reset();
+                    loadUsers();
+                } else {
+                    // 添加失败
+                    errorAlert.textContent = data.error;
+                    errorAlert.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('添加用户失败:', error);
+                errorAlert.textContent = '请求失败，请稍后重试';
+                errorAlert.style.display = 'block';
+            }
+        }
+        
+        // 删除用户（管理员功能）
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除该用户吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'DELETE',
+                });
+                
+                if (response.ok) {
+                    // 删除成功，刷新用户列表
+                    loadUsers();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || '删除用户失败');
+                }
+            } catch (error) {
+                console.error('删除用户失败:', error);
+                alert('请求失败，请稍后重试');
+            }
+        }
+        
+        // 退出登录
+        document.getElementById('logout-btn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.location.href = data.redirect || '/login';
+                }
+            } catch (error) {
+                console.error('退出登录失败:', error);
+            }
+        });
+        
+        // 提交修改密码表单
+        document.getElementById('password-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            changePassword();
+        });
+        
+        // 添加用户按钮点击事件
+        document.getElementById('add-user-btn').addEventListener('click', function() {
+            addUser();
+        });
+        
+        // 侧边栏菜单点击事件
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // 激活点击的菜单项
+                document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // 显示对应的内容区域
+                const targetId = this.getAttribute('data-bs-target');
+                document.querySelectorAll('.section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                document.querySelector(targetId).style.display = 'block';
+            });
+        });
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            getCurrentUser();
+        });
+    </script>
+</body>
+</html> 

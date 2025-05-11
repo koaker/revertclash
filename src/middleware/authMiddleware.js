@@ -1,30 +1,95 @@
-const { isAuthorized } = require('../auth');
+// 移除了旧的IP认证导入
+// const { isAuthorized } = require('../auth');
 
-// IP验证中间件
-const authMiddleware = (req, res, next) => {
-    const clientIP = req.ip;
+// 会话认证中间件
+const sessionAuthMiddleware = (req, res, next) => {
+    console.log(`[会话认证] 路径: ${req.path}, 方法: ${req.method}, 用户: ${req.session && req.session.user ? req.session.user.username : '未登录'}`);
     
-    // 跳过验证页面和验证接口
-    const skipPaths = ['/auth', '/auth.html', '/auth/attempts', '/auth/login', '/auth/password', '/auth/list'];
+    // 跳过认证页面和认证接口
+    const skipPaths = [
+        '/login', '/login.html', 
+        '/setup', '/setup.html', 
+        '/auth/login', '/auth/register', 
+        '/auth/status', '/auth/setup-status',
+        '/status'  // 添加基础状态检查到跳过列表
+    ];
+    
     if (skipPaths.includes(req.path) || req.path.startsWith('/auth/')) {
+        console.log(`[会话认证] 跳过路径: ${req.path}`);
         return next();
     }
 
-    if (isAuthorized(clientIP)) {
+    // 检查用户是否已登录
+    if (req.session && req.session.user) {
+        // 将用户信息添加到res.locals中，便于视图访问
+        res.locals.user = req.session.user;
+        next();
+    } else {
+        console.log(`[会话认证] 用户未登录，重定向到登录页面，请求路径: ${req.path}`);
+        // 如果是API请求，返回401状态码
+        if (req.path.startsWith('/api/') || req.accepts('html') !== 'html') {
+            res.status(401).json({
+                error: '未登录或会话已过期',
+                redirect: '/login'
+            });
+        } else {
+            // 否则重定向到登录页面
+            res.redirect('/login');
+        }
+    }
+};
+
+// 管理员权限中间件
+const adminAuthMiddleware = (req, res, next) => {
+    // 检查用户是否已登录且是管理员
+    if (req.session && req.session.user && req.session.user.isAdmin) {
         next();
     } else {
         // 如果是API请求，返回403状态码
         if (req.path.startsWith('/api/') || req.accepts('html') !== 'html') {
             res.status(403).json({
-                error: '未授权的IP地址'
+                error: '需要管理员权限'
             });
         } else {
-            // 否则重定向到认证页面
-            res.redirect('/auth');
+            // 否则重定向到登录页面
+            res.redirect('/login?error=需要管理员权限');
         }
     }
 };
 
+// 初始设置重定向中间件
+const setupRedirectMiddleware = (req, res, next) => {
+    console.log(`[设置重定向] 路径: ${req.path}, needInitialSetup: ${global.needInitialSetup}`);
+    
+    // 设置默认值，避免初始化问题
+    if (global.needInitialSetup === undefined) {
+        global.needInitialSetup = true;
+    }
+    
+    // 如果系统需要初始设置且请求不是设置页面或API
+    if (
+        global.needInitialSetup && 
+        !req.path.startsWith('/setup') && 
+        !req.path.startsWith('/auth/setup') &&
+        !req.path.startsWith('/auth/register') &&
+        req.path !== '/auth/setup-status' &&
+        req.path !== '/status'  // 添加基础状态检查到跳过列表
+    ) {
+        console.log(`[设置重定向] 需要初始设置，重定向到/setup, 原路径: ${req.path}`);
+        if (req.accepts('html') === 'html') {
+            return res.redirect('/setup');
+        } else {
+            return res.status(503).json({
+                error: '系统需要初始设置',
+                redirect: '/setup'
+            });
+        }
+    }
+    next();
+};
+
 module.exports = {
-    authMiddleware
+    sessionAuthMiddleware,  // 会话认证中间件
+    adminAuthMiddleware,    // 管理员权限中间件
+    setupRedirectMiddleware // 初始设置重定向中间件
 };

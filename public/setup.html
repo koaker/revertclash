@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RevertClash 初始设置</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+            padding: 2rem 0;
+        }
+        .setup-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 480px;
+            max-width: 90%;
+        }
+        .setup-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .setup-header .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #3a86ff;
+            margin-bottom: 0.5rem;
+        }
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        .btn-primary {
+            background-color: #3a86ff;
+            border-color: #3a86ff;
+            width: 100%;
+            padding: 0.75rem;
+        }
+        .btn-primary:hover {
+            background-color: #2a75e8;
+            border-color: #2a75e8;
+        }
+        .alert {
+            margin-top: 1rem;
+            display: none;
+        }
+        .setup-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .setup-step {
+            margin-bottom: 1.5rem;
+        }
+        .stepper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 0.5rem;
+            font-weight: bold;
+        }
+        .step.active {
+            background-color: #3a86ff;
+            color: white;
+        }
+        .step-content {
+            display: none;
+        }
+        .step-content.active {
+            display: block;
+        }
+        .spinner-border {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+        }
+        #setupStatus {
+            font-weight: bold;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .manual-reset {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            margin-top: 1rem;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <div class="logo">RevertClash</div>
+            <h5>系统初始设置</h5>
+        </div>
+        
+        <div class="stepper">
+            <div class="step active" id="step1-indicator">1</div>
+            <div class="step" id="step2-indicator">2</div>
+            <div class="step" id="step3-indicator">3</div>
+        </div>
+        
+        <div class="step-content active" id="step1-content">
+            <h5 class="mb-3">欢迎使用 RevertClash</h5>
+            <p>这是您首次启动系统，我们需要进行一些初始设置。</p>
+            <p>首先，您需要创建一个管理员账号，用于管理系统配置和用户。</p>
+            <button class="btn btn-primary mt-3" onclick="nextStep(1)">开始设置</button>
+        </div>
+        
+        <div class="step-content" id="step2-content">
+            <h5 class="mb-3">创建管理员账号</h5>
+            <form id="setupForm">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="username" placeholder="管理员用户名" required>
+                    <label for="username">管理员用户名</label>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" placeholder="密码" required>
+                    <label for="password">密码</label>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="confirmPassword" placeholder="确认密码" required>
+                    <label for="confirmPassword">确认密码</label>
+                </div>
+                
+                <div class="alert alert-danger" id="error" role="alert"></div>
+                <div id="setupStatus"></div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-outline-secondary" style="width: 48%;" onclick="prevStep(2)">上一步</button>
+                    <button type="submit" class="btn btn-primary" style="width: 48%;" id="submitBtn">创建账号</button>
+                </div>
+                
+                <div class="manual-reset mt-3" id="manualResetDiv" style="display: none;">
+                    <h6 class="mb-2">遇到问题？</h6>
+                    <p class="mb-2">如果多次尝试注册后仍然无法成功，可能是系统状态出现问题。</p>
+                    <button type="button" class="btn btn-warning w-100" onclick="resetSetupStatus()">
+                        重置设置状态
+                    </button>
+                    <div class="alert alert-info mt-2" id="resetMessage" style="display: none;"></div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="step-content" id="step3-content">
+            <div class="text-center mb-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">设置完成！</h5>
+            </div>
+            <p>管理员账号已成功创建，您现在可以登录系统并开始使用了。</p>
+            <p>接下来，您将被重定向到登录页面。</p>
+            <button class="btn btn-primary mt-3" onclick="window.location.href='/login'">前往登录</button>
+        </div>
+        
+        <div class="setup-footer">
+            <p>RevertClash &copy; 2023</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化错误计数
+        let errorCount = 0;
+        
+        // 检查系统是否需要初始设置
+        async function checkSetupStatus() {
+            try {
+                const response = await fetch('/auth/setup-status');
+                const data = await response.json();
+                
+                if (!data.needsSetup) {
+                    // 系统已设置，重定向到登录页
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('检查设置状态失败:', error);
+            }
+        }
+
+        // 切换到下一步
+        function nextStep(currentStep) {
+            document.getElementById(`step${currentStep}-content`).classList.remove('active');
+            document.getElementById(`step${currentStep + 1}-content`).classList.add('active');
+            document.getElementById(`step${currentStep}-indicator`).classList.remove('active');
+            document.getElementById(`step${currentStep + 1}-indicator`).classList.add('active');
+        }
+
+        // 返回上一步
+        function prevStep(currentStep) {
+            document.getElementById(`step${currentStep}-content`).classList.remove('active');
+            document.getElementById(`step${currentStep - 1}-content`).classList.add('active');
+            document.getElementById(`step${currentStep}-indicator`).classList.remove('active');
+            document.getElementById(`step${currentStep - 1}-indicator`).classList.add('active');
+        }
+
+        // 重置设置状态
+        async function resetSetupStatus() {
+            const resetBtn = document.querySelector('#manualResetDiv .btn-warning');
+            const resetMessage = document.getElementById('resetMessage');
+            
+            resetBtn.disabled = true;
+            resetBtn.innerHTML = '<span class="spinner-border"></span>重置中...';
+            
+            try {
+                const response = await fetch('/auth/reset-setup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resetMessage.textContent = '设置状态已重置，请刷新页面或重新尝试注册。';
+                    resetMessage.style.display = 'block';
+                    
+                    // 3秒后刷新页面
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    resetMessage.textContent = data.error || '重置失败，请稍后重试';
+                    resetMessage.style.display = 'block';
+                    resetBtn.disabled = false;
+                    resetBtn.textContent = '重置设置状态';
+                }
+            } catch (error) {
+                resetMessage.textContent = '请求失败，请稍后重试';
+                resetMessage.style.display = 'block';
+                resetBtn.disabled = false;
+                resetBtn.textContent = '重置设置状态';
+            }
+        }
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSetupStatus();
+
+            // 处理表单提交
+            document.getElementById('setupForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const errorDiv = document.getElementById('error');
+                const submitBtn = document.getElementById('submitBtn');
+                const statusDiv = document.getElementById('setupStatus');
+                
+                // 重置错误显示
+                errorDiv.style.display = 'none';
+                statusDiv.innerHTML = '';
+                
+                // 验证表单
+                if (password !== confirmPassword) {
+                    errorDiv.textContent = '两次输入的密码不一致';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    errorDiv.textContent = '密码长度不能少于6个字符';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // 禁用提交按钮，显示加载状态
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border"></span>创建中...';
+                statusDiv.innerHTML = '<span class="text-info">正在创建账号，请稍候...</span>';
+                
+                try {
+                    const response = await fetch('/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            username, 
+                            password,
+                            isAdmin: true  // 设置为管理员
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        statusDiv.innerHTML = '<span class="text-success">账号创建成功！</span>';
+                        
+                        // 显示成功信息，并延迟进入下一步
+                        setTimeout(() => {
+                            // 注册成功，进入下一步
+                            nextStep(2);
+                        }, 1500);
+                    } else {
+                        // 错误计数增加
+                        errorCount++;
+                        
+                        // 显示错误信息
+                        errorDiv.textContent = data.error || '创建账号失败';
+                        errorDiv.style.display = 'block';
+                        statusDiv.innerHTML = '<span class="text-danger">账号创建失败，请重试</span>';
+                        
+                        // 如果多次尝试失败，显示手动重置选项
+                        if (errorCount >= 2) {
+                            document.getElementById('manualResetDiv').style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    errorCount++;
+                    errorDiv.textContent = '请求失败，请稍后重试';
+                    errorDiv.style.display = 'block';
+                    statusDiv.innerHTML = '<span class="text-danger">网络请求失败</span>';
+                    console.error('创建账号失败:', error);
+                    
+                    // 如果多次尝试失败，显示手动重置选项
+                    if (errorCount >= 2) {
+                        document.getElementById('manualResetDiv').style.display = 'block';
+                    }
+                } finally {
+                    // 恢复提交按钮状态
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '创建账号';
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
