@@ -196,9 +196,11 @@ const PROXY_RULES = [
     
     // 自定义规则示例
     { 
-        name: "linux.do", 
+        name: "论坛：linux.do，nodeseek等", 
         gfw : true,
-        payload: "DOMAIN-SUFFIX,linux.do" 
+        payload: ["DOMAIN-SUFFIX,linux.do" ,
+            "DOMAIN-SUFFIX,nodeseek.com"
+        ]
     },
     { 
         name: "ip检测", 
@@ -1049,13 +1051,13 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             "name": "国内网站",
             "type": "select",
-            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.baidu.com/favicon.ico"
         },
         {
             "name": "国外网站",
             "type": "select",
-            "proxies": ["HighQuality Country 1", "HighQuality Country 2", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "proxies": ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
             "url": "https://www.bing.com/favicon.ico"
         },
         // 高质量节点组
@@ -1068,8 +1070,11 @@ function buildBaseProxyGroups(testUrl, proxies) {
             ]
         },
         {
-            "name": "HighQuality Country 2",
-            "type": "select",
+            "name": "HighQuality Country 2 Auto",
+            "type": "url-test",
+            "tolerance": 10,
+            "url": testUrl,
+            "interval": 150,
             "proxies": [
                 ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
                 "DIRECT",

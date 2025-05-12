@@ -9,8 +9,7 @@ const { parseUserInfoHeader, readUserInfoData, writeUserInfoData } = require('./
 const { URLManager, CONFIG_FILE: URL_CONFIG_FILE } = require('./urlManager'); // 从 urlManager 获取 URL 列表
 
 // 配置文件路径 (可以考虑移到配置中心)
-const CONFIGS_DIR = path.join(__dirname, '../data', 'configs');
-const CONFIG_SETTINGS_FILE = path.join(__dirname, '../data', 'config-settings.json');
+const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
 const OUTPUT_FILE = path.join(__dirname, '../data', 'merged-config.yaml');
 const PROCESSED_OUTPUT_FILE = path.join(__dirname, '../data', 'processed-merged-config.yaml');
 
@@ -71,25 +70,6 @@ function aggregateProxies(proxyLists) {
     );
     console.log(`共聚合 ${uniqueProxies.length} 个唯一的代理节点`);
     return uniqueProxies;
-}
-
-/**
- * 读取配置设置 (例如是否启用 clash-configs.js 处理)
- * @returns {Promise<object>}
- */
-async function readConfigSettings() {
-    try {
-        const content = await fs.readFile(CONFIG_SETTINGS_FILE, 'utf8');
-        return JSON.parse(content);
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            const defaultSettings = { useClashConfig: false };
-            await fs.writeFile(CONFIG_SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
-            return defaultSettings;
-        }
-        console.error('读取配置设置失败:', err.message);
-        return { useClashConfig: false }; // 失败时返回默认值
-    }
 }
 
 /**
