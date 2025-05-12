@@ -16,7 +16,7 @@ class ConfigProcessor {
     constructor(nodeManager, baseConfigPath = '') {
         this.nodeManager = nodeManager;
         this.baseConfigPath = baseConfigPath || path.join(__dirname, '../../configs/base.yaml');
-        this.outputDir = path.join(__dirname, '../../');
+        this.outputDir = path.join(__dirname, '../../data');
     }
 
     /**

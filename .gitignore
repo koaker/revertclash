@@ -19,5 +19,5 @@ run.bat
 auth-config.json
 ssl/*
 .aider*
-data/*.db
+data/*
 url-userinfo.json
