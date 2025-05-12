@@ -9,10 +9,10 @@ const { parseUserInfoHeader, readUserInfoData, writeUserInfoData } = require('./
 const { URLManager, CONFIG_FILE: URL_CONFIG_FILE } = require('./urlManager'); // 从 urlManager 获取 URL 列表
 
 // 配置文件路径 (可以考虑移到配置中心)
-const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
-const CONFIG_SETTINGS_FILE = path.join(__dirname, '..', 'config-settings.json');
-const OUTPUT_FILE = path.join(__dirname, '..', 'merged-config.yaml');
-const PROCESSED_OUTPUT_FILE = path.join(__dirname, '..', 'processed-merged-config.yaml');
+const CONFIGS_DIR = path.join(__dirname, '../data', 'configs');
+const CONFIG_SETTINGS_FILE = path.join(__dirname, '../data', 'config-settings.json');
+const OUTPUT_FILE = path.join(__dirname, '../data', 'merged-config.yaml');
+const PROCESSED_OUTPUT_FILE = path.join(__dirname, '../data', 'processed-merged-config.yaml');
 
 const urlManager = new URLManager(URL_CONFIG_FILE);
 
@@ -230,19 +230,15 @@ async function processConfigs() {
         console.error(`保存合并配置文件 (${OUTPUT_FILE}) 失败:`, err.message);
     }
 
-    // 6. (可选) 使用 clash-configs.js 处理
-    const settings = await readConfigSettings();
-    if (settings.useClashConfig) {
-        try {
-            // 注意：需要确保 clash-configs.js 能正确处理传入的 JS 对象
-            const clashConfigProcessor = require('../clash-configs.js'); // 确保路径正确
-            const processedConfigObject = clashConfigProcessor.main(baseConfig); // 传入对象而非 YAML 字符串
-            processedConfigYaml = YAML.stringify(processedConfigObject);
-            console.log('已使用 clash-configs.js 处理配置');
-        } catch (err) {
-            console.error('使用 clash-configs 处理时出错:', err.message);
-            // 处理失败，processedConfigYaml 保持为原始合并后的 YAML
-        }
+    try {
+        // 注意：需要确保 clash-configs.js 能正确处理传入的 JS 对象
+        const clashConfigProcessor = require('../clash-configs.js'); // 确保路径正确
+        const processedConfigObject = clashConfigProcessor.main(baseConfig); // 传入对象而非 YAML 字符串
+        processedConfigYaml = YAML.stringify(processedConfigObject);
+        console.log('已使用 clash-configs.js 处理配置');
+    } catch (err) {
+        console.error('使用 clash-configs 处理时出错:', err.message);
+        // 处理失败，processedConfigYaml 保持为原始合并后的 YAML
     }
 
     // 7. 保存处理后的配置
