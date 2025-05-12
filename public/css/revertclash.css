@@ -436,14 +436,16 @@ a:hover {
     font-size: 1rem;
     line-height: 1.5;
     color: var(--rc-text);
-    background-color: white;
-    border: 1px solid var(--rc-border);
+    background-color: #fafafa; /* 轻微灰色背景，提高可见性 */
+    border: 1px solid var(--border-color); /* 修正：使用已定义的边框颜色变量 */
     border-radius: 0.25rem;
     transition: var(--rc-transition);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* 添加内部轻微阴影增强立体感 */
 }
 
 .rc-form-control:focus {
     border-color: var(--rc-primary);
+    background-color: #ffffff; /* 聚焦时改为纯白色 */
     outline: none;
     box-shadow: 0 0 0 0.2rem rgba(58, 134, 255, 0.25);
 }
@@ -466,7 +468,7 @@ a:hover {
     margin-bottom: 1rem;
     border: 1px solid transparent;
     border-radius: 0.25rem;
-    display: block; /* 修改为block而不是none，确保警告框默认可见 */
+    display: none; /* 默认隐藏警告框，只有显式设置display: block时才显示 */
 }
 
 .rc-alert-success {
@@ -560,6 +562,20 @@ a:hover {
     margin-top: var(--spacing-lg);
     color: var(--secondary);
     font-size: 0.9rem;
+}
+
+/* 步骤内容样式 - 解决界面重叠问题 */
+.step-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    position: relative;
+    margin: 1rem 0;
+}
+
+.step-content.active {
+    display: block;
+    opacity: 1;
 }
 
 /* 加载动画 */

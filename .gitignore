@@ -20,3 +20,4 @@ auth-config.json
 ssl/*
 .aider*
 data/*.db
+url-userinfo.json

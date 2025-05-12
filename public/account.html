@@ -65,8 +65,8 @@
                             <input type="password" class="rc-form-control" id="confirm-password" required>
                         </div>
                         
-                        <div class="rc-alert rc-alert-success" id="password-success"></div>
-                        <div class="rc-alert rc-alert-danger" id="password-error"></div>
+                        <div class="rc-alert rc-alert-success" id="password-success" style="display: none;"></div>
+                        <div class="rc-alert rc-alert-danger" id="password-error" style="display: none;"></div>
                         
                         <button type="submit" class="rc-btn rc-btn-primary">
                             <i class="bi bi-check-circle me-1"></i>
@@ -139,7 +139,7 @@
                             </div>
                         </div>
                         
-                        <div class="rc-alert rc-alert-danger" id="add-user-error"></div>
+                        <div class="rc-alert rc-alert-danger" id="add-user-error" style="display: none;"></div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -269,10 +269,11 @@
         // 加载用户列表
         async function loadUserList() {
             try {
-                const response = await fetch('/admin/users');
+                const response = await fetch('/api/users');
                 
                 if (response.ok) {
-                    const users = await response.json();
+                    const data = await response.json();
+                    const users = data.users; // 根据API响应格式调整
                     const tableBody = document.getElementById('users-table-body');
                     
                     // 清空表格
@@ -332,7 +333,7 @@
             }
             
             try {
-                const response = await fetch('/admin/users', {
+                const response = await fetch('/api/users', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -374,7 +375,7 @@
             }
             
             try {
-                const response = await fetch(`/admin/users/${userId}`, {
+                const response = await fetch(`/api/users/${userId}`, {
                     method: 'DELETE'
                 });
                 
