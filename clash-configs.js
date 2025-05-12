@@ -193,7 +193,14 @@ const PROXY_RULES = [
         extraProxies: "REJECT", 
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite_Classical.yaml" 
     },
-    
+    {
+        name: "IDM",
+        gfw : false,
+        payload : [
+            "PROCESS-NAME,IDMan.exe"
+        ],
+        urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Download/Download.yaml"]
+    },
     // 自定义规则示例
     { 
         name: "论坛：linux.do，nodeseek等", 
@@ -213,14 +220,15 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "必须美国节点：exhentai、openai、claude、gemini", 
+        name: "必须美国节点：exhentai、openai、claude、gemini、aistudio", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,exhentai.org",
             "DOMAIN-SUFFIX,e-hentai.org",
             "DOMAIN,cdn.usefathom.com",
             "DOMAIN-SUFFIX,anthropic.com",
-            "DOMAIN-SUFFIX,claude.ai"
+            "DOMAIN-SUFFIX,claude.ai",
+            "DOMAIN-SUFFIX,aistudio.google.com",
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" ,
@@ -250,7 +258,7 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
-        name: "建议走低质量节点：下载服务器列表", 
+        name: "建议走低质量节点：下载服务器列表 包括各种游戏下载、youtube视频来源分流（不影响youtube本身）", 
         gfw : false,
         payload:  [
             "DOMAIN-SUFFIX,eft-store.com",
@@ -265,13 +273,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,dl.google.com",
             "DOMAIN-SUFFIX,imput.net",
             "DOMAIN-SUFFIX,googlevideo.com",
-        ]
-    },
-    {
-        name: "IDM",
-        gfw : false,
-        payload : [
-            "PROCESS-NAME,IDMan.exe"
         ]
     },
     { 
@@ -403,12 +404,16 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "💳 Paypal", 
+        name: "💳 Paypal 、币安、欧易", 
         gfw : true,
+        payload:  [
+            "DOMAIN-SUFFIX,binance.com",
+            "DOMAIN-SUFFIX,okx.com",
+        ],
         urls : ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/PayPal/PayPal.yaml"]
     },
     { 
-        name: "📢 Discord", 
+        name: "📢Discord、Telegram、Twitter、Facebook", 
         gfw : true,
         payload:  [
             "DOMAIN-SUFFIX,airhorn.solutions",
@@ -439,27 +444,13 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,discordstatus.com",
             "DOMAIN-SUFFIX,hammerandchisel.ssl.zendesk.com",
             "DOMAIN-SUFFIX,watchanimeattheoffice.com",
+        ],
+        urls: [
+            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Twitter/Twitter_No_Resolve.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Facebook/Facebook_No_Resolve.yaml"
         ]
     },
-    { 
-        name: "🎬哔哩哔哩", 
-        gfw : false,
-        payload:  [
-            "DOMAIN-SUFFIX,biliapi.com",
-            "DOMAIN-SUFFIX,biliapi.net",
-            "DOMAIN-SUFFIX,bilibili.com",
-            "DOMAIN-SUFFIX,bilibili.tv",
-            "DOMAIN-SUFFIX,bilivideo.com",
-        ]
-    },
-    { 
-        name: "deepseek", 
-        gfw : false,
-        payload:  [
-            "DOMAIN-SUFFIX,deepseek.com",
-        ]
-    },
-
     // 常用网站分组
     { 
         name: "程序员需要:github、huggingface、docker、civitai", 
@@ -505,21 +496,6 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
     },
     { 
-        name: "Twitter与Facebook", 
-        gfw : true,
-        urls: [
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Twitter/Twitter_No_Resolve.yaml",
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Facebook/Facebook_No_Resolve.yaml"
-        ]
-    },
-    { 
-        name: "Telegram", 
-        gfw : true,
-        urls: [
-            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml",
-        ]
-    },
-    { 
         name: "Microsoft与bing服务、OneDrive", 
         gfw : true,
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml",
@@ -530,6 +506,18 @@ const PROXY_RULES = [
         name: "Cloudflare", 
         gfw : true,
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Cloudflare/Cloudflare_No_Resolve.yaml" 
+    },
+    { 
+        name: "国内网站：🎬哔哩哔哩 和 deepseek", 
+        gfw : false,
+        payload:  [
+            "DOMAIN-SUFFIX,biliapi.com",
+            "DOMAIN-SUFFIX,biliapi.net",
+            "DOMAIN-SUFFIX,bilibili.com",
+            "DOMAIN-SUFFIX,bilibili.tv",
+            "DOMAIN-SUFFIX,bilivideo.com",
+            "DOMAIN-SUFFIX,deepseek.com",
+        ]
     },
 ];
 
