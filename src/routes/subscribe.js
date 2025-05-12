@@ -98,7 +98,8 @@ router.get('/:token/:type', async (req, res) => {
         // 如果是config类型，则设置正确的Content-Type和文件名
         if (configType === 'config' || configType === 'processed-config') {
             res.setHeader('Content-Type', 'application/octet-stream');
-            res.setHeader('Content-Disposition', `attachment; filename="${configType}.yaml"`);
+            // 使用不带引号的格式并保留配置类型信息
+            res.setHeader('Content-Disposition', `attachment; filename=${configType}.yaml`);
             return res.send(config.content);
         }
         
