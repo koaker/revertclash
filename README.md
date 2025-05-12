@@ -13,31 +13,55 @@ RevertClash 是是用来将多个来源的clash配置文件的所有节点提取
 
 ## 📦 安装
 
-1. 克隆仓库：
+
+
+### 手动编译
+
+##### 1. 克隆仓库：
 ```bash
 git clone https://github.com/spocel/revertclash.git
 cd revertclash
 ```
 
-2. 安装依赖：
+##### 2. 安装依赖：
 ```bash
 npm install
 ```
 
-3. 配置：
+##### 3. 配置：
 - 复制 `clash-urls.txt.example`去掉后缀,重命名为 `clash-urls.txt`
 - 根据需要修改配置文件
 
-4.
-如果只需要规则文件，将config-setting.json的变量设为true,并且将auth-config.json.example去掉后缀，密码修改为你自己的密码
+##### 4. 如果只需要规则文件，将config-setting.json的变量设为true,并且将auth-config.json.example去掉后缀，密码修改为你自己的密码
 如果想在clash中导入只有proxies的文件，设为false
 ```bash
-npm run start
+npm run start #启动服务器
 ```
-启动服务器
-访问localhost:3000，密码是文件中的密码
-5.clash verge使用：
-- 将clash-config.js 中除了module.exports = { main };的函数全部复制导入到clash verge中
+访问 `localhost:3000`，密码是文件中的密码
+
+##### 5. clash verge使用：
+- 将 `clash-config.js` 中除了 `module.exports = { main }; `的函数全部复制导入到clash verge中
+
+
+
+### Docker安装
+
+##### 克隆仓库
+```bash
+git clone https://github.com/spocel/revertclash.git && cd revertclash
+```
+
+##### 构建镜像
+```bash
+docker build -t revertclash .
+```
+
+##### 运行容器
+```bash
+docker run -d -p 3000:3000 --name revertclashKoaker revertclash
+```
+
+
 
 ## 🚀 使用方法
 1. 启动 HTTP 服务器：
