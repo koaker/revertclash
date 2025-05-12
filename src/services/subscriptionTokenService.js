@@ -87,8 +87,7 @@ async function getTokensByUserId(userId) {
         // 确保configTypes是数组
         return tokens.rows.map(token => ({
             ...token,
-            configTypes: Array.isArray(token.configTypes) ? token.configTypes : 
-                         (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config'])
+            configTypes: ensureConfigTypesArray(token.configTypes)
         }));
     } catch (err) {
         console.error('获取用户订阅Token失败:', err);
@@ -125,8 +124,7 @@ async function getTokenByString(tokenString) {
         const token = result.rows[0];
         return {
             ...token,
-            configTypes: Array.isArray(token.configTypes) ? token.configTypes : 
-                         (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config'])
+            configTypes: ensureConfigTypesArray(token.configTypes)
         };
     } catch (err) {
         console.error('根据字符串获取Token失败:', err);
@@ -147,6 +145,9 @@ async function createToken(userId, name, configTypes, expiresAt = null) {
         const token = generateTokenString();
         const now = new Date();
         
+        // 确保configTypes以JSON字符串形式存储
+        const configTypesJson = JSON.stringify(configTypes);
+        
         const result = await db.query(
             `INSERT INTO subscription_tokens 
             (user_id, name, token, config_types, created_at, expires_at, last_accessed, is_active, access_count) 
@@ -154,14 +155,57 @@ async function createToken(userId, name, configTypes, expiresAt = null) {
             RETURNING id, user_id as "userId", name, token, config_types as "configTypes", 
             created_at as "createdAt", expires_at as "expiresAt", last_accessed as "lastAccessed", 
             is_active as "isActive", access_count as "accessCount"`,
-            [userId, name, token, configTypes, now, expiresAt, null, true, 0]
+            [userId, name, token, configTypesJson, now, expiresAt, null, true, 0]
         );
         
-        return result.rows[0];
+        // 确保configTypes是数组
+        const createdToken = result.rows[0];
+        return {
+            ...createdToken,
+            configTypes: ensureConfigTypesArray(createdToken.configTypes)
+        };
     } catch (err) {
         console.error('创建订阅Token失败:', err);
         throw err;
     }
+}
+
+/**
+ * 确保configTypes是数组格式
+ * @param {any} configTypes - 可能是数组、字符串或对象
+ * @returns {Array} 配置类型数组
+ */
+function ensureConfigTypesArray(configTypes) {
+    // 如果已经是数组，直接返回
+    if (Array.isArray(configTypes)) {
+        return configTypes;
+    }
+    
+    // 如果是字符串，尝试解析
+    if (typeof configTypes === 'string') {
+        try {
+            const parsed = JSON.parse(configTypes);
+            return Array.isArray(parsed) ? parsed : ['config'];
+        } catch (e) {
+            console.error('解析configTypes字符串失败:', e.message);
+            return ['config'];
+        }
+    }
+    
+    // 如果是对象但不是数组（如[object Object]），尝试获取可用的键值
+    if (configTypes && typeof configTypes === 'object') {
+        try {
+            // 尝试将对象转换为数组
+            const asArray = Object.values(configTypes);
+            return asArray.length > 0 ? asArray : ['config'];
+        } catch (e) {
+            console.error('处理configTypes对象失败:', e.message);
+            return ['config'];
+        }
+    }
+    
+    // 默认值
+    return ['config'];
 }
 
 /**
@@ -195,7 +239,8 @@ async function updateToken(id, userId, updates) {
         
         if (updates.configTypes !== undefined) {
             updateFields.push(`config_types = $${paramCounter++}`);
-            queryParams.push(updates.configTypes);
+            // 确保configTypes以JSON字符串形式存储
+            queryParams.push(JSON.stringify(updates.configTypes));
         }
         
         if (updates.expiresAt !== undefined) {
@@ -266,7 +311,16 @@ async function regenerateToken(id, userId) {
             [newToken, id, userId]
         );
         
-        return result.rows.length > 0 ? result.rows[0] : null;
+        if (result.rows.length === 0) {
+            return null;
+        }
+        
+        // 确保configTypes是数组
+        const regeneratedToken = result.rows[0];
+        return {
+            ...regeneratedToken,
+            configTypes: ensureConfigTypesArray(regeneratedToken.configTypes)
+        };
     } catch (err) {
         console.error('重新生成Token失败:', err);
         throw err;
@@ -316,7 +370,11 @@ async function getTokenUsageStats(days = 30) {
             [cutoffDate]
         );
         
-        return result.rows;
+        // 确保每个token的configTypes都是数组
+        return result.rows.map(token => ({
+            ...token,
+            configTypes: ensureConfigTypesArray(token.configTypes)
+        }));
     } catch (err) {
         console.error('获取Token使用统计失败:', err);
         throw err;
@@ -454,8 +512,7 @@ async function isTokenAuthorized(tokenString, configType, clientIp) {
         }
         
         // 检查配置类型是否被允许
-        const configTypes = Array.isArray(token.configTypes) ? token.configTypes : 
-                           (typeof token.configTypes === 'string' ? JSON.parse(token.configTypes) : ['config']);
+        const configTypes = ensureConfigTypesArray(token.configTypes);
         
         if (!configTypes.includes(configType)) {
             logSecurityEvent('CONFIG_TYPE_NOT_ALLOWED', { 
