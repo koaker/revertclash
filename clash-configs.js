@@ -779,34 +779,37 @@ function filtersocks5ProxiesName(proxies) {
  * @param {Array} proxies "所有代理节点
  * @returns {Array} 符合条件的节点名称列表
  */
-function filterNotProxies(proxies) {
-    //console.log("传入的节点", proxies)
-    if (!proxies || !Array.isArray(proxies)) {
-        //console.log("空节点")
-        return [];
-    }
-    //console.log("非空节点")
-    proxies = proxies.filter(proxy => {
-        const proxyName = proxy.name || "";
-        return !RX.notProxy.test(proxyName);
-    });
-    //console.log("筛选后的节点", proxies)
-    return proxies;
-}
-
 function filterCrossProxies(proxies) {
     //console.log("传入的节点", proxies)
     if (!proxies || !Array.isArray(proxies)) {
         //console.log("空节点")
-        return [];
+        return {valid: [], cross: []};
     }
     //console.log("非空节点")
-    proxies = proxies.filter(proxy => {
+    
+    const valid = [];
+    const cross = [];
+    
+    for (const proxy of proxies) {
         const proxyName = proxy.name || "";
-        return !RX.cross.test(proxyName);
-    });
-    //console.log("筛选后的节点", proxies)
-    return proxies;
+        
+        // 如果是非代理节点，直接跳过
+        if (RX.notProxy.test(proxyName)) {
+            continue;
+        }
+        
+        // 如果是跨域代理节点放入cross数组，否则放入valid数组
+        (RX.cross.test(proxyName) ? cross : valid).push(proxy);
+    }
+    
+    //console.log("筛选后的有效节点", valid)
+    //console.log("筛选后的跨域节点", cross)
+    return {valid, cross};
+}
+
+// 为了保持向后兼容，保留filterNotProxies函数
+function filterNotProxies(proxies) {
+    return filterCrossProxies(proxies).valid;
 }
 /* ---------- 国家/地区分组 ---------- */
 function filterCountryOrRegionProxies(nodes) {
@@ -918,9 +921,6 @@ function filterAllProxies(proxies) {
 // 低质量线路 流量便宜，延迟高、ip质量差
 // 家宽 流量不定，延迟不定、ip质量好
 // socks或者need_dialer 没有办法直接连接或者连接质量差 需要中转 ip质量好
-//处理思路 ： 
-
-
 var DIALERPROXY = false;
 
 /**
@@ -1140,9 +1140,11 @@ function main(config) {
     }
     //console.log(testUrl,proxies)
 
-    const filteredCrossProxies = filterCrossProxies(proxies);
-    // 构建基本代理组
-    const baseProxyGroups = buildBaseProxyGroups(testUrl, filteredCrossProxies);
+    const filteredCrossResult = filterCrossProxies(proxies);
+    // 构建基本代理组（使用valid数组，即非跨域代理节点）
+    const baseProxyGroups = buildBaseProxyGroups(testUrl, filteredCrossResult.valid);
+    
+    // 注意：cross数组可以在这里用于其他目的，目前代码中没有使用到
 
 
     const configLen = PROXY_RULES.length;
