@@ -178,6 +178,8 @@ class ProtocolConverter {
       return 'hysteria2';
     } else if (uri.startsWith('vmess://')) {
       return 'vmess';
+    } else if (uri.startsWith('trojan://')) {
+      return 'trojan';
     }
     
     return null;
