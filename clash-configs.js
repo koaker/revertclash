@@ -769,10 +769,9 @@ function filtersocks5ProxiesName(proxies) {
         return [];
     }
     
-    return proxies.filter(proxy => {
-        const typeName = proxy.type || "";
-        return typeName.includes("socks5") || typeName.includes("SOCKS5") ;
-    }).map(proxy => proxy.name || "");
+    // 直接使用 classifyProxies 返回的 socks5Names，避免重复遍历
+    const { socks5Names } = classifyProxies(proxies);
+    return socks5Names;
 }
 /**
  * 删除非节点 "使用正则表达式优化性能
@@ -881,13 +880,22 @@ function classifyProxies(nodes) {
     providerLow: [], needDialer: [], socks5: [], cross: [], other: []
   };
   const mapByName = new Map();
+  // 预先创建 socks5Names 数组，同时收集节点信息避免二次遍历
+  const socks5Names = [];
+  
   for (const p of nodes) mapByName.set(p.name, p);
 
   for (const p of nodes) {
     const n = p.name || "";
     if (RX.notProxy.test(n)) continue;
     if (RX.cross.test(n)) { buckets.cross.push(p); continue; }
-    if (/socks5/i.test(p.type || "")) buckets.socks5.push(p);
+    
+    // 检测 socks5 类型的代理，并同时收集其名称
+    if (/socks5/i.test(p.type || "")) {
+      buckets.socks5.push(p);
+      socks5Names.push(n);
+    }
+    
     if (RX.needDialer.test(n)) buckets.needDialer.push(p);
     else if (RX.high.test(n)) buckets.high.push(p);
     else if (RX.household.test(n)) buckets.household.push(p);
@@ -895,7 +903,7 @@ function classifyProxies(nodes) {
     else if (RX.low.test(n)) buckets.low.push(p);
     else buckets.other.push(p);
   }
-  return { buckets, mapByName };
+  return { buckets, mapByName, socks5Names };
 }
 
 function filterAllProxies(proxies) {
