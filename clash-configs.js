@@ -6,31 +6,24 @@
  */
 
 // ==================== 用户配置区（可自由修改） ====================
-
 /**
  * 常用配置选项
  */
 const CONFIG = {
     // 测试连接URL
     testUrl: "https://www.google.com",
-    
     // 自动测试间隔 (秒)
     testInterval: 300,
-    
     // 自动选择容差 (毫秒)
     tolerance: 20,
-    
     // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
     balanceStrategy: "sticky-sessions"
 };
-
 /**
  * 用户自定义规则（高优先级）
  * 这些规则会被放置在所有其他规则之前，确保不会被其他规则覆盖
  */
 const USER_RULES = [
-    "DOMAIN-SUFFIX,v2ex.com,国外网站",
-    "DOMAIN-SUFFIX,nodeseek.com,国外网站",
     "DOMAIN-SUFFIX,mnapi.com,DIRECT",
     "DOMAIN-SUFFIX,ieee.org,DIRECT",
     "DOMAIN-SUFFIX,anrunnetwork.com,DIRECT",
@@ -153,7 +146,8 @@ const COUNTRY_OR_REGION_KEYWORDS = [
     },
     {
         name : "欧洲系列",
-        keywords: ["欧洲", "EU", "Europe", "法国", "FR", "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "IT", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰"],
+        keywords: ["欧洲", "EU", "Europe", "法国", "FR",
+            "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰", "波兰", "土耳其"],
         enable: true,
         enableAuto : false,
     },
@@ -206,7 +200,8 @@ const PROXY_RULES = [
         name: "论坛：linux.do，nodeseek等", 
         gfw : true,
         payload: ["DOMAIN-SUFFIX,linux.do" ,
-            "DOMAIN-SUFFIX,nodeseek.com"
+            "DOMAIN-SUFFIX,nodeseek.com",
+            "DOMAIN-SUFFIX,v2ex.com"
         ]
     },
     { 
@@ -413,6 +408,26 @@ const PROXY_RULES = [
         urls : ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/PayPal/PayPal.yaml"]
     },
     { 
+        name: "YouTube", 
+        gfw : true,
+        urls: [
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTube/YouTube.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTubeMusic/YouTubeMusic.yaml"
+        ]
+    },
+    { 
+        name: "Google", 
+        gfw : true,
+        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
+    },
+    { 
+        name: "Microsoft与bing服务、OneDrive", 
+        gfw : true,
+        urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml" 
+        ]
+    },
+    { 
         name: "📢Discord、Telegram、Twitter、Facebook", 
         gfw : true,
         payload:  [
@@ -482,26 +497,7 @@ const PROXY_RULES = [
         ],
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml" 
     },
-    { 
-        name: "YouTube", 
-        gfw : true,
-        urls: [
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTube/YouTube.yaml",
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTubeMusic/YouTubeMusic.yaml"
-        ]
-    },
-    { 
-        name: "Google", 
-        gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
-    },
-    { 
-        name: "Microsoft与bing服务、OneDrive", 
-        gfw : true,
-        urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Microsoft/Microsoft_No_Resolve.yaml",
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OneDrive/OneDrive_No_Resolve.yaml" 
-        ]
-    },
+    
     { 
         name: "Cloudflare", 
         gfw : true,
@@ -830,21 +826,21 @@ function filterAllProxies(proxies) {
         const proxyName = proxy.name || "";
         var flag = false;
         console.log(proxyName+"\n")
-        if (REGEX_CACHE.lowLowQuality.test(proxyName)) {
-            returnedProxies.lowLowQualityProxies.push(proxy);
-            console.log(proxyName+"lowlow")
-            flag = true;
-        } else if (REGEX_CACHE.lowQuality.test(proxyName)) {
-            returnedProxies.lowQualityProxies.push(proxy);
-            console.log(proxyName+"low")
-            flag = true;
-        } else if (REGEX_CACHE.highQuality.test(proxyName)) {
+        if (REGEX_CACHE.highQuality.test(proxyName)) {
             returnedProxies.highQualityProxies.push(proxy);
             //console.log(proxyName+"high")
             flag = true;
         } else if (REGEX_CACHE.householdProxy.test(proxyName)) {
             returnedProxies.householdProxies.push(proxy);
            // console.log(proxyName+"household")
+            flag = true;
+        } else if (REGEX_CACHE.lowLowQuality.test(proxyName)) {
+            returnedProxies.lowLowQualityProxies.push(proxy);
+            console.log(proxyName+"lowlow")
+            flag = true;
+        } else if (REGEX_CACHE.lowQuality.test(proxyName)) {
+            returnedProxies.lowQualityProxies.push(proxy);
+            console.log(proxyName+"low")
             flag = true;
         } else if (!flag) {
             returnedProxies.otherProxies.push(proxy);
@@ -916,17 +912,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
         }
     }
     const baseProxyGroups = []
-    if (DIALERPROXY) {
-        baseProxyGroups.push(
-            {
-            "name": "前置机场",
-            "type": "select",
-            "include-all": true,
-            "url": testUrl,
-            "interval": CONFIG.testInterval
-            }
-        )
-    }
     // 筛选所有节点
     const filteredProxiesName = filterNameByRules(proxies, null)
     //console.log(proxies)
@@ -1030,24 +1015,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "DIRECT"
             ]
         },
-        {
-            "name": "规则外",
-            "type": "select",
-            "proxies": ["国内网站", "国外网站"],
-            "url": "https://www.baidu.com/favicon.ico"
-        },
-        {
-            "name": "国内网站",
-            "type": "select",
-            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
-            "url": "https://www.baidu.com/favicon.ico"
-        },
-        {
-            "name": "国外网站",
-            "type": "select",
-            "proxies": ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
-            "url": "https://www.bing.com/favicon.ico"
-        },
         // 高质量节点组
         {
             "name": "HighQuality Country 1",
@@ -1075,6 +1042,24 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 "DIRECT",
                 ...(householdProxiesName.length > 0 ? householdProxiesName : [])
             ]
+        },
+        {
+            "name": "规则外",
+            "type": "select",
+            "proxies": ["国外网站", "国内网站"],
+            "url": "https://www.baidu.com/favicon.ico"
+        },
+        {
+            "name": "国内网站",
+            "type": "select",
+            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "url": "https://www.baidu.com/favicon.ico"
+        },
+        {
+            "name": "国外网站",
+            "type": "select",
+            "proxies": ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
+            "url": "https://www.bing.com/favicon.ico"
         }
     ]);
     
@@ -1099,7 +1084,7 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualit
         countryOrRegionGroupNames.push(groupName);
 
         // 当enableAuto为true时，添加自动选择节点组
-        if (MiddleQualitycountryOrRegionProxiesGroups[i].enableAuto) {
+        if (MiddleQualitycountryOrRegionProxiesGroups[i].enableAuto && MiddleQualitycountryOrRegionProxiesGroups[i].proxies[0] !== "NULL") {
             const autoGroupName = "自动选择"+MiddleQualitycountryOrRegionProxiesGroups[i].name+"节点，节点质量中等";
             countryOrRegionGroupNames.push(autoGroupName);
         }
@@ -1119,96 +1104,34 @@ function main(config) {
     // 初始化规则和代理组
     const rules = USER_RULES.slice();
     const proxyGroups = [];
-    
-    // 规则集通用配置
-    const ruleProviderCommon = {
-        type: "http",
-        format: "yaml",
-        interval: 86400
-    };
 
-    // 初始化规则提供器
-    const ruleProviders = {
-        reject: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt",
-            path: "./providers/rule/reject.yaml"
-        },
-        icloud: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt",
-            path: "./providers/rule/icloud.yaml"
-        },
-        apple: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/apple.txt",
-            path: "./providers/rule/apple.yaml"
-        },
-        proxy: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt",
-            path: "./providers/rule/proxy.yaml"
-        },
-        direct: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt",
-            path: "./providers/rule/direct.yaml"
-        },
-        private: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt",
-            path: "./providers/rule/private.yaml"
-        },
-        gfw: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt",
-            path: "./providers/rule/gfw.yaml"
-        },
-        greatfire: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/greatfire.txt",
-            path: "./providers/rule/greatfire.yaml"
-        },
-        tld_not_cn: {
-            ...ruleProviderCommon,
-            behavior: "domain",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/tld-not-cn.txt",
-            path: "./providers/rule/tld-not-cn.yaml"
-        },
-        telegramcidr: {
-            ...ruleProviderCommon,
-            behavior: "ipcidr",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt",
-            path: "./providers/rule/telegramcidr.yaml"
-        },
-        cncidr: {
-            ...ruleProviderCommon,
-            behavior: "ipcidr",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt",
-            path: "./providers/rule/cncidr.yaml"
-        },
-        lancidr: {
-            ...ruleProviderCommon,
-            behavior: "ipcidr",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/lancidr.txt",
-            path: "./providers/rule/lancidr.yaml"
-        },
-        applications: {
-            ...ruleProviderCommon,
-            behavior: "classical",
-            url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/applications.txt",
-            path: "./providers/rule/applications.yaml"
-        }
-    };
-
+    const providerDefinitions = [
+        { name: "reject", behavior: "domain"},
+        { name: "icloud", behavior: "domain"},
+        { name: "apple", behavior: "domain"},
+        { name: "proxy", behavior: "domain"},
+        { name: "direct", behavior: "domain"},
+        { name: "private", behavior: "domain"},
+        { name: "gfw", behavior: "domain"},
+        { name: "greatfire", behavior: "domain"},
+        { name: "tld_not_cn", behavior: "domain"},
+        { name: "telegramcidr", behavior: "ipcidr"},
+        { name: "cncidr", behavior: "ipcidr"},
+        { name: "lancidr", behavior: "ipcidr"},
+        { name: "applications", behavior: "classical"}
+    ]
+    const ruleProviders = {};
+    const baseRuleUrl = "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/";
+    for (const def of providerDefinitions) {
+        ruleProviders[def.name] = {
+            type: "http",
+            format: "yaml",
+            interval: 86400,
+            behavior: def.behavior,
+            url: `${baseRuleUrl}${def.name}.txt`,
+            path: `./providers/rule/${def.name}.yaml`
+        };
+    }
     //console.log(testUrl,proxies)
     // 构建基本代理组
     const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies);
@@ -1216,7 +1139,7 @@ function main(config) {
 
     const configLen = PROXY_RULES.length;
     for (let i = 0; i < configLen; i++) {
-        const { name, gfw, urls, payload, extraProxies, programs} = PROXY_RULES[i];
+        const {name, gfw, urls, payload, extraProxies} = PROXY_RULES[i];
 
         proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups));
 
@@ -1234,6 +1157,18 @@ function main(config) {
                 rules.push(`RULE-SET,${iName},${name}`);
             }
         }
+    }
+
+    if (DIALERPROXY) {
+        baseProxyGroups.push(
+            {
+            "name": "前置机场",
+            "type": "select",
+            "include-all": true,
+            "url": testUrl,
+            "interval": CONFIG.testInterval
+            }
+        )
     }
 
     // 构建最终配置
