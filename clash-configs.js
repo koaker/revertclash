@@ -596,6 +596,11 @@ const RX = Object.fromEntries(
   )
 );
 
+// 为COUNTRY_OR_REGION_KEYWORDS添加正则表达式
+for (const r of COUNTRY_OR_REGION_KEYWORDS) {
+  r._rx = new RegExp(r.keywords.join('|'));
+}
+
 // 构建DNS配置对象
 const dns = buildDnsConfig(DNS_CONFIG);
 
@@ -820,14 +825,9 @@ function filterCountryOrRegionProxies(nodes) {
         return [];
     }
     
-    // 预编译所有国家/地区的正则表达式
-    const regionRegexes = new Map();
-    for (const region of regionsEnabled) {
-        regionRegexes.set(region, new RegExp(region.keywords.join('|')));
-    }
-    
     return regionsEnabled.map(r => {
-        const rx = regionRegexes.get(r);
+        // 使用预先创建的正则表达式
+        const rx = r._rx;
         const names = nodes.filter(n => rx.test(n.name || "")).map(n => n.name || "");
         return {
             name: r.name,
@@ -938,6 +938,8 @@ var DIALERPROXY = false;
  * @returns {Array} 基本代理组配置
  */
 function buildBaseProxyGroups(testUrl, proxies) {
+    // 一次性取出所有名字数组
+    const names = proxies.map(p => p.name);
     
     // 获取socks5代理节点
     const socks5ProxiesName = filtersocks5ProxiesName(proxies)
@@ -981,22 +983,22 @@ function buildBaseProxyGroups(testUrl, proxies) {
         }
     }
     const baseProxyGroups = []
-    // 筛选所有节点
-    const filteredProxiesName = filterNameByRules(proxies, null)
+    // 筛选所有节点 - 直接使用预先准备的names数组
+    const filteredProxiesName = names;
     //console.log(proxies)
     const typedProxies = filterAllProxies(proxies);
     //console.log(typedProxies)
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     
-    const lowQualityProxiesName = filterNameByRules(typedProxies.lowQualityProxies);
-    const lowLowQualityProxiesName = filterNameByRules(typedProxies.lowLowQualityProxies);
+    const lowQualityProxiesName = typedProxies.lowQualityProxies.map(p => p.name);
+    const lowLowQualityProxiesName = typedProxies.lowLowQualityProxies.map(p => p.name);
     // 这里需要保证剩余的节点线路质量很高
     // 筛选高质量节点
-    const highQualityProxiesName = filterNameByRules(typedProxies.highQualityProxies);
+    const highQualityProxiesName = typedProxies.highQualityProxies.map(p => p.name);
     
     // 筛选家庭宽带节点
-    const householdProxiesName = filterNameByRules(typedProxies.householdProxies);
+    const householdProxiesName = typedProxies.householdProxies.map(p => p.name);
     // 筛选国家或者地区节点 
     const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
     const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.householdProxies]);
