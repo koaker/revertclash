@@ -13,6 +13,7 @@
  */
 const USER_RULES = [
     "DOMAIN-SUFFIX,mnapi.com,DIRECT",
+    "DOMAIN-SUFFIX,7li7li.com,国外网站",
     "DOMAIN-SUFFIX,ieee.org,DIRECT",
     "DOMAIN-SUFFIX,anrunnetwork.com,DIRECT",
     "DOMAIN-SUFFIX,apifox.com,DIRECT",
@@ -808,12 +809,12 @@ function filterCrossProxies(proxies) {
     
     //console.log("筛选后的有效节点", valid)
     //console.log("筛选后的跨域节点", cross)
-    return {valid, cross};
+    return {validAll: valid.concat(cross), valid};
 }
 
 // 为了保持向后兼容，保留filterNotProxies函数
 function filterNotProxies(proxies) {
-    return filterCrossProxies(proxies).valid;
+    return filterCrossProxies(proxies).validAll;
 }
 /* ---------- 国家/地区分组 ---------- */
 function filterCountryOrRegionProxies(nodes) {
@@ -929,8 +930,6 @@ function filterAllProxies(proxies) {
 // 低质量线路 流量便宜，延迟高、ip质量差
 // 家宽 流量不定，延迟不定、ip质量好
 // socks或者need_dialer 没有办法直接连接或者连接质量差 需要中转 ip质量好
-var DIALERPROXY = false;
-
 /**
  * 构建基本代理组
  * @param {string} testUrl "测试URL
@@ -944,7 +943,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 获取socks5代理节点
     const socks5ProxiesName = filtersocks5ProxiesName(proxies)
     if (socks5ProxiesName.length > 0) {
-        DIALERPROXY = true;
         // sock5接近明文传输，全部前置
         for (let i = 0; i < socks5ProxiesName.length; i++) {
             const proxyName = socks5ProxiesName[i];
@@ -958,7 +956,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 获取除socks5之外需要dialer节点
     const needDialerProxiesName = filterNameByRules(proxies, RX.needDialer);
     if (needDialerProxiesName.length > 0) {
-        DIALERPROXY = true;
         const needDialerProxiesNewName = []
         // 将低质量下载节点复制一份，存入到proxies后面
         for (let i = 0; i < needDialerProxiesName.length; i++) {
@@ -1079,6 +1076,14 @@ function buildBaseProxyGroups(testUrl, proxies) {
         makeSelect("国外网站", ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"])
     ]);
     
+    baseProxyGroups.push(
+        makeSelect("前置机场", [], {
+            "include-all": true,
+            url: testUrl,
+            interval: CONFIG.testInterval
+        })
+    )
+    
     finalBaseProxyGroups.push(...baseProxyGroups);
     return finalBaseProxyGroups;
 }
@@ -1177,17 +1182,6 @@ function main(config) {
                 rules.push(`RULE-SET,${iName},${name}`);
             }
         }
-    }
-
-    if (DIALERPROXY) {
-        // 使用增强的makeSelect函数处理前置机场代理组
-        baseProxyGroups.push(
-            makeSelect("前置机场", [], {
-                "include-all": true,
-                url: testUrl,
-                interval: CONFIG.testInterval
-            })
-        )
     }
 
     // 构建最终配置
