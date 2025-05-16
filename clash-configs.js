@@ -574,7 +574,7 @@ const CONFIG = {
     // 自动选择容差 (毫秒)
     tolerance: 20,
     // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
-    balanceStrategy: "sticky-sessions",
+    balanceStrategy: "round-robin",
     // 所有关键词集合
     KEYWORDS: {
         high: HIGH_QUALITY_KEYWORDS,
@@ -600,6 +600,40 @@ const RX = Object.fromEntries(
 const dns = buildDnsConfig(DNS_CONFIG);
 
 // ==================== 辅助函数部分 ====================
+
+/* ---------- 组装 Proxy-Group ---------- */
+function makeSelect(name, proxies, extraOptions = {}) {
+  return {
+    name,
+    type: 'select',
+    proxies,
+    ...extraOptions
+  };
+}
+
+function makeUrlTest(name, proxies, extraOptions = {}) {
+  return {
+    name,
+    type: 'url-test',
+    url: extraOptions.url || CONFIG.testUrl,
+    interval: extraOptions.interval || CONFIG.testInterval,
+    tolerance: extraOptions.tolerance || CONFIG.tolerance,
+    proxies,
+    ...extraOptions
+  };
+}
+
+function makeLoadBalance(name, proxies, extraOptions = {}) {
+  return {
+    name,
+    type: 'load-balance',
+    url: extraOptions.url || CONFIG.testUrl,
+    interval: extraOptions.interval || CONFIG.testInterval,
+    strategy: extraOptions.strategy || CONFIG.balanceStrategy,
+    proxies,
+    ...extraOptions
+  };
+}
 
 /**
  * 构建DNS配置对象
@@ -975,14 +1009,10 @@ function buildBaseProxyGroups(testUrl, proxies) {
         const groupName = "手动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
         
         
-        finalBaseProxyGroups.push({
-            "name": groupName,
-            "type": "select",
-            "proxies": [
-                ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
-                "DIRECT",
-            ]
-        });
+        finalBaseProxyGroups.push(makeSelect(groupName, [
+            ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
+            "DIRECT"
+        ]));
     }
     for (let i = 0; i < MiddleQualitycountryOrRegionLen; i++) {
         const countryOrRegionProxies = MiddleQualitycountryOrRegionProxiesGroups[i];
@@ -995,73 +1025,37 @@ function buildBaseProxyGroups(testUrl, proxies) {
         {
             const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等";
         
-            finalBaseProxyGroups.push({
-                "name": autoGroupName,
-                "type": "url-test",
-                "tolerance": CONFIG.tolerance,
-                "url": testUrl,
-                "interval": CONFIG.testInterval,
-                "proxies": [
-                    ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
-                    "DIRECT",
-                ]
-            });
+            finalBaseProxyGroups.push(makeUrlTest(autoGroupName, [
+                ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
+                "DIRECT"
+            ]));
         }
     }
 
     // 将最基本的放在最后
     baseProxyGroups.push(...[
         // 基本代理组
-        {
-            "name": "手动选择所有节点",
-            "type": "select",
-            "proxies": [
-                ...(filteredProxiesName.length > 0 ? filteredProxiesName : []),
-                "DIRECT"
-            ]
-        },
-        {
-            "name": "低质量下载节点",
-            "type": "url-test",
-            "tolerance": CONFIG.tolerance,
-            "url": testUrl,
-            "interval": CONFIG.testInterval,
-            "proxies": [
-                ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
-                "DIRECT"
-            ]
-        },
-        {
-            "name": "极低质量下载节点-负载均衡测试",
-            "type": "load-balance",
-            "strategy": "round-robin",
-            "url": testUrl,
-            "interval": CONFIG.testInterval,
-            "proxies": [
-                ...(lowLowQualityProxiesName.length > 0 ? lowLowQualityProxiesName : []),
-                "DIRECT"
-            ]
-        },
+        makeSelect("手动选择所有节点", [
+            ...(filteredProxiesName.length > 0 ? filteredProxiesName : []),
+            "DIRECT"
+        ]),
+        makeUrlTest("低质量下载节点", [
+            ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
+            "DIRECT"
+        ]),
+        makeLoadBalance("极低质量下载节点-负载均衡测试", [
+            ...(lowLowQualityProxiesName.length > 0 ? lowLowQualityProxiesName : []),
+            "DIRECT"
+        ]),
         // 高质量节点组
-        {
-            "name": "HighQuality Country 1",
-            "type": "select",
-            "proxies": [
-                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
-                "DIRECT",
-            ]
-        },
-        {
-            "name": "HighQuality Country 2 Auto",
-            "type": "url-test",
-            "tolerance": 10,
-            "url": testUrl,
-            "interval": 150,
-            "proxies": [
-                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
-                "DIRECT",
-            ]
-        },
+        makeSelect("HighQuality Country 1", [
+            ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+            "DIRECT"
+        ]),
+        makeUrlTest("HighQuality Country 2 Auto", [
+            ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+            "DIRECT"
+        ]),
         {
             "name": "家庭宽带",
             "type": "select",
@@ -1070,24 +1064,9 @@ function buildBaseProxyGroups(testUrl, proxies) {
                 ...(householdProxiesName.length > 0 ? householdProxiesName : [])
             ]
         },
-        {
-            "name": "规则外",
-            "type": "select",
-            "proxies": ["国外网站", "国内网站"],
-            "url": "https://www.baidu.com/favicon.ico"
-        },
-        {
-            "name": "国内网站",
-            "type": "select",
-            "proxies": ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
-            "url": "https://www.baidu.com/favicon.ico"
-        },
-        {
-            "name": "国外网站",
-            "type": "select",
-            "proxies": ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"],
-            "url": "https://www.bing.com/favicon.ico"
-        }
+        makeSelect("规则外", ["国外网站", "国内网站"]),
+        makeSelect("国内网站", ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"]),
+        makeSelect("国外网站", ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点"])
     ]);
     
     finalBaseProxyGroups.push(...baseProxyGroups);
@@ -1189,14 +1168,13 @@ function main(config) {
     }
 
     if (DIALERPROXY) {
+        // 使用增强的makeSelect函数处理前置机场代理组
         baseProxyGroups.push(
-            {
-            "name": "前置机场",
-            "type": "select",
-            "include-all": true,
-            "url": testUrl,
-            "interval": CONFIG.testInterval
-            }
+            makeSelect("前置机场", [], {
+                "include-all": true,
+                url: testUrl,
+                interval: CONFIG.testInterval
+            })
         )
     }
 
