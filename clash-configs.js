@@ -6,19 +6,7 @@
  */
 
 // ==================== 用户配置区（可自由修改） ====================
-/**
- * 常用配置选项
- */
-const CONFIG = {
-    // 测试连接URL
-    testUrl: "https://www.google.com",
-    // 自动测试间隔 (秒)
-    testInterval: 300,
-    // 自动选择容差 (毫秒)
-    tolerance: 20,
-    // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
-    balanceStrategy: "sticky-sessions"
-};
+
 /**
  * 用户自定义规则（高优先级）
  * 这些规则会被放置在所有其他规则之前，确保不会被其他规则覆盖
@@ -101,7 +89,11 @@ const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
      "need-dialer"
 ];
-/**
+const CROSS_PROXY_KEYWORDS = [
+    // 线路类型关键词
+    "cross-proxy", "crossproxy", "cross"
+];
+/*
  * 国家或者地区节点关键词列表
  * 用于筛选名称中包含这些关键词的节点作为高质量节点
  */
@@ -215,7 +207,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "必须美国节点：exhentai、openai、claude、gemini、aistudio", 
+        name: "必须美国节点：exhentai、openai、claude、gemini、aistudio、cursor", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,exhentai.org",
@@ -224,6 +216,8 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,anthropic.com",
             "DOMAIN-SUFFIX,claude.ai",
             "DOMAIN-SUFFIX,aistudio.google.com",
+            "DOMAIN-SUFFIX,cursor.com",
+            "PROCESS-NAME,Cursor.exe"
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" ,
@@ -536,7 +530,6 @@ const DNS_CONFIG = {
         '119.29.29.29',                    // Tencent Dnspod
         '223.5.5.5',                       // Ali DNS
         '1.12.12.12',                      // China Telecom
-        "114.114.114.114",
     ],
     
     // DNS隐私保护过滤器
@@ -570,17 +563,38 @@ const DNS_CONFIG = {
     ]
 };
 
+/**
+ * 常用配置选项
+ */
+const CONFIG = {
+    // 测试连接URL
+    testUrl: "https://www.google.com",
+    // 自动测试间隔 (秒)
+    testInterval: 300,
+    // 自动选择容差 (毫秒)
+    tolerance: 20,
+    // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
+    balanceStrategy: "sticky-sessions",
+    // 所有关键词集合
+    KEYWORDS: {
+        high: HIGH_QUALITY_KEYWORDS,
+        low: LOW_QUALITY_KEYWORDS,
+        veryLow: LOW_LOW_QUALITY_KEYWORDS,
+        household: HOUSEHOLE_KEYWORDS,
+        providerLow: LOW_QUALITY__PROVIDER_KEYWORDS,
+        needDialer: NEED_DIALER_KEYWORDS,
+        cross: CROSS_PROXY_KEYWORDS,
+        notProxy: NOT_PROXIES_KEYWORDS
+    }
+};
 // ==================== 系统实现区（一般不需要修改） ====================
 
-const REGEX_CACHE = {
-    highQuality: new RegExp(HIGH_QUALITY_KEYWORDS.join("|"), "i"),
-    lowQuality: new RegExp(LOW_QUALITY_KEYWORDS.join("|"), "i"),
-    lowLowQuality: new RegExp(LOW_LOW_QUALITY_KEYWORDS.join("|"), "i"),
-    notProxy: new RegExp(NOT_PROXIES_KEYWORDS.join("|"), "i"),
-    needDialer: new RegExp(NEED_DIALER_KEYWORDS.join("|"), "i"),
-    lowQualityProvider: new RegExp(LOW_QUALITY__PROVIDER_KEYWORDS.join("|"), "i"),
-    householdProxy: new RegExp(HOUSEHOLE_KEYWORDS.join("|"), "i"),
-};
+// 一次性编译所有正则表达式
+const RX = Object.fromEntries(
+  Object.entries(CONFIG.KEYWORDS).map(
+    ([k, v]) => [k, new RegExp(v.join('|'), 'i')]
+  )
+);
 
 // 构建DNS配置对象
 const dns = buildDnsConfig(DNS_CONFIG);
@@ -738,36 +752,52 @@ function filterNotProxies(proxies) {
         return [];
     }
     //console.log("非空节点")
-    const countryRegex = REGEX_CACHE.notProxy;
     proxies = proxies.filter(proxy => {
         const proxyName = proxy.name || "";
-        return !countryRegex.test(proxyName);
+        return !RX.notProxy.test(proxyName);
     });
     //console.log("筛选后的节点", proxies)
     return proxies;
 }
 
-/**
- * 筛选地区节点 "使用正则表达式优化性能
- * @param {Array} proxies "所有代理节点
- * @returns {Array} 符合条件的高质量节点名称列表
- */
-function filterCountryOrRegionProxies(proxies) {
+function filterCrossProxies(proxies) {
+    //console.log("传入的节点", proxies)
     if (!proxies || !Array.isArray(proxies)) {
+        //console.log("空节点")
         return [];
     }
-    const COUNTRY_OR_REGION_KEYWORDS_FILTERED = COUNTRY_OR_REGION_KEYWORDS.filter(item => item.enable);
-    if (COUNTRY_OR_REGION_KEYWORDS_FILTERED.length === 0) {
+    //console.log("非空节点")
+    proxies = proxies.filter(proxy => {
+        const proxyName = proxy.name || "";
+        return !RX.cross.test(proxyName);
+    });
+    //console.log("筛选后的节点", proxies)
+    return proxies;
+}
+/* ---------- 国家/地区分组 ---------- */
+function filterCountryOrRegionProxies(nodes) {
+    if (!nodes || !Array.isArray(nodes)) {
         return [];
     }
-    return COUNTRY_OR_REGION_KEYWORDS_FILTERED.map(countryRegion => {
-        const countryRegex = new RegExp(countryRegion.keywords.join("|"));
-        const filteredProxiesName = proxies
-            .map(proxy => proxy.name || "")
-            .filter(proxyName => countryRegex.test(proxyName));
-            
-        return filteredProxiesName.length > 0 ? {name :countryRegion.name, enableAuto: countryRegion.enableAuto, proxies: [...filteredProxiesName]} 
-        : {name:countryRegion.name, enableAuto: countryRegion.enableAuto,proxies: ["NULL"]};
+    const regionsEnabled = COUNTRY_OR_REGION_KEYWORDS.filter(r => r.enable);
+    if (regionsEnabled.length === 0) {
+        return [];
+    }
+    
+    // 预编译所有国家/地区的正则表达式
+    const regionRegexes = new Map();
+    for (const region of regionsEnabled) {
+        regionRegexes.set(region, new RegExp(region.keywords.join('|')));
+    }
+    
+    return regionsEnabled.map(r => {
+        const rx = regionRegexes.get(r);
+        const names = nodes.filter(n => rx.test(n.name || "")).map(n => n.name || "");
+        return {
+            name: r.name,
+            enableAuto: r.enableAuto,
+            proxies: names.length ? names : ["NULL"]
+        };
     });
 }
 
@@ -785,7 +815,7 @@ function filterLowQualityProviderProxies(proxies, flag) {
         const parts = proxy.name.split(DIVIDE_KEYWORDS);
         if (parts.length >= 2) {
             const provider = parts[0].trim();
-            if (!REGEX_CACHE.lowQualityProvider.test(provider)) {
+            if (!RX.providerLow.test(provider)) {
                 filteredLowQualityProvidersProxies.otherProxies.push(proxy)
             } else {
                 filteredLowQualityProvidersProxies.lowQualityProviderProxies.push(proxy);
@@ -807,48 +837,45 @@ function filterLowQualityProviderProxies(proxies, flag) {
     lowQualityProviderProxies : [...proxies]
 }
 */
+/* ---------- 一次遍历对节点做完整归类 ---------- */
+function classifyProxies(nodes) {
+  const buckets = {
+    high: [], low: [], veryLow: [], household: [],
+    providerLow: [], needDialer: [], socks5: [], cross: [], other: []
+  };
+  const mapByName = new Map();
+  for (const p of nodes) mapByName.set(p.name, p);
+
+  for (const p of nodes) {
+    const n = p.name || "";
+    if (RX.notProxy.test(n)) continue;
+    if (RX.cross.test(n)) { buckets.cross.push(p); continue; }
+    if (/socks5/i.test(p.type || "")) buckets.socks5.push(p);
+    if (RX.needDialer.test(n)) buckets.needDialer.push(p);
+    else if (RX.high.test(n)) buckets.high.push(p);
+    else if (RX.household.test(n)) buckets.household.push(p);
+    else if (RX.veryLow.test(n)) buckets.veryLow.push(p);
+    else if (RX.low.test(n)) buckets.low.push(p);
+    else buckets.other.push(p);
+  }
+  return { buckets, mapByName };
+}
+
 function filterAllProxies(proxies) {
-    // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
-    const filteredProvidersProxies = filterLowQualityProviderProxies(proxies, false)
-    // proxies已经去除低质量提供商节点
-    proxies = filteredProvidersProxies.otherProxies;
-    //console.log(proxies)
+    // 过滤掉低质量提供商的节点
+    const filteredProvidersProxies = filterLowQualityProviderProxies(proxies, false);
+    
+    // 使用一次遍历对节点做完整归类
+    const { buckets } = classifyProxies(filteredProvidersProxies.otherProxies);
+    
     const returnedProxies = {
-        lowQualityProxies: [...filteredProvidersProxies.lowQualityProviderProxies],
-        lowLowQualityProxies: [],
-        highQualityProxies: [],
-        householdProxies: [],
-        otherProxies: [],
-    }
-    // 暂时不进行判断是否有节点
-    for (let i = 0; i < proxies.length; i++) {
-        const proxy = proxies[i];
-        const proxyName = proxy.name || "";
-        var flag = false;
-        console.log(proxyName+"\n")
-        if (REGEX_CACHE.highQuality.test(proxyName)) {
-            returnedProxies.highQualityProxies.push(proxy);
-            //console.log(proxyName+"high")
-            flag = true;
-        } else if (REGEX_CACHE.householdProxy.test(proxyName)) {
-            returnedProxies.householdProxies.push(proxy);
-           // console.log(proxyName+"household")
-            flag = true;
-        } else if (REGEX_CACHE.lowLowQuality.test(proxyName)) {
-            returnedProxies.lowLowQualityProxies.push(proxy);
-            console.log(proxyName+"lowlow")
-            flag = true;
-        } else if (REGEX_CACHE.lowQuality.test(proxyName)) {
-            returnedProxies.lowQualityProxies.push(proxy);
-            console.log(proxyName+"low")
-            flag = true;
-        } else if (!flag) {
-            returnedProxies.otherProxies.push(proxy);
-           // console.log(proxyName+"other")
-        }
-    }
-
-
+        lowQualityProxies: [...filteredProvidersProxies.lowQualityProviderProxies, ...buckets.low],
+        lowLowQualityProxies: buckets.veryLow,
+        highQualityProxies: buckets.high,
+        householdProxies: buckets.household,
+        otherProxies: buckets.other,
+    };
+    
     return returnedProxies;
 }
 
@@ -885,7 +912,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         }
     }
     // 获取除socks5之外需要dialer节点
-    const needDialerProxiesName = filterNameByRules(proxies, REGEX_CACHE.needDialer);
+    const needDialerProxiesName = filterNameByRules(proxies, RX.needDialer);
     if (needDialerProxiesName.length > 0) {
         DIALERPROXY = true;
         const needDialerProxiesNewName = []
@@ -1133,8 +1160,10 @@ function main(config) {
         };
     }
     //console.log(testUrl,proxies)
+
+    const filteredCrossProxies = filterCrossProxies(proxies);
     // 构建基本代理组
-    const baseProxyGroups = buildBaseProxyGroups(testUrl, proxies);
+    const baseProxyGroups = buildBaseProxyGroups(testUrl, filteredCrossProxies);
 
 
     const configLen = PROXY_RULES.length;
