@@ -141,7 +141,7 @@ const COUNTRY_OR_REGION_KEYWORDS = [
     {
         name : "欧洲系列",
         keywords: ["欧洲", "EU", "Europe", "法国", "FR",
-            "France", "德国", "Germany", "英国", "GB", "United Kingdom", "Italy", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰", "波兰", "土耳其"],
+            "France", "德国", "Germany", "英国", "UK", "United Kingdom", "Italy", "意大利", "西班牙", "ES", "Spain", "荷兰", "NL", "Netherlands", "爱尔兰", "波兰", "土耳其"],
         enable: true,
         enableAuto : false,
     },
