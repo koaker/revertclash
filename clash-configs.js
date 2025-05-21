@@ -54,10 +54,7 @@ const SAVED_RULES = [
     "RULE-SET,proxy,国外网站",
     "MATCH,规则外"
 ]
-/**
- * 高质量节点关键词列表
- * 用于筛选名称中包含这些关键词的节点作为高质量节点
- */
+// 高质量线路
 const HIGH_QUALITY_KEYWORDS = [
     // 线路类型关键词
     "IEPL", "Iepl", "iepl",
@@ -67,38 +64,35 @@ const HIGH_QUALITY_KEYWORDS = [
     "SVIP", "svip", 
     "Svip", "VIP", "vip", "Vip", "Premium", 
     "premium",
-    
-    // 特殊用途关键词
-    "特殊", "特殊线路", "游戏", "Game", "game"
-    
-    // 在此添加更多关键词...
 ];
 // 非常低质量的节点，专门用多线程下载器下载，优先匹配0.0几和0.1的节点。
 const LOW_LOW_QUALITY_KEYWORDS = [
     "无限", "0\\.0\\d+","低质", /*"0\\.1", */
 ];
+// 稍微低一些质量但是稳定的节点
 const LOW_QUALITY_KEYWORDS = [
     "0\\.\\d","低价"
 ];
+// 过滤低质量提供商
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
 ];
+// 过滤低质量节点
 const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友",
      "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测", "已墙", "巴西"
 ];
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生"]
+// 需要用来被链式中转的关键词（家庭宽带之类的）
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
      "need-dialer"
 ];
+// 只能用来前置的节点关键词（机场、脏IP 好线路）
 const CROSS_PROXY_KEYWORDS = [
     // 线路类型关键词
     "cross-proxy", "crossproxy", "cross"
 ];
-/*
- * 国家或者地区节点关键词列表
- * 用于筛选名称中包含这些关键词的节点作为高质量节点
- */
+// 提供商与节点名字之间的分隔符
 const DIVIDE_KEYWORDS = "|-|";
 
 const COUNTRY_OR_REGION_KEYWORDS = [
@@ -597,7 +591,9 @@ const CONFIG = {
         needDialer: NEED_DIALER_KEYWORDS,
         cross: CROSS_PROXY_KEYWORDS,
         notProxy: NOT_PROXIES_KEYWORDS
-    }
+    },
+    EnableFilterNoProxies: true,
+    EnableDialerProxy: true,
 };
 // ==================== 系统实现区（一般不需要修改） ====================
 
@@ -790,19 +786,13 @@ function filtersocks5ProxiesName(proxies) {
     const { socks5Names } = classifyProxies(proxies);
     return socks5Names;
 }
-/**
- * 删除非节点 "使用正则表达式优化性能
- * @param {Array} proxies "所有代理节点
- * @returns {Array} 符合条件的节点名称列表
- */
+
+// 过滤非代理节点并且将带有cross标记的节点放入cross数组
 function filterCrossProxies(proxies) {
-    //console.log("传入的节点", proxies)
     if (!proxies || !Array.isArray(proxies)) {
         //console.log("空节点")
         return {valid: [], cross: []};
     }
-    //console.log("非空节点")
-    
     const valid = [];
     const cross = [];
     
@@ -814,12 +804,10 @@ function filterCrossProxies(proxies) {
             continue;
         }
         
-        // 如果是跨域代理节点放入cross数组，否则放入valid数组
+        // 如果是前置节点放入cross数组，否则放入valid数组
         (RX.cross.test(proxyName) ? cross : valid).push(proxy);
     }
     
-    //console.log("筛选后的有效节点", valid)
-    //console.log("筛选后的跨域节点", cross)
     return {validAll: valid.concat(cross), valid};
 }
 
@@ -954,9 +942,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     
     // 筛选所有节点 - 直接使用预先准备的names数组
     const filteredProxiesName = proxies.map(p => p.name);
-    //console.log(proxies)
     const typedProxies = filterAllProxies(proxies);
-    //console.log(typedProxies)
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     
@@ -971,7 +957,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 筛选国家或者地区节点 
     const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies,...typedProxies.lowQualityProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
     const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies]);
-    //console.log(countryOrRegionProxiesGroups)
+
     const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
     const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
@@ -1035,22 +1021,14 @@ function buildBaseProxyGroups(testUrl, proxies) {
             ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
             "DIRECT"
         ]),
-        {
-            "name": "家庭宽带",
-            "type": "select",
-            "proxies": [
-                "DIRECT",
-                ...(householdProxiesName.length > 0 ? householdProxiesName : [])
-            ]
-        },
-        {
-            "name": "家庭宽带2",
-            "type": "select",
-            "proxies": [
-                "DIRECT",
-                ...(householdProxiesName.length > 0 ? householdProxiesName : [])
-            ]
-        },
+        makeSelect("家庭宽带", [
+                ...(householdProxiesName.length > 0 ? householdProxiesName : []),
+                "DIRECT"
+        ]),
+        makeSelect("家庭宽带2", [
+            ...(householdProxiesName.length > 0 ? householdProxiesName : []),
+            "DIRECT"
+        ]),
         makeSelect("规则外", ["国外网站", "国内网站"]),
         makeSelect("国内网站", ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点", "家庭宽带", "家庭宽带2"]),
         makeSelect("国外网站", ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点", "家庭宽带", "家庭宽带2"])
@@ -1094,14 +1072,60 @@ function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualit
     return countryOrRegionGroupNames
 }
 
+// 添加链式代理节点
+function addDialerProxy(proxies) {
+    // 获取socks5代理节点
+    const socks5ProxiesName = filtersocks5ProxiesName(proxies)
+    if (socks5ProxiesName.length > 0) {
+        // sock5接近明文传输，全部前置
+        for (let i = 0; i < socks5ProxiesName.length; i++) {
+            const proxyName = socks5ProxiesName[i];
+            for (let j = 0; j < proxies.length; j++) {
+                if (proxies[j].name === proxyName) {
+                    proxies[j]["dialer-proxy"] = "前置机场";
+                }
+            }
+        }
+    }
+    // 获取除socks5之外需要dialer节点
+    const needDialerProxiesName = filterNameByRules(proxies, RX.needDialer);
+    if (needDialerProxiesName.length > 0) {
+        // 将低质量下载节点复制一份，存入到proxies后面
+        for (let i = 0; i < needDialerProxiesName.length; i++) {
+            const proxyName = needDialerProxiesName[i];
+            const proxyIndex = proxies.findIndex(p => p.name === proxyName);
+            
+            if (proxyIndex !== -1) {
+                // 深拷贝原始代理节点
+                const newProxy = JSON.parse(JSON.stringify(proxies[proxyIndex]));;
+                
+                // 修改新节点的名称和属性
+                newProxy.name = proxyName + "_dialer";
+                newProxy["dialer-proxy"] = "前置机场";
+                newProxy["skip-cert-verify"] = true;
+                if (newProxy["type"] === "vless" && newProxy["udp"] === true) {
+                    delete(newProxy.udp)
+                }
+                // 将新节点添加到数组
+                proxies.push(newProxy);
+            }
+        }
+    }
+
+    return proxies;
+}
+
 /*主函数：生成完整的Clash配置 @param {Object} config "输入配置 @returns {Object} 完整的Clash配置*/
 function main(config) {
     let { proxies } = config;
     //console.log(proxies)
     const testUrl = CONFIG.testUrl;
-    // 过滤不是正常节点的节点
-    proxies = filterNotProxies(proxies)
-    //console.log("过滤后的节点", proxies)
+
+    // 过滤不是正常节点的节点, 由CONFIG中的EnableFilterNoProxies决定
+    if (CONFIG.EnableFilterNoProxies) {
+        proxies = filterNotProxies(proxies)
+    }
+
     // 初始化规则和代理组
     const rules = USER_RULES.slice();
     const proxyGroups = [];
@@ -1133,51 +1157,11 @@ function main(config) {
             path: `./providers/rule/${def.name}.yaml`
         };
     }
-    //console.log(testUrl,proxies)
-
-    
-    // 获取socks5代理节点
-    const socks5ProxiesName = filtersocks5ProxiesName(proxies)
-    if (socks5ProxiesName.length > 0) {
-        // sock5接近明文传输，全部前置
-        for (let i = 0; i < socks5ProxiesName.length; i++) {
-            const proxyName = socks5ProxiesName[i];
-            for (let j = 0; j < proxies.length; j++) {
-                if (proxies[j].name === proxyName) {
-                    proxies[j]["dialer-proxy"] = "前置机场";
-                }
-            }
-        }
+    if (CONFIG.EnableDialerProxy) {
+        proxies = addDialerProxy(proxies);
     }
-    // 获取除socks5之外需要dialer节点
-    const needDialerProxiesName = filterNameByRules(proxies, RX.needDialer);
-    if (needDialerProxiesName.length > 0) {
-        const needDialerProxiesNewName = []
-        // 将低质量下载节点复制一份，存入到proxies后面
-        for (let i = 0; i < needDialerProxiesName.length; i++) {
-            const proxyName = needDialerProxiesName[i];
-            const proxyIndex = proxies.findIndex(p => p.name === proxyName);
-            
-            if (proxyIndex !== -1) {
-                // 深拷贝原始代理节点
-                const newProxy = JSON.parse(JSON.stringify(proxies[proxyIndex]));;
-                
-                // 修改新节点的名称和属性
-                newProxy.name = proxyName + "_dialer";
-                newProxy["dialer-proxy"] = "前置机场";
-                newProxy["skip-cert-verify"] = true;
-                if (newProxy["type"] === "vless" && newProxy["udp"] === true) {
-                    delete(newProxy.udp)
-                }
-                // 将新节点添加到数组
-                proxies.push(newProxy);
-                needDialerProxiesNewName.push(newProxy.name);
-            }
-        }
-    }
-
     const filteredCrossResult = filterCrossProxies(proxies);
-    // 构建基本代理组（使用valid数组，即非跨域代理节点）
+    // 构建基本代理组（使用valid数组，即非cross代理节点）
     const baseProxyGroups = buildBaseProxyGroups(testUrl, filteredCrossResult.valid);
     
     // 注意：cross数组可以在这里用于其他目的，目前代码中没有使用到
