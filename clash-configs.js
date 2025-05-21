@@ -625,7 +625,7 @@ function makeSelect(name, proxies, extraOptions = {}) {
 }
 
 function makeUrlTest(name, proxies, extraOptions = {}) {
-  return {
+    return {
     name,
     type: 'url-test',
     url: extraOptions.url || CONFIG.testUrl,
@@ -879,11 +879,9 @@ function classifyProxies(nodes) {
     high: [], low: [], veryLow: [], household: [],
     providerLow: [], needDialer: [], socks5: [], cross: [], other: []
   };
-  const mapByName = new Map();
   // 预先创建 socks5Names 数组，同时收集节点信息避免二次遍历
   const socks5Names = [];
   
-  for (const p of nodes) mapByName.set(p.name, p);
 
   for (const p of nodes) {
     const n = p.name || "";
@@ -903,7 +901,7 @@ function classifyProxies(nodes) {
     else if (RX.low.test(n)) buckets.low.push(p);
     else buckets.other.push(p);
   }
-  return { buckets, mapByName, socks5Names };
+  return { buckets, socks5Names };
 }
 
 function filterAllProxies(proxies) {
@@ -951,18 +949,18 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 这里需要保证剩余的节点线路质量很高
     // 筛选高质量节点
     const highQualityProxiesName = typedProxies.highQualityProxies.map(p => p.name);
-    
     // 筛选家庭宽带节点
     const householdProxiesName = typedProxies.householdProxies.map(p => p.name);
-    // 筛选国家或者地区节点 
-    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies,...typedProxies.lowQualityProxies, ...typedProxies.householdProxies,...typedProxies.highQualityProxies]);
+
+    // 筛选国家或者地区节点
+    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies, ...typedProxies.highQualityProxies]);
+    // 自动不希望筛选贵的线路
     const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies]);
 
-    const countryOrRegionGroupNames = getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups);
     const countryOrRegionLen = countryOrRegionProxiesGroups.length;
     const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
 
-
+    const countryOrRegionGroupNames = []
     const finalBaseProxyGroups = [];
     
     for (let i = 0; i < countryOrRegionLen; i++) {
@@ -972,7 +970,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
             continue;
         }
         const groupName = "手动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
-        
+        countryOrRegionGroupNames.push(groupName);
         
         finalBaseProxyGroups.push(makeSelect(groupName, [
             ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
@@ -989,7 +987,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         if (countryOrRegionProxies.enableAuto) 
         {
             const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等";
-        
+            countryOrRegionGroupNames.push(autoGroupName);
             finalBaseProxyGroups.push(makeUrlTest(autoGroupName, [
                 ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
                 "DIRECT"
@@ -1044,32 +1042,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
     
     finalBaseProxyGroups.push(...baseProxyGroups);
     return finalBaseProxyGroups;
-}
-
-/* 获得国家或者区域组的名称并处理输出 输入国家区域组 输出名称组*/
-function getCountryOrRegionGroupNames(countryOrRegionProxiesGroups, MiddleQualitycountryOrRegionProxiesGroups) {
-    const countryOrRegionGroupNames = [];
-    const countryOrRegionLen = countryOrRegionProxiesGroups.length;
-
-    
-    for (let i = 0; i < countryOrRegionLen; i++) {
-
-        if (countryOrRegionProxiesGroups[i].proxies[0] === "NULL") {
-            continue;
-        }
-        
-        const groupName = "手动选择"+countryOrRegionProxiesGroups[i].name+"节点，节点质量中等偏上";
-        
-        countryOrRegionGroupNames.push(groupName);
-
-        // 当enableAuto为true时，添加自动选择节点组
-        if (MiddleQualitycountryOrRegionProxiesGroups[i].enableAuto && MiddleQualitycountryOrRegionProxiesGroups[i].proxies[0] !== "NULL") {
-            const autoGroupName = "自动选择"+MiddleQualitycountryOrRegionProxiesGroups[i].name+"节点，节点质量中等";
-            countryOrRegionGroupNames.push(autoGroupName);
-        }
-        
-    }
-    return countryOrRegionGroupNames
 }
 
 // 添加链式代理节点
@@ -1160,9 +1132,8 @@ function main(config) {
     if (CONFIG.EnableDialerProxy) {
         proxies = addDialerProxy(proxies);
     }
-    const filteredCrossResult = filterCrossProxies(proxies);
     // 构建基本代理组（使用valid数组，即非cross代理节点）
-    const baseProxyGroups = buildBaseProxyGroups(testUrl, filteredCrossResult.valid);
+    const baseProxyGroups = buildBaseProxyGroups(testUrl, filterCrossProxies(proxies).valid);
     
     // 注意：cross数组可以在这里用于其他目的，目前代码中没有使用到
 
