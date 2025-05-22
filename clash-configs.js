@@ -523,6 +523,40 @@ const PROXY_RULES = [
 ];
 
 /**
+ * 常用配置选项
+ */
+const CONFIG = {
+    // 测试连接URL
+    testUrl: "https://www.google.com",
+    // 自动测试间隔 (秒)
+    testInterval: 300,
+    // 自动选择容差 (毫秒)
+    tolerance: 20,
+    // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
+    balanceStrategy: "round-robin",
+    // 所有关键词集合
+    KEYWORDS: {
+        high: HIGH_QUALITY_KEYWORDS,
+        low: LOW_QUALITY_KEYWORDS,
+        veryLow: LOW_LOW_QUALITY_KEYWORDS,
+        household: HOUSEHOLE_KEYWORDS,
+        providerLow: LOW_QUALITY__PROVIDER_KEYWORDS,
+        needDialer: NEED_DIALER_KEYWORDS,
+        cross: CROSS_PROXY_KEYWORDS,
+        notProxy: NOT_PROXIES_KEYWORDS,
+        ipInChina:IP_IN_CHINA_KEYWORDS
+    },
+    EnableFilterNoProxies: true,
+    EnableDialerProxy: true,
+    EnableFilterVeryLowQualityProxies: true,
+    EnableFilterLowQualityProxies: true,
+    EnableFilterHighQualityProxies: true,
+    EnableFilterHouseholdProxies: true,
+    EnableFilterIpInChinaProxies: true,
+    EnableFilterCountryProxies: true,
+};
+
+/**
  * DNS 配置
  * 可根据需要修改DNS服务器
  */
@@ -574,39 +608,6 @@ const DNS_CONFIG = {
     ]
 };
 
-/**
- * 常用配置选项
- */
-const CONFIG = {
-    // 测试连接URL
-    testUrl: "https://www.google.com",
-    // 自动测试间隔 (秒)
-    testInterval: 300,
-    // 自动选择容差 (毫秒)
-    tolerance: 20,
-    // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
-    balanceStrategy: "round-robin",
-    // 所有关键词集合
-    KEYWORDS: {
-        high: HIGH_QUALITY_KEYWORDS,
-        low: LOW_QUALITY_KEYWORDS,
-        veryLow: LOW_LOW_QUALITY_KEYWORDS,
-        household: HOUSEHOLE_KEYWORDS,
-        providerLow: LOW_QUALITY__PROVIDER_KEYWORDS,
-        needDialer: NEED_DIALER_KEYWORDS,
-        cross: CROSS_PROXY_KEYWORDS,
-        notProxy: NOT_PROXIES_KEYWORDS,
-        ipInChina:IP_IN_CHINA_KEYWORDS
-    },
-    EnableFilterNoProxies: true,
-    EnableDialerProxy: true,
-    EnableFilterVeryLowQualityProxies: true,
-    EnableFilterLowQualityProxies: true,
-    EnableFilterHighQualityProxies: true,
-    EnableFilterHouseholdProxies: true,
-    EnableFilterIpInChinaProxies: true,
-    EnableFilterCountryProxies: true,
-};
 // ==================== 系统实现区（一般不需要修改） ====================
 
 // 一次性编译所有正则表达式
@@ -961,6 +962,12 @@ function buildBaseProxyGroups(testUrl, proxies) {
     
     // 筛选所有节点 - 直接使用预先准备的names数组
     const ProxiesName = proxies.map(p => p.name);
+    baseProxyGroups.push(
+        makeSelect("手动选择所有节点", [
+        ...(ProxiesName.length > 0 ? ProxiesName : []),
+        "DIRECT"
+        ])
+    )
     const typedProxies = filterAllProxies(proxies);
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
@@ -1085,10 +1092,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 将最基本的放在最后
     baseProxyGroups.push(...[
         // 基本代理组
-        makeSelect("手动选择所有节点", [
-            ...(ProxiesName.length > 0 ? ProxiesName : []),
-            "DIRECT"
-        ]),
         makeSelect("规则外", ["国外网站", "国内网站"]),
         makeSelect("国内网站", ["DIRECT", ...finalBaseProxyGroupName, "手动选择所有节点"]),
         makeSelect("国外网站", [...finalBaseProxyGroupName, "手动选择所有节点", "DIRECT"])
