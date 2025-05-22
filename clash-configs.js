@@ -92,6 +92,11 @@ const CROSS_PROXY_KEYWORDS = [
     // 线路类型关键词
     "cross-proxy", "crossproxy", "cross"
 ];
+// 送中节点关键词
+const IP_IN_CHINA_KEYWORDS = [
+    // 线路类型关键词
+    "送中"
+];
 // 提供商与节点名字之间的分隔符
 const DIVIDE_KEYWORDS = "|-|";
 
@@ -590,10 +595,17 @@ const CONFIG = {
         providerLow: LOW_QUALITY__PROVIDER_KEYWORDS,
         needDialer: NEED_DIALER_KEYWORDS,
         cross: CROSS_PROXY_KEYWORDS,
-        notProxy: NOT_PROXIES_KEYWORDS
+        notProxy: NOT_PROXIES_KEYWORDS,
+        ipInChina:IP_IN_CHINA_KEYWORDS
     },
     EnableFilterNoProxies: true,
     EnableDialerProxy: true,
+    EnableFilterVeryLowQualityProxies: true,
+    EnableFilterLowQualityProxies: true,
+    EnableFilterHighQualityProxies: true,
+    EnableFilterHouseholdProxies: true,
+    EnableFilterIpInChinaProxies: true,
+    EnableFilterCountryProxies: true,
 };
 // ==================== 系统实现区（一般不需要修改） ====================
 
@@ -877,7 +889,8 @@ function filterLowQualityProviderProxies(proxies, flag) {
 function classifyProxies(nodes) {
   const buckets = {
     high: [], low: [], veryLow: [], household: [],
-    providerLow: [], needDialer: [], socks5: [], cross: [], other: []
+    providerLow: [], needDialer: [], socks5: [], cross: [], other: [],
+    ipInChina:[],
   };
   // 预先创建 socks5Names 数组，同时收集节点信息避免二次遍历
   const socks5Names = [];
@@ -895,10 +908,17 @@ function classifyProxies(nodes) {
     }
     
     if (RX.needDialer.test(n)) buckets.needDialer.push(p);
+    if (RX.ipInChina.test(n)) buckets.ipInChina.push(p);
+    if (RX.household.test(n)) buckets.household.push(p);
     if (RX.high.test(n)) buckets.high.push(p);
-    else if (RX.household.test(n)) buckets.household.push(p);
-    else if (RX.veryLow.test(n)) buckets.veryLow.push(p);
-    else if (RX.low.test(n)) buckets.low.push(p);
+    else if (RX.veryLow.test(n)||RX.low.test(n)) {
+        if (RX.veryLow.test(n)) {
+            buckets.veryLow.push(p)
+        }
+        if (RX.low.test(n)) {
+            buckets.low.push(p)
+        }
+    }
     else buckets.other.push(p);
   }
   return { buckets, socks5Names };
@@ -917,6 +937,7 @@ function filterAllProxies(proxies) {
         highQualityProxies: buckets.high,
         householdProxies: buckets.household,
         otherProxies: buckets.other,
+        ipInChinaProxies: buckets.ipInChina,
     };
     
     return returnedProxies;
@@ -939,97 +960,146 @@ function buildBaseProxyGroups(testUrl, proxies) {
     const baseProxyGroups = []
     
     // 筛选所有节点 - 直接使用预先准备的names数组
-    const filteredProxiesName = proxies.map(p => p.name);
+    const ProxiesName = proxies.map(p => p.name);
     const typedProxies = filterAllProxies(proxies);
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     
-    const lowQualityProxiesName = typedProxies.lowQualityProxies.map(p => p.name);
-    const lowLowQualityProxiesName = typedProxies.lowLowQualityProxies.map(p => p.name);
-    // 这里需要保证剩余的节点线路质量很高
-    // 筛选高质量节点
-    const highQualityProxiesName = typedProxies.highQualityProxies.map(p => p.name);
-    // 筛选家庭宽带节点
-    const householdProxiesName = typedProxies.householdProxies.map(p => p.name);
-
-    // 筛选国家或者地区节点
-    const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies, ...typedProxies.highQualityProxies]);
-    // 自动不希望筛选贵的线路
-    const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies]);
-
-    const countryOrRegionLen = countryOrRegionProxiesGroups.length;
-    const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
-
-    const countryOrRegionGroupNames = []
-    const finalBaseProxyGroups = [];
+    const finalBaseProxyGroupName = [
+        //"HighQuality Country 1", "HighQuality Country 2 Auto",
+        //...countryOrRegionGroupNames,
+        //...(CONFIG.EnableFilterLowQualityProxies?["低质量下载节点"]:[]),
+        //...(CONFIG.EnableFilterVeryLowQualityProxies?["极低质量下载节点-负载均衡测试"]:[]), 
+        "手动选择所有节点",
+        //"家庭宽带",
+        //"家庭宽带2"
+    ]
     
-    for (let i = 0; i < countryOrRegionLen; i++) {
-        const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
-
-        if (countryOrRegionProxies.proxies[0] === "NULL") {
-            continue;
-        }
-        const groupName = "手动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
-        countryOrRegionGroupNames.push(groupName);
-        
-        finalBaseProxyGroups.push(makeSelect(groupName, [
-            ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
-            "DIRECT"
-        ]));
+    // 筛选高质量节点
+    if (CONFIG.EnableFilterHighQualityProxies) {
+        const highQualityProxiesName = typedProxies.highQualityProxies.map(p => p.name);
+        baseProxyGroups.push(...[
+            makeSelect("HighQuality Country 1", [
+                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+                "DIRECT"
+            ]),
+            makeUrlTest("HighQuality Country 2 Auto", [
+                ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
+                "DIRECT"
+            ]),
+        ]);
+        finalBaseProxyGroupName.push("HighQuality Country 1")
+        finalBaseProxyGroupName.push("HighQuality Country 2 Auto")
     }
-    for (let i = 0; i < MiddleQualitycountryOrRegionLen; i++) {
-        const countryOrRegionProxies = MiddleQualitycountryOrRegionProxiesGroups[i];
+    
 
-        if (countryOrRegionProxies.proxies[0] === "NULL") {
-            continue;
-        }
-        // 当enableAuto为true时，添加自动选择节点组
-        if (countryOrRegionProxies.enableAuto) 
-        {
-            const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等";
-            countryOrRegionGroupNames.push(autoGroupName);
-            finalBaseProxyGroups.push(makeUrlTest(autoGroupName, [
+    if (CONFIG.EnableFilterLowQualityProxies) {
+        const lowQualityProxiesName = typedProxies.lowQualityProxies.map(p => p.name);
+        baseProxyGroups.push(
+            makeUrlTest("低质量下载节点", [
+                ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
+                "DIRECT"
+            ]),
+        )
+        finalBaseProxyGroupName.push("低质量下载节点")
+    }
+
+    if (CONFIG.EnableFilterVeryLowQualityProxies) {
+        const lowLowQualityProxiesName = typedProxies.lowLowQualityProxies.map(p => p.name);
+        baseProxyGroups.push(
+            makeLoadBalance("极低质量下载节点-负载均衡测试", [
+                ...(lowLowQualityProxiesName.length > 0 ? lowLowQualityProxiesName : []),
+                "DIRECT"
+            ]),
+        )
+        finalBaseProxyGroupName.push("极低质量下载节点-负载均衡测试")
+    }
+
+    if (CONFIG.EnableFilterIpInChinaProxies) {
+        const ipInChinaProxiesName = typedProxies.ipInChinaProxies.map(p => p.name)
+        baseProxyGroups.push(
+            makeSelect("送中", [
+                ...(ipInChinaProxiesName.length > 0 ? ipInChinaProxiesName : []),
+                "DIRECT"
+            ])
+        )
+        finalBaseProxyGroupName.push("送中")
+    }
+    
+
+    // 筛选家庭宽带节点
+    if (CONFIG.EnableFilterHouseholdProxies) {
+        const householdProxiesName = typedProxies.householdProxies.map(p => p.name);
+        baseProxyGroups.push(...[
+            makeSelect("家庭宽带", [
+                ...(householdProxiesName.length > 0 ? householdProxiesName : []),
+                "DIRECT"
+            ]),
+            makeSelect("家庭宽带2", [
+                ...(householdProxiesName.length > 0 ? householdProxiesName : []),
+                "DIRECT"
+            ])
+        ]);
+        finalBaseProxyGroupName.push("家庭宽带")
+        finalBaseProxyGroupName.push("家庭宽带2")
+    }
+    
+    const finalBaseProxyGroups = [];
+    if (CONFIG.EnableFilterCountryProxies) {
+        // 筛选国家或者地区节点
+        const countryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies, ...typedProxies.highQualityProxies]);
+        // 自动不希望筛选贵的线路
+        const MiddleQualitycountryOrRegionProxiesGroups = filterCountryOrRegionProxies([...typedProxies.otherProxies, ...typedProxies.lowQualityProxies, ...typedProxies.householdProxies]);
+
+        const countryOrRegionLen = countryOrRegionProxiesGroups.length;
+        const MiddleQualitycountryOrRegionLen = MiddleQualitycountryOrRegionProxiesGroups.length;
+
+        const countryOrRegionGroupNames = []
+        
+        for (let i = 0; i < countryOrRegionLen; i++) {
+            const countryOrRegionProxies = countryOrRegionProxiesGroups[i];
+
+            if (countryOrRegionProxies.proxies[0] === "NULL") {
+                continue;
+            }
+            const groupName = "手动选择"+countryOrRegionProxies.name+"节点，节点质量中等偏上";
+            countryOrRegionGroupNames.push(groupName);
+            
+            finalBaseProxyGroups.push(makeSelect(groupName, [
                 ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
                 "DIRECT"
             ]));
         }
-    }
+        for (let i = 0; i < MiddleQualitycountryOrRegionLen; i++) {
+            const countryOrRegionProxies = MiddleQualitycountryOrRegionProxiesGroups[i];
 
+            if (countryOrRegionProxies.proxies[0] === "NULL") {
+                continue;
+            }
+            // 当enableAuto为true时，添加自动选择节点组
+            if (countryOrRegionProxies.enableAuto) 
+            {
+                const autoGroupName = "自动选择"+countryOrRegionProxies.name+"节点，节点质量中等";
+                countryOrRegionGroupNames.push(autoGroupName);
+                finalBaseProxyGroups.push(makeUrlTest(autoGroupName, [
+                    ...(countryOrRegionProxies.proxies[0] !== "NULL" ? countryOrRegionProxies.proxies : []),
+                    "DIRECT"
+                ]));
+            }
+        }
+        finalBaseProxyGroupName.push(...countryOrRegionGroupNames)
+    }
+    
     // 将最基本的放在最后
     baseProxyGroups.push(...[
         // 基本代理组
         makeSelect("手动选择所有节点", [
-            ...(filteredProxiesName.length > 0 ? filteredProxiesName : []),
-            "DIRECT"
-        ]),
-        makeUrlTest("低质量下载节点", [
-            ...(lowQualityProxiesName.length > 0 ? lowQualityProxiesName : []),
-            "DIRECT"
-        ]),
-        makeLoadBalance("极低质量下载节点-负载均衡测试", [
-            ...(lowLowQualityProxiesName.length > 0 ? lowLowQualityProxiesName : []),
-            "DIRECT"
-        ]),
-        // 高质量节点组
-        makeSelect("HighQuality Country 1", [
-            ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
-            "DIRECT"
-        ]),
-        makeUrlTest("HighQuality Country 2 Auto", [
-            ...(highQualityProxiesName.length > 0 ? highQualityProxiesName : []),
-            "DIRECT"
-        ]),
-        makeSelect("家庭宽带", [
-                ...(householdProxiesName.length > 0 ? householdProxiesName : []),
-                "DIRECT"
-        ]),
-        makeSelect("家庭宽带2", [
-            ...(householdProxiesName.length > 0 ? householdProxiesName : []),
+            ...(ProxiesName.length > 0 ? ProxiesName : []),
             "DIRECT"
         ]),
         makeSelect("规则外", ["国外网站", "国内网站"]),
-        makeSelect("国内网站", ["DIRECT", "HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点", "家庭宽带", "家庭宽带2"]),
-        makeSelect("国外网站", ["HighQuality Country 1", "HighQuality Country 2 Auto", ...countryOrRegionGroupNames, "低质量下载节点", "极低质量下载节点-负载均衡测试", "手动选择所有节点", "家庭宽带", "家庭宽带2"])
+        makeSelect("国内网站", ["DIRECT", ...finalBaseProxyGroupName]),
+        makeSelect("国外网站", [...finalBaseProxyGroupName, "DIRECT"])
     ]);
     
     baseProxyGroups.push(
