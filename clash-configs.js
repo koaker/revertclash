@@ -965,15 +965,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     
-    const finalBaseProxyGroupName = [
-        //"HighQuality Country 1", "HighQuality Country 2 Auto",
-        //...countryOrRegionGroupNames,
-        //...(CONFIG.EnableFilterLowQualityProxies?["低质量下载节点"]:[]),
-        //...(CONFIG.EnableFilterVeryLowQualityProxies?["极低质量下载节点-负载均衡测试"]:[]), 
-        "手动选择所有节点",
-        //"家庭宽带",
-        //"家庭宽带2"
-    ]
+    const finalBaseProxyGroupName = []
     
     // 筛选高质量节点
     if (CONFIG.EnableFilterHighQualityProxies) {
@@ -1043,7 +1035,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         finalBaseProxyGroupName.push("家庭宽带")
         finalBaseProxyGroupName.push("家庭宽带2")
     }
-    
+
     const finalBaseProxyGroups = [];
     if (CONFIG.EnableFilterCountryProxies) {
         // 筛选国家或者地区节点
@@ -1098,8 +1090,8 @@ function buildBaseProxyGroups(testUrl, proxies) {
             "DIRECT"
         ]),
         makeSelect("规则外", ["国外网站", "国内网站"]),
-        makeSelect("国内网站", ["DIRECT", ...finalBaseProxyGroupName]),
-        makeSelect("国外网站", [...finalBaseProxyGroupName, "DIRECT"])
+        makeSelect("国内网站", ["DIRECT", ...finalBaseProxyGroupName, "手动选择所有节点"]),
+        makeSelect("国外网站", [...finalBaseProxyGroupName, "手动选择所有节点", "DIRECT"])
     ]);
     
     baseProxyGroups.push(
@@ -1109,7 +1101,6 @@ function buildBaseProxyGroups(testUrl, proxies) {
             interval: CONFIG.testInterval
         })
     )
-    
     finalBaseProxyGroups.push(...baseProxyGroups);
     return finalBaseProxyGroups;
 }
