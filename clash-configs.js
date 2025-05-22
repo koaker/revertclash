@@ -65,11 +65,11 @@ const HIGH_QUALITY_KEYWORDS = [
     "Svip", "VIP", "vip", "Vip", "Premium", 
     "premium",
 ];
-// 非常低质量的节点，专门用多线程下载器下载，优先匹配0.0几和0.1的节点。
+// 非常低质量的节点，专门用多线程下载器下载，优先匹配0.01-0.09的节点。
 const LOW_LOW_QUALITY_KEYWORDS = [
     "无限", "0\\.0\\d+","低质", /*"0\\.1", */
 ];
-// 稍微低一些质量但是稳定的节点
+// 稍微低一些质量但是稳定的节点，建议用来看视频
 const LOW_QUALITY_KEYWORDS = [
     "0\\.\\d","低价"
 ];
@@ -77,10 +77,11 @@ const LOW_QUALITY_KEYWORDS = [
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质"
 ];
-// 过滤低质量节点
+// 过滤不是节点的节点配置
 const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友",
      "编辑", "谢谢", "不通", "限制", "剩余", "公告", "套餐", "算法", "实测", "已墙", "巴西"
 ];
+// 过滤家宽节点
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生"]
 // 需要用来被链式中转的关键词（家庭宽带之类的）
 const NEED_DIALER_KEYWORDS = [
@@ -99,7 +100,7 @@ const IP_IN_CHINA_KEYWORDS = [
 ];
 // 提供商与节点名字之间的分隔符
 const DIVIDE_KEYWORDS = "|-|";
-
+// 国家或者区域过滤关键词，enable代表过滤这个地区， enableauto代表自动选择是否开启
 const COUNTRY_OR_REGION_KEYWORDS = [
     {
         name : "香港",
