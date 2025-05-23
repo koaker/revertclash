@@ -75,7 +75,7 @@ const LOW_QUALITY_KEYWORDS = [
 ];
 // 过滤低质量提供商
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
-    "低质"
+    "低质量提供商"
 ];
 // 过滤不是节点的节点配置
 const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠道", "测试", "重置", "周期", "进群", "订阅", "车友",
@@ -236,18 +236,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,i.pximg.net",
             "DOMAIN-SUFFIX,18comic.vip",
         ]
-    },
-    { 
-        name: "塔科夫、你画我猜、Steam、apex", 
-        gfw : true,
-        payload:  [
-            "DOMAIN-SUFFIX,eft-project.com",
-            "DOMAIN-SUFFIX,escapefromtarkov.com",
-            "DOMAIN,b47db.playfabapi.com",
-            "IP-CIDR,8.218.91.138/22",
-            "PROCESS-NAME,r5apex_dx12.exe"
-        ],
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
         name: "建议走低质量节点：下载服务器列表 包括各种游戏下载、youtube视频来源分流（不影响youtube本身）", 
@@ -472,7 +460,6 @@ const PROXY_RULES = [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Facebook/Facebook_No_Resolve.yaml"
         ]
     },
-    // 常用网站分组
     { 
         name: "程序员需要:github、huggingface、docker、civitai", 
         gfw : true,
@@ -503,7 +490,18 @@ const PROXY_RULES = [
         ],
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml" 
     },
-    
+    { 
+        name: "塔科夫、你画我猜、Steam、apex", 
+        gfw : true,
+        payload:  [
+            "DOMAIN-SUFFIX,eft-project.com",
+            "DOMAIN-SUFFIX,escapefromtarkov.com",
+            "DOMAIN,b47db.playfabapi.com",
+            "IP-CIDR,8.218.91.138/22",
+            "PROCESS-NAME,r5apex_dx12.exe"
+        ],
+        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
+    },
     { 
         name: "Cloudflare", 
         gfw : true,
@@ -933,6 +931,7 @@ function filterAllProxies(proxies) {
     // 使用一次遍历对节点做完整归类
     const { buckets } = classifyProxies(filteredProvidersProxies.otherProxies);
     
+    console.log(buckets.low)
     const returnedProxies = {
         lowQualityProxies: buckets.low,
         lowLowQualityProxies: [...buckets.veryLow, ...filteredProvidersProxies.lowQualityProviderProxies],
