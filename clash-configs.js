@@ -546,12 +546,12 @@ const CONFIG = {
         ipInChina:IP_IN_CHINA_KEYWORDS
     },
     EnableFilterNoProxies: true,
-    EnableDialerProxy: false,
+    EnableDialerProxy: true,
     EnableFilterVeryLowQualityProxies: true,
     EnableFilterLowQualityProxies: true,
-    EnableFilterHighQualityProxies: false,
+    EnableFilterHighQualityProxies: true,
     EnableFilterHouseholdProxies: true,
-    EnableFilterIpInChinaProxies: false,
+    EnableFilterIpInChinaProxies: true,
     EnableFilterCountryProxies: true,
 };
 
