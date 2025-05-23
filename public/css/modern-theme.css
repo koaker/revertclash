@@ -1,0 +1,256 @@
+/**
+ * RevertClash 现代主题样式
+ * 为RevertClash提供现代化的视觉体验
+ */
+
+:root {
+  /* 现代主色调 - 使用更柔和的蓝色 */
+  --primary-color: #4361ee;
+  --primary-hover: #3a56d4;
+  --primary-light: #eef2ff;
+  
+  /* 辅助色调 - 更鲜明的对比 */
+  --success-color: #2ec4b6;
+  --danger-color: #e63946;
+  --warning-color: #ff9f1c;
+  --info-color: #4cc9f0;
+  
+  /* 中性色调 - 更柔和的灰度 */
+  --dark: #2b2d42;
+  --secondary: #8d99ae;
+  --light-gray: #f7f9fc;
+  --border-color: #e9ecef;
+  
+  /* 背景色调 */
+  --rc-bg-light: #f7f9fc;
+  --rc-bg-white: #ffffff;
+  --rc-bg-card: #ffffff;
+  
+  /* 文本颜色 */
+  --rc-text: #2b2d42;
+  --rc-text-muted: #8d99ae;
+  --rc-text-light: #f8f9fa;
+  
+  /* 增强阴影效果 */
+  --rc-shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+  --rc-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  --rc-shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  
+  /* 改进边框半径 */
+  --rc-card-radius: 0.75rem;
+  
+  /* 更平滑的过渡 */
+  --rc-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 增强卡片样式 */
+.rc-card {
+  border: none;
+  border-radius: var(--rc-card-radius);
+  box-shadow: var(--rc-shadow-sm);
+  transition: var(--rc-transition);
+  overflow: hidden;
+  background-color: var(--rc-bg-card);
+  margin-bottom: 1.5rem;
+}
+
+.rc-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--rc-shadow);
+}
+
+.rc-card-header {
+  background-color: transparent;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding: 1.25rem 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.rc-card-header i {
+  margin-right: 0.5rem;
+  color: var(--primary-color);
+}
+
+.rc-card-body {
+  padding: 1.5rem;
+}
+
+/* 功能卡片改进 */
+.rc-feature-card {
+  height: 100%;
+  transition: transform 0.3s, box-shadow 0.3s;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.rc-feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--rc-shadow-lg);
+}
+
+.rc-feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--primary-color);
+  height: 60px;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+  background-color: var(--primary-light);
+  border-radius: 50%;
+  transition: var(--rc-transition);
+}
+
+.rc-feature-card:hover .rc-feature-icon {
+  transform: scale(1.1);
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* 改进按钮样式 */
+.rc-btn {
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.25s ease;
+  border: none;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+.rc-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+.rc-btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.rc-btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.rc-btn-outline-primary {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.rc-btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* 导航样式优化 */
+.rc-navbar {
+  background-color: white;
+  box-shadow: var(--rc-shadow-sm);
+}
+
+.rc-navbar-brand {
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+/* 表单元素美化 */
+.rc-form-control {
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  transition: var(--rc-transition);
+}
+
+.rc-form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+}
+
+/* 背景优化 */
+body {
+  background-color: var(--light-gray);
+}
+
+/* 侧边栏美化 */
+.rc-sidebar {
+  background-color: white;
+  border-right: 1px solid rgba(0,0,0,0.05);
+}
+
+.rc-sidebar-menu a {
+  border-radius: 0.5rem;
+  margin: 0.25rem 0.75rem;
+  transition: var(--rc-transition);
+}
+
+.rc-sidebar-menu a.active {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+  border-left: none;
+  font-weight: 500;
+}
+
+.rc-sidebar-menu a:hover {
+  background-color: var(--rc-bg-light);
+}
+
+/* 改进提示框样式 */
+.rc-alert {
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: none;
+  box-shadow: var(--rc-shadow-sm);
+}
+
+.rc-alert-success {
+  background-color: rgba(46, 196, 182, 0.1);
+  color: var(--success-color);
+}
+
+.rc-alert-danger {
+  background-color: rgba(230, 57, 70, 0.1);
+  color: var(--danger-color);
+}
+
+.rc-alert-warning {
+  background-color: rgba(255, 159, 28, 0.1);
+  color: var(--warning-color);
+}
+
+.rc-alert-info {
+  background-color: rgba(76, 201, 240, 0.1);
+  color: var(--info-color);
+}
+
+/* 美化表格 */
+.rc-table {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: var(--rc-shadow-sm);
+}
+
+.rc-table th {
+  background-color: var(--rc-bg-light);
+  font-weight: 600;
+  padding: 1rem;
+}
+
+.rc-table td {
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .rc-card-header, .rc-card-body {
+    padding: 1.25rem;
+  }
+  
+  .rc-feature-card {
+    margin-bottom: 1rem;
+  }
+}
