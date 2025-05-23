@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs').promises;
+const path = require('path');
 const { ConfigManager, CONFIGS_DIR } = require('../configManager');
 const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE, processConfigs } = require('../config');
 
@@ -50,12 +51,50 @@ router.post('/', async (req, res) => {
 router.put('/:name', async (req, res) => {
     try {
         const { name } = req.params;
-        const { content } = req.body;
+        const { content, newName } = req.body;
+        
         if (!content) {
             return res.status(400).json({ error: '内容是必需的' });
         }
-        await configManager.saveConfig(name, content);
-        res.json({ name });
+        
+        // 处理重命名操作
+        if (newName && newName !== name) {
+            // 验证新文件名
+            try {
+                configManager.validateFileName(newName);
+            } catch (validationErr) {
+                return res.status(400).json({ error: `新文件名无效: ${validationErr.message}` });
+            }
+            
+            // 检查新文件名是否已存在
+            const oldPath = path.join(CONFIGS_DIR, name);
+            const newPath = path.join(CONFIGS_DIR, newName);
+            
+            try {
+                await fs.access(newPath);
+                // 如果能访问，说明文件已存在
+                return res.status(400).json({ error: `配置文件 ${newName} 已存在` });
+            } catch (accessErr) {
+                // 文件不存在，可以继续
+            }
+            
+            // 先保存到新文件
+            await configManager.saveConfig(newName, content);
+            
+            // 删除旧文件
+            try {
+                await configManager.deleteConfig(name);
+            } catch (deleteErr) {
+                console.error(`删除旧配置文件失败: ${deleteErr.message}`);
+                // 即使删除旧文件失败，也继续返回成功，因为新文件已创建成功
+            }
+            
+            return res.json({ name: newName, renamed: true });
+        } else {
+            // 没有重命名，只更新内容
+            await configManager.saveConfig(name, content);
+            return res.json({ name });
+        }
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

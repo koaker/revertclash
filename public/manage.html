@@ -294,6 +294,7 @@
                     <div class="rc-form-group">
                         <label for="configName" class="rc-form-label">文件名 (.yaml)</label>
                         <input type="text" id="configName" class="rc-form-control" required>
+                        <input type="hidden" id="configOldName" value="">
                     </div>
                     <div class="rc-form-group">
                         <label for="configContent" class="rc-form-label">内容</label>
@@ -603,7 +604,8 @@ function formatDataUsage(download, upload, total) {
                 isConfigEditing = true;
                 const configNameInput = document.getElementById('configName');
                 configNameInput.value = name;
-                configNameInput.readOnly = true;
+                // 允许编辑文件名，删除readOnly属性
+                document.getElementById('configOldName').value = name; // 保存原始文件名
                 document.getElementById('configContent').value = content;
                 document.getElementById('configModal').style.display = 'block';
             } catch (err) {
@@ -629,15 +631,25 @@ function formatDataUsage(download, upload, total) {
         document.getElementById('configForm').onsubmit = async (e) => {
             e.preventDefault();
             const name = document.getElementById('configName').value;
+            const oldName = document.getElementById('configOldName').value;
             const content = document.getElementById('configContent').value;
 
             try {
-                const response = await fetch(isConfigEditing ? `/api/configs/${name}` : '/api/configs', {
+                // 判断是否需要重命名
+                const isRenaming = isConfigEditing && name !== oldName;
+                
+                // 如果是编辑模式且文件名发生变化，使用原始名称作为路径
+                const url = isConfigEditing ? `/api/configs/${oldName}` : '/api/configs';
+                
+                const response = await fetch(url, {
                     method: isConfigEditing ? 'PUT' : 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(isConfigEditing ? { content } : { name, content })
+                    // 新增重命名字段
+                    body: JSON.stringify(isConfigEditing ? 
+                        (isRenaming ? { content, newName: name } : { content }) : 
+                        { name, content })
                 });
 
                 if (!response.ok) {
@@ -645,7 +657,7 @@ function formatDataUsage(download, upload, total) {
                     throw new Error(data.error || '保存失败');
                 }
 
-                showAlert('保存成功', 'success');
+                showAlert(isRenaming ? '配置文件重命名成功' : '保存成功', 'success');
                 closeConfigModal();
                 await loadConfigs();
             } catch (err) {
