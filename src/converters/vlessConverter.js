@@ -75,10 +75,18 @@ class VlessConverter extends BaseConverter {
         if (security === 'reality') {
           // 同时设置两个属性名，确保兼容性
           clashConfig.reality = true;
-          clashConfig["reality-opts"] = {
-            public_key: params.get('pbk') || '',
-            short_id: params.get('sid') || ''
-          };
+          
+          // 创建reality-opts对象
+          clashConfig["reality-opts"] = {};
+          
+          // 只在参数存在时添加相应字段
+          if (params.has('pbk')) {
+            clashConfig["reality-opts"].public_key = params.get('pbk');
+          }
+          
+          if (params.has('sid')) {
+            clashConfig["reality-opts"].short_id = params.get('sid');
+          }
           
           // Reality SpiderX参数
           if (params.has('spx')) {
