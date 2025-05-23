@@ -80,14 +80,25 @@ class VlessConverter extends BaseConverter {
             short_id: params.get('sid') || ''
           };
           
+          // Reality SpiderX参数
+          if (params.has('spx')) {
+            clashConfig["reality-opts"].spiderX = params.get('spx');
+          }
+          
           // SNI参数
           if (params.has('sni')) {
             clashConfig.servername = params.get('sni');
           }
           
           // 指纹参数
+          const validFingerprints = ['chrome', 'firefox', 'safari', 'ios', 'android', 'edge', 'random'];
           if (params.has('fp')) {
-            clashConfig.client_fingerprint = params.get('fp');
+            const fingerprint = params.get('fp');
+            clashConfig.client_fingerprint = fingerprint;
+            // 指纹参数验证日志
+            if (!validFingerprints.includes(fingerprint)) {
+              console.warn(`非标准指纹参数: ${fingerprint}`);
+            }
           }
         }
       }
@@ -95,6 +106,11 @@ class VlessConverter extends BaseConverter {
       // 保存加密参数
       if (params.has('encryption')) {
         clashConfig.encryption = params.get('encryption');
+      }
+      
+      // ALPN参数
+      if (params.has('alpn')) {
+        clashConfig.alpn = params.get('alpn').split(',');
       }
       
       // Flow控制
@@ -194,6 +210,11 @@ class VlessConverter extends BaseConverter {
           if (realityOpts.short_id) {
             params.append('sid', realityOpts.short_id);
           }
+          
+          // Reality SpiderX参数
+          if (realityOpts.spiderX) {
+            params.append('spx', realityOpts.spiderX);
+          }
         } else {
           params.append('security', 'tls');
         }
@@ -217,6 +238,11 @@ class VlessConverter extends BaseConverter {
       } else {
         // VLESS默认加密方式
         params.append('encryption', 'none');
+      }
+      
+      // ALPN参数
+      if (clashConfig.alpn && Array.isArray(clashConfig.alpn) && clashConfig.alpn.length > 0) {
+        params.append('alpn', clashConfig.alpn.join(','));
       }
       
       // Flow控制
