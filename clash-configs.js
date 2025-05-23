@@ -398,6 +398,7 @@ const PROXY_RULES = [
         payload:  [
             "DOMAIN-SUFFIX,binance.com",
             "DOMAIN-SUFFIX,okx.com",
+            "DOMAIN-SUFFIX,infini"
         ],
         urls : ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/PayPal/PayPal.yaml"]
     },
