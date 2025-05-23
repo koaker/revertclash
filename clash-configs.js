@@ -73,7 +73,7 @@ const LOW_LOW_QUALITY_KEYWORDS = [
 const LOW_QUALITY_KEYWORDS = [
     "0\\.\\d","低价"
 ];
-// 过滤低质量提供商
+// 过滤低质量提供商，低质量提供商的节点只会被放在极低质量的节点中
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
     "低质量提供商"
 ];
