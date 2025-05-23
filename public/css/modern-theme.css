@@ -489,7 +489,8 @@ p {
 
 /* 内容区域优化 */
 .rc-content {
-  padding: 2rem 0;
+  padding-top: calc(var(--rc-navbar-height) + 1.5rem);
+  padding-bottom: 2rem;
 }
 
 .rc-container {
