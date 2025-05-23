@@ -73,6 +73,8 @@ class VlessConverter extends BaseConverter {
         
         // Reality相关参数
         if (security === 'reality') {
+          // 同时设置两个属性名，确保兼容性
+          clashConfig.reality = true;
           clashConfig["reality-opts"] = {
             public_key: params.get('pbk') || '',
             short_id: params.get('sid') || ''
@@ -88,6 +90,11 @@ class VlessConverter extends BaseConverter {
             clashConfig.client_fingerprint = params.get('fp');
           }
         }
+      }
+      
+      // 保存加密参数
+      if (params.has('encryption')) {
+        clashConfig.encryption = params.get('encryption');
       }
       
       // Flow控制
@@ -174,16 +181,18 @@ class VlessConverter extends BaseConverter {
       // 安全类型
       if (clashConfig.tls) {
         // 检查是否使用Reality
-        if (clashConfig.reality) {
+        if (clashConfig.reality || clashConfig["reality-opts"]) {
           params.append('security', 'reality');
           
-          // Reality相关参数
-          if (clashConfig.reality.public_key) {
-            params.append('pbk', clashConfig.reality.public_key);
+          // Reality相关参数 - 优先使用reality-opts
+          const realityOpts = clashConfig["reality-opts"] || {};
+          
+          if (realityOpts.public_key) {
+            params.append('pbk', realityOpts.public_key);
           }
           
-          if (clashConfig.reality.short_id) {
-            params.append('sid', clashConfig.reality.short_id);
+          if (realityOpts.short_id) {
+            params.append('sid', realityOpts.short_id);
           }
         } else {
           params.append('security', 'tls');
@@ -200,6 +209,14 @@ class VlessConverter extends BaseConverter {
         }
       } else {
         params.append('security', 'none');
+      }
+      
+      // 加密参数
+      if (clashConfig.encryption) {
+        params.append('encryption', clashConfig.encryption);
+      } else {
+        // VLESS默认加密方式
+        params.append('encryption', 'none');
       }
       
       // Flow控制
