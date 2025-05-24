@@ -546,13 +546,21 @@ const CONFIG = {
         notProxy: NOT_PROXIES_KEYWORDS,
         ipInChina:IP_IN_CHINA_KEYWORDS
     },
+    // 是否过滤不是节点的节点
     EnableFilterNoProxies: true,
+    // 是否进行链式代理
     EnableDialerProxy: true,
+    // 是否过滤极低质量节点
     EnableFilterVeryLowQualityProxies: true,
+    // 是否过滤低质量节点
     EnableFilterLowQualityProxies: true,
+    // 是否过滤高质量节点
     EnableFilterHighQualityProxies: true,
+    // 是否过滤家庭宽带
     EnableFilterHouseholdProxies: true,
+    // 是否过滤送中节点
     EnableFilterIpInChinaProxies: true,
+    // 是否按照国家过滤节点
     EnableFilterCountryProxies: true,
 };
 
