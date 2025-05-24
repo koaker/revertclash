@@ -190,7 +190,6 @@ const PROXY_RULES = [
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Download/Download.yaml"]
     },
-    // 自定义规则示例
     { 
         name: "论坛：linux.do，nodeseek等", 
         gfw : true,
@@ -393,7 +392,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "💳 Paypal 、币安、欧易", 
+        name: "💳 Paypal 、币安、欧易、infini", 
         gfw : true,
         payload:  [
             "DOMAIN-SUFFIX,binance.com",
@@ -403,7 +402,7 @@ const PROXY_RULES = [
         urls : ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/PayPal/PayPal.yaml"]
     },
     { 
-        name: "YouTube", 
+        name: "YouTube 如果使用送中节点可以免广告", 
         gfw : true,
         urls: [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/YouTube/YouTube.yaml",
@@ -462,7 +461,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "程序员需要:github、huggingface、docker、civitai", 
+        name: "程序员需要:github、huggingface、docker、civitai、linux系统", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,huggingface.co",
