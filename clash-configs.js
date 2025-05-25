@@ -983,7 +983,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     const finalBaseProxyGroupName = []
     
     // 筛选高质量节点
-    if (CONFIG.EnableFilterHighQualityProxies) {
+    if (CONFIG.EnableFilterHighQualityProxies && typedProxies.highQualityProxies.length > 0) {
         const highQualityProxiesName = typedProxies.highQualityProxies.map(p => p.name);
         baseProxyGroups.push(...[
             makeSelect("HighQuality Country 1", [
@@ -1000,7 +1000,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     }
     
 
-    if (CONFIG.EnableFilterLowQualityProxies) {
+    if (CONFIG.EnableFilterLowQualityProxies && typedProxies.lowQualityProxies.length > 0) {
         const lowQualityProxiesName = typedProxies.lowQualityProxies.map(p => p.name);
         baseProxyGroups.push(
             makeUrlTest("低质量下载节点", [
@@ -1011,7 +1011,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         finalBaseProxyGroupName.push("低质量下载节点")
     }
 
-    if (CONFIG.EnableFilterVeryLowQualityProxies) {
+    if (CONFIG.EnableFilterVeryLowQualityProxies && typedProxies.lowLowQualityProxies.length > 0) {
         const lowLowQualityProxiesName = typedProxies.lowLowQualityProxies.map(p => p.name);
         baseProxyGroups.push(
             makeLoadBalance("极低质量下载节点-负载均衡测试", [
@@ -1022,7 +1022,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
         finalBaseProxyGroupName.push("极低质量下载节点-负载均衡测试")
     }
 
-    if (CONFIG.EnableFilterIpInChinaProxies) {
+    if (CONFIG.EnableFilterIpInChinaProxies && typedProxies.ipInChinaProxies.length > 0) {
         const ipInChinaProxiesName = typedProxies.ipInChinaProxies.map(p => p.name)
         baseProxyGroups.push(
             makeSelect("送中", [
@@ -1035,7 +1035,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     
 
     // 筛选家庭宽带节点
-    if (CONFIG.EnableFilterHouseholdProxies) {
+    if (CONFIG.EnableFilterHouseholdProxies && typedProxies.householdProxies.length > 0) {
         const householdProxiesName = typedProxies.householdProxies.map(p => p.name);
         baseProxyGroups.push(...[
             makeSelect("家庭宽带", [
