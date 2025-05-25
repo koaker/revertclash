@@ -182,7 +182,7 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite_Classical.yaml" 
     },
     {
-        name: "IDM",
+        name: "IDM 、 ytdlp",
         gfw : false,
         payload : [
             "PROCESS-NAME,IDMan.exe",
@@ -199,7 +199,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "ip检测", 
+        name: "ip检测：ping0 speedtest ipdata speedcloudflare", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,ping0.cc",
@@ -479,7 +479,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,stackoverflow.com",
             "DOMAIN-SUFFIX,reddit.com",
             "DOMAIN-SUFFIX,regexr.com",
-            "DOMAIN-SUFFIX,v2ex.com",
             "DOMAIN-SUFFIX,ideone.com",
             "DOMAIN-SUFFIX,jsfiddle.net",
             "DOMAIN-SUFFIX,codepen.io",
@@ -491,7 +490,7 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml" 
     },
     { 
-        name: "塔科夫、你画我猜、Steam、apex", 
+        name: "塔科夫、你画我猜、Steam、apex 不带有下载", 
         gfw : true,
         payload:  [
             "DOMAIN-SUFFIX,eft-project.com",
