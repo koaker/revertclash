@@ -397,7 +397,7 @@ const PROXY_RULES = [
         payload:  [
             "DOMAIN-SUFFIX,binance.com",
             "DOMAIN-SUFFIX,okx.com",
-            "DOMAIN-SUFFIX,infini"
+            "DOMAIN-SUFFIX,infini.money"
         ],
         urls : ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/PayPal/PayPal.yaml"]
     },
@@ -917,7 +917,7 @@ function classifyProxies(nodes) {
     if (RX.needDialer.test(n)) buckets.needDialer.push(p);
     if (RX.ipInChina.test(n)) buckets.ipInChina.push(p);
     if (RX.household.test(n)) buckets.household.push(p);
-    if (RX.high.test(n)) buckets.high.push(p);
+    else if (RX.high.test(n)) buckets.high.push(p);
     else if (RX.veryLow.test(n)||RX.low.test(n)) {
         if (RX.veryLow.test(n)) {
             buckets.veryLow.push(p)
@@ -944,7 +944,7 @@ function filterAllProxies(proxies) {
         lowLowQualityProxies: [...buckets.veryLow, ...filteredProvidersProxies.lowQualityProviderProxies],
         highQualityProxies: buckets.high,
         householdProxies: buckets.household,
-        otherProxies: buckets.other,
+        otherProxies: [...buckets.other],
         ipInChinaProxies: buckets.ipInChina,
     };
     
@@ -962,20 +962,16 @@ function filterAllProxies(proxies) {
  * @param {Array} highQualityProxies "高质量节点列表
  * @returns {Array} 基本代理组配置
  */
-function buildBaseProxyGroups(testUrl, proxies) {
+function buildBaseProxyGroups(testUrl, processed_Proxies, origProxies) {
     
     
     const baseProxyGroups = []
     
-    // 筛选所有节点 - 直接使用预先准备的names数组
-    const ProxiesName = proxies.map(p => p.name);
+    const originProxiesName = origProxies.map(p => p.name);
     baseProxyGroups.push(
-        makeSelect("手动选择所有节点", [
-        ...(ProxiesName.length > 0 ? ProxiesName : []),
-        "DIRECT"
-        ])
+        makeSelect("手动选择所有节点", [], {"include-all": true})
     )
-    const typedProxies = filterAllProxies(proxies);
+    const typedProxies = filterAllProxies(processed_Proxies);
     // 过滤掉低质量提供商的节点，只存到下载节点和所有节点中 true代表不需要过滤
     // 筛选低质量下载节点
     
@@ -1105,8 +1101,7 @@ function buildBaseProxyGroups(testUrl, proxies) {
     ]);
     
     baseProxyGroups.push(
-        makeSelect("前置机场", [], {
-            "include-all": true,
+        makeSelect("前置机场", originProxiesName, {
             url: testUrl,
             interval: CONFIG.testInterval
         })
@@ -1201,10 +1196,10 @@ function main(config) {
         };
     }
     if (CONFIG.EnableDialerProxy) {
-        proxies = addDialerProxy(proxies);
+        processed_Proxies = addDialerProxy(proxies);
     }
     // 构建基本代理组（使用valid数组，即非cross代理节点）
-    const baseProxyGroups = buildBaseProxyGroups(testUrl, filterCrossProxies(proxies).valid);
+    const baseProxyGroups = buildBaseProxyGroups(testUrl, filterCrossProxies(processed_Proxies).valid, proxies);
     
     // 注意：cross数组可以在这里用于其他目的，目前代码中没有使用到
 

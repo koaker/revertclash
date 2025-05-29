@@ -21,3 +21,4 @@ ssl/*
 .aider*
 data/*
 url-userinfo.json
+install.sh
