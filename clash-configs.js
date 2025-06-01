@@ -67,11 +67,11 @@ const HIGH_QUALITY_KEYWORDS = [
 ];
 // 非常低质量的节点，专门用多线程下载器下载，优先匹配0.01-0.09的节点。
 const LOW_LOW_QUALITY_KEYWORDS = [
-    "无限", "0\\.0\\d+","低质", /*"0\\.1", */
+    "无限", "0\\.0\\d+","低质", "0\\.1"
 ];
 // 稍微低一些质量但是稳定的节点，建议用来看视频
 const LOW_QUALITY_KEYWORDS = [
-    "0\\.\\d","低价"
+    "0\\.[2-9]","低价"
 ];
 // 过滤低质量提供商，低质量提供商的节点只会被放在极低质量的节点中
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
@@ -182,11 +182,20 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite_Classical.yaml" 
     },
     {
-        name: "IDM 、 ytdlp",
+        name: "建议走低质量节点：IDM 、 ytdlp、包括各种游戏下载， 下载服务器列表",
         gfw : false,
         payload : [
             "PROCESS-NAME,IDMan.exe",
-            "PROCESS-NAME,yt-dlp.exe"
+            "PROCESS-NAME,yt-dlp.exe",
+            "DOMAIN-SUFFIX,eft-store.com",
+            "DOMAIN-SUFFIX,dl.steam.clngaa.com",
+            "DOMAIN-SUFFIX,st.dl.eccdnx.com",
+            "DOMAIN-SUFFIX,steamcontent.com",
+            "DOMAIN-SUFFIX,steamstatic.com",
+            "DOMAIN-SUFFIX,xz.pphimalayanrt.com",
+            "DOMAIN-SUFFIX,storage.live.com",
+            "DOMAIN-SUFFIX,sharepoint.com",
+            "DOMAIN-SUFFIX,cloudflarestorage.com",
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Download/Download.yaml"]
     },
@@ -237,18 +246,21 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "建议走低质量节点：下载服务器列表 包括各种游戏下载、youtube视频来源分流（不影响youtube本身）", 
+        name: "塔科夫、你画我猜、Steam、apex 不带有下载", 
+        gfw : true,
+        payload:  [
+            "DOMAIN-SUFFIX,eft-project.com",
+            "DOMAIN-SUFFIX,escapefromtarkov.com",
+            "DOMAIN,b47db.playfabapi.com",
+            "IP-CIDR,8.218.91.138/22",
+            "PROCESS-NAME,r5apex_dx12.exe"
+        ],
+        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
+    },
+    { 
+        name: "建议走低质量节点：youtube视频来源分流（不影响youtube本身）", 
         gfw : false,
         payload:  [
-            "DOMAIN-SUFFIX,eft-store.com",
-            "DOMAIN-SUFFIX,dl.steam.clngaa.com",
-            "DOMAIN-SUFFIX,st.dl.eccdnx.com",
-            "DOMAIN-SUFFIX,steamcontent.com",
-            "DOMAIN-SUFFIX,steamstatic.com",
-            "DOMAIN-SUFFIX,xz.pphimalayanrt.com",
-            "DOMAIN-SUFFIX,storage.live.com",
-            "DOMAIN-SUFFIX,sharepoint.com",
-            "DOMAIN-SUFFIX,cloudflarestorage.com",
             "DOMAIN-SUFFIX,dl.google.com",
             "DOMAIN-SUFFIX,imput.net",
             "DOMAIN-SUFFIX,googlevideo.com",
@@ -488,18 +500,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,civitai.com"
         ],
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml" 
-    },
-    { 
-        name: "塔科夫、你画我猜、Steam、apex 不带有下载", 
-        gfw : true,
-        payload:  [
-            "DOMAIN-SUFFIX,eft-project.com",
-            "DOMAIN-SUFFIX,escapefromtarkov.com",
-            "DOMAIN,b47db.playfabapi.com",
-            "IP-CIDR,8.218.91.138/22",
-            "PROCESS-NAME,r5apex_dx12.exe"
-        ],
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
         name: "Cloudflare", 
