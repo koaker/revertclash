@@ -71,7 +71,7 @@ const LOW_LOW_QUALITY_KEYWORDS = [
 ];
 // 稍微低一些质量但是稳定的节点，建议用来看视频
 const LOW_QUALITY_KEYWORDS = [
-    "0\\.[2-9]","低价"
+    "0\\.[2-5]","低价"
 ];
 // 过滤低质量提供商，低质量提供商的节点只会被放在极低质量的节点中
 const LOW_QUALITY__PROVIDER_KEYWORDS = [
@@ -83,7 +83,11 @@ const NOT_PROXIES_KEYWORDS = [ "备用", "登录" , "商业" , "官网" , "渠�
 ];
 // 过滤家宽节点
 const HOUSEHOLE_KEYWORDS = ["家宽", "家庭宽带", "原生"]
-// 需要用来被链式中转的关键词（家庭宽带之类的）
+// 必须要是链式中转的关键词
+const MUST_DIALER_KEYWORDS = [
+    "must-dialer"
+]
+// 可以用来被链式中转的关键词（家庭宽带之类的）
 const NEED_DIALER_KEYWORDS = [
     // 线路类型关键词
      "need-dialer"
@@ -91,7 +95,7 @@ const NEED_DIALER_KEYWORDS = [
 // 只能用来前置的节点关键词（机场、脏IP 好线路）
 const CROSS_PROXY_KEYWORDS = [
     // 线路类型关键词
-    "cross-proxy", "crossproxy", "cross"
+    "cross-proxy", "crossproxy", "cross","链式中转"
 ];
 // 送中节点关键词
 const IP_IN_CHINA_KEYWORDS = [
@@ -540,6 +544,7 @@ const CONFIG = {
         household: HOUSEHOLE_KEYWORDS,
         providerLow: LOW_QUALITY__PROVIDER_KEYWORDS,
         needDialer: NEED_DIALER_KEYWORDS,
+        mustDialer: MUST_DIALER_KEYWORDS,
         cross: CROSS_PROXY_KEYWORDS,
         notProxy: NOT_PROXIES_KEYWORDS,
         ipInChina:IP_IN_CHINA_KEYWORDS
@@ -896,7 +901,7 @@ function filterLowQualityProviderProxies(proxies, flag) {
 function classifyProxies(nodes) {
   const buckets = {
     high: [], low: [], veryLow: [], household: [],
-    providerLow: [], needDialer: [], socks5: [], cross: [], other: [],
+    providerLow: [], needDialer: [], mustDialer: [], socks5: [], cross: [], other: [],
     ipInChina:[],
   };
   // 预先创建 socks5Names 数组，同时收集节点信息避免二次遍历
@@ -913,8 +918,9 @@ function classifyProxies(nodes) {
       buckets.socks5.push(p);
       socks5Names.push(n);
     }
-    
-    if (RX.needDialer.test(n)) buckets.needDialer.push(p);
+
+    if (RX.mustDialer.test(n)) buckets.mustDialer.push(p)
+    else if (RX.needDialer.test(n)) buckets.needDialer.push(p);
     if (RX.ipInChina.test(n)) buckets.ipInChina.push(p);
     if (RX.household.test(n)) buckets.household.push(p);
     else if (RX.high.test(n)) buckets.high.push(p);
@@ -1125,6 +1131,19 @@ function addDialerProxy(proxies) {
             }
         }
     }
+
+    // 获取必须dialer节点
+    const mustDialerProxiesName = filterNameByRules(proxies, RX.mustDialer);
+    if (mustDialerProxiesName.length > 0) {
+        for (let i = 0; i < mustDialerProxiesName.length; i++) {
+            const proxyName = mustDialerProxiesName[i];
+            const proxyIndex = proxies.findIndex(p => p.name === proxyName);
+            if (proxyIndex !== -1) {
+                proxies[proxyIndex]["dialer-proxy"] = "前置机场";
+            }
+        }
+    }
+    
     // 获取除socks5之外需要dialer节点
     const needDialerProxiesName = filterNameByRules(proxies, RX.needDialer);
     if (needDialerProxiesName.length > 0) {
