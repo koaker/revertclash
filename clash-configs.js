@@ -231,13 +231,22 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,anthropic.com",
             "DOMAIN-SUFFIX,claude.ai",
             "DOMAIN-SUFFIX,aistudio.google.com",
-            "DOMAIN-SUFFIX,cursor.com",
-            "PROCESS-NAME,Cursor.exe"
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" ,
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Gemini/Gemini.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Claude/Claude.yaml"
+        ]
+    },
+    { 
+        name: "代码编辑器：cursor、windsurf、vscode", 
+        gfw : true,
+        payload: [
+            "DOMAIN-SUFFIX,cursor.com",
+            "PROCESS-NAME,Cursor.exe",
+            "DOMAIN-SUFFIX,windsurf.com",
+            "PROCESS-NAME,Windsurf.exe",
+            "PROCESS-NAME,Code.exe"
         ]
     },
     { 
@@ -248,18 +257,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,i.pximg.net",
             "DOMAIN-SUFFIX,18comic.vip",
         ]
-    },
-    { 
-        name: "塔科夫、你画我猜、Steam、apex 不带有下载", 
-        gfw : true,
-        payload:  [
-            "DOMAIN-SUFFIX,eft-project.com",
-            "DOMAIN-SUFFIX,escapefromtarkov.com",
-            "DOMAIN,b47db.playfabapi.com",
-            "IP-CIDR,8.218.91.138/22",
-            "PROCESS-NAME,r5apex_dx12.exe"
-        ],
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
     },
     { 
         name: "建议走低质量节点：youtube视频来源分流（不影响youtube本身）", 
@@ -277,7 +274,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,deezer.com",
             "DOMAIN-SUFFIX,dzcdn.net",
             "DOMAIN-SUFFIX,kkbox.com",
-            "DOMAIN-SUFFIX,kkbox.com.tw",
             "DOMAIN-SUFFIX,kfs.io",
             "DOMAIN-SUFFIX,joox.com",
             "DOMAIN-SUFFIX,pandora.com",
@@ -307,10 +303,6 @@ const PROXY_RULES = [
             "DOMAIN,d22qjgkvxw22r6.cloudfront.net",
             "DOMAIN,d1v5ir2lpwr8os.cloudfront.net",
             "DOMAIN-KEYWORD,avoddashs",
-            "DOMAIN-SUFFIX,bahamut.com.tw",
-            "DOMAIN-SUFFIX,gamer.com.tw",
-            "DOMAIN,gamer-cds.cdn.hinet.net",
-            "DOMAIN,gamer2-cds.cdn.hinet.net",
             "DOMAIN-SUFFIX,bbc.co.uk",
             "DOMAIN-SUFFIX,bbci.co.uk",
             "DOMAIN-KEYWORD,bbcfmt",
@@ -357,13 +349,10 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,itv.com",
             "DOMAIN-SUFFIX,itvstatic.com",
             "DOMAIN,itvpnpmobile-a.akamaihd.net",
-            "DOMAIN-SUFFIX,kktv.com.tw",
             "DOMAIN-SUFFIX,kktv.me",
             "DOMAIN,kktv-theater.kk.stream",
-            "DOMAIN-SUFFIX,linetv.tw",
             "DOMAIN,d3c7rimkq79yfu.cloudfront.net",
             "DOMAIN-SUFFIX,litv.tv",
-            "DOMAIN,litvfreemobile-hichannel.cdn.hinet.net",
             "DOMAIN-SUFFIX,channel5.com",
             "DOMAIN-SUFFIX,my5.tv",
             "DOMAIN,d349g9zuie06uo.cloudfront.net",
@@ -377,7 +366,6 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,phncdn.com",
             "DOMAIN-SUFFIX,pornhub.com",
             "DOMAIN-SUFFIX,pornhubpremium.com",
-            "DOMAIN-SUFFIX,skyking.com.tw",
             "DOMAIN,hamifans.emome.net",
             "DOMAIN-SUFFIX,jtvnw.net",
             "DOMAIN-SUFFIX,viu.com",
@@ -395,6 +383,22 @@ const PROXY_RULES = [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Netflix/Netflix_IP.txt",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Netflix/Netflix_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Twitch/Twitch.yaml"
+        ]
+    },
+    { 
+        name: "🎬台湾媒体，如巴哈姆特", 
+        gfw : true,
+        payload:  [
+            "DOMAIN-SUFFIX,gamer.com.tw",
+            "DOMAIN,gamer-cds.cdn.hinet.net",
+            "DOMAIN,gamer2-cds.cdn.hinet.net",
+            "DOMAIN-SUFFIX,linetv.tw",
+            "DOMAIN-SUFFIX,skyking.com.tw",
+            "DOMAIN-SUFFIX,kktv.com.tw",
+            "DOMAIN-SUFFIX,bahamut.com.tw",
+            "DOMAIN-SUFFIX,kkbox.com.tw",
+            "DOMAIN,litvfreemobile-hichannel.cdn.hinet.net",
+            "DOMAIN-SUFFIX,bahamut.akamaized.net",
         ]
     },
     { 
@@ -506,6 +510,18 @@ const PROXY_RULES = [
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GitHub/GitHub.yaml" 
     },
     { 
+        name: "塔科夫、你画我猜、Steam、apex 不带有下载", 
+        gfw : true,
+        payload:  [
+            "DOMAIN-SUFFIX,eft-project.com",
+            "DOMAIN-SUFFIX,escapefromtarkov.com",
+            "DOMAIN,b47db.playfabapi.com",
+            "IP-CIDR,8.218.91.138/22",
+            "PROCESS-NAME,r5apex_dx12.exe"
+        ],
+        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Steam/Steam_No_Resolve.yaml" 
+    },
+    { 
         name: "Cloudflare", 
         gfw : true,
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Cloudflare/Cloudflare_No_Resolve.yaml" 
@@ -531,7 +547,7 @@ const CONFIG = {
     // 测试连接URL
     testUrl: "https://www.google.com",
     // 自动测试间隔 (秒)
-    testInterval: 300,
+    testInterval: 3000,
     // 自动选择容差 (毫秒)
     tolerance: 20,
     // 负载均衡策略："round-robin" | "sticky-sessions" | "consistent-hashing"
