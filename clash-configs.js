@@ -42,7 +42,7 @@ const SAVED_RULES = [
     "RULE-SET,icloud,国内网站",
     "RULE-SET,private,国内网站",
     "RULE-SET,apple,国内网站",
-    "RULE-SET,tld_not_cn,国外网站",
+    "RULE-SET,tld-not-cn,国外网站",
     "RULE-SET,gfw,国外网站",
     "RULE-SET,greatfire,国外网站",
     "RULE-SET,telegramcidr,国外网站",
@@ -222,7 +222,7 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "必须美国节点：exhentai、openai、claude、gemini、aistudio、cursor", 
+        name: "必须美国节点：exhentai、openai、claude", 
         gfw : true,
         payload: [
             "DOMAIN-SUFFIX,exhentai.org",
@@ -230,11 +230,9 @@ const PROXY_RULES = [
             "DOMAIN,cdn.usefathom.com",
             "DOMAIN-SUFFIX,anthropic.com",
             "DOMAIN-SUFFIX,claude.ai",
-            "DOMAIN-SUFFIX,aistudio.google.com",
         ],
         urls: ["https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/OpenAI/OpenAI_No_Resolve.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/TikTok/TikTok_No_Resolve.yaml" ,
-            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Gemini/Gemini.yaml",
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Claude/Claude.yaml"
         ]
     },
@@ -430,9 +428,22 @@ const PROXY_RULES = [
         ]
     },
     { 
-        name: "Google", 
+        name: "Google Gemini", 
         gfw : true,
-        urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
+        payload: [
+            "DOMAIN-SUFFIX,aistudio.google.com",
+            "DOMAIN-SUFFIX,ai.google.com",
+            "DOMAIN-SUFFIX,ai.google.dev",
+            "DOMAIN-SUFFIX,gvt2.com",
+            "DOMAIN-SUFFIX,apis.google.com",
+            "DOMAIN-SUFFIX,gstatic.com",
+            "DOMAIN-SUFFIX,mtalk.google.com",
+            "DOMAIN-SUFFIX,clients4.google.com",
+        ],
+        urls: [
+            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Gemini/Gemini.yaml",
+            "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Google/Google_No_Resolve.yaml" 
+        ]
     },
     { 
         name: "Microsoft与bing服务、OneDrive", 
@@ -1212,7 +1223,7 @@ function main(config) {
         { name: "private", behavior: "domain"},
         { name: "gfw", behavior: "domain"},
         { name: "greatfire", behavior: "domain"},
-        { name: "tld_not_cn", behavior: "domain"},
+        { name: "tld-not-cn", behavior: "domain"},
         { name: "telegramcidr", behavior: "ipcidr"},
         { name: "cncidr", behavior: "ipcidr"},
         { name: "lancidr", behavior: "ipcidr"},
