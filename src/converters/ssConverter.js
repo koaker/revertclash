@@ -52,10 +52,25 @@ class SSConverter extends BaseConverter {
       // 提取BASE64部分
       const base64Part = uri.substring(5, atIndex); // 去掉'ss://'
       
-      // 提取服务器部分
-      const serverPart = hashIndex === -1 
-        ? uri.substring(atIndex + 1)
-        : uri.substring(atIndex + 1, hashIndex);
+      // 检查是否有URL参数
+      const questionIndex = uri.indexOf('?');
+      
+      // 提取服务器部分 (需要考虑URL参数)
+      let serverPart;
+      let urlParams = '';
+      
+      if (questionIndex !== -1 && (hashIndex === -1 || questionIndex < hashIndex)) {
+        // 有URL参数的情况: @server:port?params#name
+        serverPart = uri.substring(atIndex + 1, questionIndex);
+        const paramsEnd = hashIndex !== -1 ? hashIndex : uri.length;
+        urlParams = uri.substring(questionIndex + 1, paramsEnd);
+      } else if (hashIndex !== -1) {
+        // 没有URL参数但有名称: @server:port#name
+        serverPart = uri.substring(atIndex + 1, hashIndex);
+      } else {
+        // 只有服务器部分: @server:port
+        serverPart = uri.substring(atIndex + 1);
+      }
       
       // 提取名称部分
       let name = '';
@@ -93,8 +108,16 @@ class SSConverter extends BaseConverter {
         return this._parseLegacyFormat(uri);
       }
       
-      // 分离加密方法和密码
-      const [method, password] = userInfo.split(':');
+      // 分离加密方法和密码 (只在第一个冒号处分割，支持密码中包含冒号)
+      const firstColonIndex = userInfo.indexOf(':');
+      if (firstColonIndex === -1) {
+        console.error('无效的SS URI格式 (缺少加密方法或密码分隔符)');
+        return this._parseLegacyFormat(uri);
+      }
+      
+      const method = userInfo.substring(0, firstColonIndex);
+      const password = userInfo.substring(firstColonIndex + 1);
+      
       if (!method || !password) {
         console.error('无效的SS URI格式 (缺少加密方法或密码)');
         return this._parseLegacyFormat(uri);
@@ -106,7 +129,7 @@ class SSConverter extends BaseConverter {
       }
       
       // 创建Clash配置对象
-      return {
+      const clashConfig = {
         name,
         type: 'ss',
         server,
@@ -116,6 +139,23 @@ class SSConverter extends BaseConverter {
         // 可选参数
         'udp': true
       };
+      
+      // 处理URL参数
+      if (urlParams) {
+        console.log('检测到URL参数:', urlParams);
+        // 解析URL参数并添加到配置中
+        const params = new URLSearchParams(urlParams);
+        for (const [key, value] of params) {
+          if (key === 'type' && value === 'tcp') {
+            // TCP类型参数，保持默认UDP设置
+            continue;
+          }
+          // 其他参数可以根据需要添加到配置中
+          console.log(`URL参数: ${key} = ${value}`);
+        }
+      }
+      
+      return clashConfig;
     } catch (err) {
       console.error('标准格式解析SS URI失败:', err.message);
       // 最后尝试Legacy格式解析
@@ -236,13 +276,20 @@ class SSConverter extends BaseConverter {
 
       const [authPart, serverPart] = parts;
 
-      // 解析认证部分: method:password
-      const authSplit = authPart.split(':');
-      if (authSplit.length !== 2) {
+      // 解析认证部分: method:password (支持密码中包含冒号)
+      const firstColonIndex = authPart.indexOf(':');
+      if (firstColonIndex === -1) {
+        console.error('Legacy格式认证部分缺少分隔符');
+        return null;
+      }
+      
+      const method = authPart.substring(0, firstColonIndex);
+      const password = authPart.substring(firstColonIndex + 1);
+      
+      if (!method || !password) {
         console.error('Legacy格式认证部分格式无效');
         return null;
       }
-      const [method, password] = authSplit;
 
       // 解析服务器部分: server:port
       const lastColonIndex = serverPart.lastIndexOf(':');
@@ -330,7 +377,14 @@ class SSConverter extends BaseConverter {
    */
   _isBase64(str) {
     try {
-      return Buffer.from(str, 'base64').toString('base64') === str;
+      // 检查是否包含有效的BASE64字符
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(str)) {
+        return false;
+      }
+      
+      // 尝试解码，如果成功说明是有效的BASE64
+      Buffer.from(str, 'base64').toString();
+      return true;
     } catch (err) {
       return false;
     }
