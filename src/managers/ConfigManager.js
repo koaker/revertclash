@@ -410,41 +410,16 @@ class ConfigManager {
      * @private
      */
     generateProxyGroups(nodes) {
-        const nodeNames = nodes.map(node => node.getDisplayName());
-        
+        // 简化配置：只生成基础的手动选择策略组
+        // 复杂的策略组配置由 clash-configs.js 处理
         const groups = [
             {
-                name: '🚀 节点选择',
+                name: '手动选择所有节点',
                 type: 'select',
-                proxies: nodeNames
-            },
-            {
-                name: '♻️ 自动选择',
-                type: 'url-test',
-                proxies: nodeNames,
-                url: 'http://www.gstatic.com/generate_204',
-                interval: 300
+                proxies: [],
+                'include-all': true
             }
         ];
-        
-        // 按类型分组
-        const nodesByType = {};
-        for (const node of nodes) {
-            if (!nodesByType[node.type]) {
-                nodesByType[node.type] = [];
-            }
-            nodesByType[node.type].push(node.getDisplayName());
-        }
-        
-        for (const [type, typeNodes] of Object.entries(nodesByType)) {
-            if (typeNodes.length > 1) {
-                groups.push({
-                    name: `📡 ${type.toUpperCase()}`,
-                    type: 'select',
-                    proxies: typeNodes
-                });
-            }
-        }
         
         return groups;
     }
@@ -563,40 +538,138 @@ class ConfigManager {
     
     /**
      * 获取节点统计信息
-     * @returns {object} - 节点统计
+     * @returns {object} - 节点统计信息
      */
     getNodeStatistics() {
-        const allNodes = this.sourceManager.getAllActiveNodes();
+        const aggregatedNodes = this.nodeAggregator.getAggregatedNodes();
+        const sourceNodes = this.nodeAggregator.getNodesBySource();
         
         const stats = {
-            total: allNodes.length,
+            total: aggregatedNodes.length,
             byType: {},
             bySource: {},
-            active: 0,
-            recent: 0 // 最近24小时更新的节点
+            conflictResolved: this.nodeAggregator.getConflictResolver().getStats().resolved
         };
         
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
-        for (const node of allNodes) {
-            // 按类型统计
+        // 按类型统计
+        for (const node of aggregatedNodes) {
             stats.byType[node.type] = (stats.byType[node.type] || 0) + 1;
-            
-            // 按配置源统计
-            stats.bySource[node.sourceId] = (stats.bySource[node.sourceId] || 0) + 1;
-            
-            // 活跃节点统计
-            if (node.metadata.isActive) {
-                stats.active++;
-            }
-            
-            // 最近更新的节点
-            if (new Date(node.metadata.lastUpdated) > oneDayAgo) {
-                stats.recent++;
-            }
+        }
+        
+        // 按配置源统计
+        for (const [sourceId, nodes] of sourceNodes) {
+            stats.bySource[sourceId] = nodes.length;
         }
         
         return stats;
+    }
+
+    /**
+     * 获取所有聚合后的节点 (供NodeManager使用)
+     * @returns {ProxyNode[]} - 聚合后的节点数组
+     */
+    getAllAggregatedNodes() {
+        return this.nodeAggregator.getAggregatedNodes();
+    }
+
+    /**
+     * 获取按配置源分组的节点 (供NodeManager使用)
+     * @returns {Map<string, ProxyNode[]>} - 按配置源分组的节点映射
+     */
+    getNodesBySource() {
+        return this.nodeAggregator.getNodesBySource();
+    }
+
+    /**
+     * 获取指定配置源的节点
+     * @param {string} sourceId - 配置源ID
+     * @returns {ProxyNode[]} - 节点数组
+     */
+    getSourceNodes(sourceId) {
+        const sourceNodes = this.nodeAggregator.getNodesBySource();
+        return sourceNodes.get(sourceId) || [];
+    }
+
+    /**
+     * 按类型筛选节点
+     * @param {string} type - 节点类型
+     * @returns {ProxyNode[]} - 筛选后的节点数组
+     */
+    filterNodesByType(type) {
+        const allNodes = this.nodeAggregator.getAggregatedNodes();
+        return allNodes.filter(node => node.type === type);
+    }
+
+    /**
+     * 搜索节点
+     * @param {string} keyword - 搜索关键词
+     * @returns {ProxyNode[]} - 搜索结果
+     */
+    searchNodes(keyword) {
+        const allNodes = this.nodeAggregator.getAggregatedNodes();
+        const lowerKeyword = keyword.toLowerCase();
+        
+        return allNodes.filter(node => {
+            const displayName = node.getDisplayName().toLowerCase();
+            const server = node.server.toLowerCase();
+            return displayName.includes(lowerKeyword) || server.includes(lowerKeyword);
+        });
+    }
+
+    /**
+     * 获取节点详细信息
+     * @param {string} nodeId - 节点ID
+     * @returns {ProxyNode|null} - 节点对象
+     */
+    getNodeById(nodeId) {
+        const allNodes = this.nodeAggregator.getAggregatedNodes();
+        return allNodes.find(node => node.id === nodeId) || null;
+    }
+
+    /**
+     * 获取节点详细信息（按显示名称）
+     * @param {string} displayName - 节点显示名称
+     * @returns {ProxyNode|null} - 节点对象
+     */
+    getNodeByDisplayName(displayName) {
+        const allNodes = this.nodeAggregator.getAggregatedNodes();
+        return allNodes.find(node => node.getDisplayName() === displayName) || null;
+    }
+
+    /**
+     * 生成包含指定节点的配置文件
+     * @param {ProxyNode[]} selectedNodes - 选中的节点数组
+     * @returns {object} - Clash配置对象
+     */
+    generateConfigWithNodes(selectedNodes) {
+        if (!Array.isArray(selectedNodes) || selectedNodes.length === 0) {
+            throw new Error('必须提供有效的节点数组');
+        }
+
+        // 创建基础配置
+        const baseConfig = this.createBaseClashConfig();
+        
+        // 添加选中的节点
+        baseConfig.proxies = selectedNodes.map(node => node.toClashConfig());
+        
+        // 生成代理组
+        baseConfig['proxy-groups'] = this.generateProxyGroups(selectedNodes);
+        
+        return baseConfig;
+    }
+
+    /**
+     * 注册节点更新回调
+     * @param {Function} callback - 回调函数
+     */
+    onNodesUpdated(callback) {
+        if (typeof callback === 'function') {
+            this.sourceManager.on('configsUpdated', () => {
+                const aggregatedNodes = this.nodeAggregator.getAggregatedNodes();
+                const sourceNodes = this.nodeAggregator.getNodesBySource();
+                callback(aggregatedNodes, sourceNodes);
+            });
+        }
     }
 }
 

@@ -29,6 +29,45 @@ const configManager = new ConfigManager({
     cacheExpireHours: CONFIG_CACHE_SETTINGS.DEFAULT_EXPIRE_HOURS
 });
 
+// 初始化NodeManager并建立连接
+let nodeManagerInstance = null;
+
+/**
+ * 初始化全局NodeManager实例并与ConfigManager建立连接
+ * @returns {Promise<NodeManager>} - NodeManager实例
+ */
+async function initializeNodeManager() {
+    if (nodeManagerInstance) {
+        return nodeManagerInstance;
+    }
+    
+    try {
+        const NodeManager = require('./services/nodeManager');
+        nodeManagerInstance = new NodeManager();
+        
+        // 建立与ConfigManager的连接
+        nodeManagerInstance.setConfigManager(configManager);
+        
+        // 首次加载节点数据
+        await nodeManagerInstance.refreshNodesFromConfigManager();
+        
+        console.log('全局NodeManager初始化完成，节点数量:', nodeManagerInstance.getNodes().length);
+        return nodeManagerInstance;
+        
+    } catch (error) {
+        console.error('全局NodeManager初始化失败:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * 获取全局NodeManager实例
+ * @returns {NodeManager|null} - NodeManager实例
+ */
+function getNodeManager() {
+    return nodeManagerInstance;
+}
+
 /**
  * 读取本地 configs 目录下的 YAML 文件
  * @deprecated 此函数已被新架构中的ConfigManager替代，保留用于兼容性
@@ -150,5 +189,28 @@ module.exports = {
     getHealthReport: () => configManager.getHealthReport(),
     addConfigSource: (sourceId, type, config) => configManager.addSource(sourceId, type, config),
     removeConfigSource: (sourceId) => configManager.removeSource(sourceId),
-    getNodeStatistics: () => configManager.getNodeStatistics()
+    getNodeStatistics: () => configManager.getNodeStatistics(),
+    
+    // NodeManager相关接口
+    initializeNodeManager,
+    getNodeManager,
+    
+    // 节点数据接口
+    getAllNodes: () => {
+        const nodeManager = getNodeManager();
+        return nodeManager ? nodeManager.getNodes() : [];
+    },
+    getSelectedNodes: () => {
+        const nodeManager = getNodeManager();
+        return nodeManager ? nodeManager.getSelectedNodes() : [];
+    },
+    getNodesBySource: (sourceId) => {
+        return configManager.getSourceNodes(sourceId);
+    },
+    searchNodes: (keyword) => {
+        return configManager.searchNodes(keyword);
+    },
+    filterNodesByType: (type) => {
+        return configManager.filterNodesByType(type);
+    }
 };

@@ -3,35 +3,133 @@ const fs = require('fs').promises;
 const path = require('path');
 const NodeManager = require('../services/nodeManager');
 const ConfigProcessor = require('../services/configProcessor');
-const { OUTPUT_FILE } = require('../config');
+const { getConfigManager } = require('../config');
 
 const router = express.Router();
+
+// 创建节点管理器实例并连接到ConfigManager
 const nodeManager = new NodeManager();
 const configProcessor = new ConfigProcessor(nodeManager);
 
-// 初始化节点管理器
-async function initNodeManager() {
+// 初始化节点管理器与ConfigManager的连接
+async function initNodeManagerConnection() {
     try {
-        // 读取当前的配置文件
-        // 直接使用OUTPUT_FILE，因为它已经是绝对路径
-        const configContent = await fs.readFile(OUTPUT_FILE, 'utf8');
-        await nodeManager.parseNodes(configContent);
-        console.log('节点管理器初始化完成，共加载节点:', nodeManager.getNodes().length);
+        const configManager = getConfigManager();
+        
+        if (configManager) {
+            // 设置ConfigManager引用
+            nodeManager.setConfigManager(configManager);
+            
+            // 首次加载节点数据
+            await nodeManager.refreshNodesFromConfigManager();
+            
+            console.log('节点管理器与ConfigManager连接成功，共加载节点:', nodeManager.getNodes().length);
+        } else {
+            console.warn('ConfigManager未初始化，回退到兼容模式');
+            await fallbackToLegacyMode();
+        }
     } catch (err) {
-        console.error('初始化节点管理器失败:', err.message);
+        console.error('节点管理器连接ConfigManager失败:', err.message);
+        console.log('回退到兼容模式...');
+        await fallbackToLegacyMode();
     }
 }
 
-// 启动时初始化
-initNodeManager();
+// 回退到兼容模式的初始化
+async function fallbackToLegacyMode() {
+    try {
+        const { OUTPUT_FILE } = require('../config');
+        const configContent = await fs.readFile(OUTPUT_FILE, 'utf8');
+        await nodeManager.parseNodes(configContent);
+        console.log('节点管理器兼容模式初始化完成，共加载节点:', nodeManager.getNodes().length);
+    } catch (err) {
+        console.error('兼容模式初始化失败:', err.message);
+    }
+}
+
+// 启动时初始化连接
+initNodeManagerConnection();
+
+// ========== 节点查询API ==========
 
 // 获取所有节点列表
 router.get('/', async (req, res) => {
     try {
-        const nodes = nodeManager.getNodes();
-        res.json(nodes);
+        let nodes = [];
+        let dataSource = 'unknown';
+        
+        // 尝试从ConfigManager刷新最新数据
+        try {
+            if (nodeManager.configManager) {
+                await nodeManager.refreshNodesFromConfigManager();
+                nodes = nodeManager.getNodes();
+                dataSource = 'ConfigManager';
+                console.log(`[节点API] 从ConfigManager获取到 ${nodes.length} 个节点`);
+            } else {
+                console.warn('[节点API] ConfigManager未连接，尝试其他数据源');
+                throw new Error('ConfigManager未连接');
+            }
+        } catch (refreshErr) {
+            console.warn('[节点API] ConfigManager刷新失败，尝试备用方案:', refreshErr.message);
+            
+            // 备用方案1: 使用现有缓存数据
+            nodes = nodeManager.getNodes();
+            if (nodes.length > 0) {
+                dataSource = 'cached';
+                console.log(`[节点API] 使用缓存数据，共 ${nodes.length} 个节点`);
+            } else {
+                // 备用方案2: 尝试从文件直接解析
+                try {
+                    await fallbackToLegacyMode();
+                    nodes = nodeManager.getNodes();
+                    dataSource = 'legacy';
+                    console.log(`[节点API] 使用兼容模式，共 ${nodes.length} 个节点`);
+                } catch (legacyErr) {
+                    console.error('[节点API] 兼容模式也失败:', legacyErr.message);
+                    // 返回空数组，但不报错
+                    nodes = [];
+                    dataSource = 'empty';
+                }
+            }
+        }
+        
+        // 确保返回的数据格式符合前端期望
+        const formattedNodes = nodes.map(node => ({
+            name: node.name || '未知节点',
+            type: node.type || 'unknown',
+            server: node.server || '未知',
+            port: node.port || 0,
+            selected: node.selected || false,
+            
+            // 新增字段（向后兼容）
+            source: node.source || 'unknown',
+            id: node.id || `fallback-${node.name}`,
+            version: node.version || 1,
+            updateTime: node.updateTime || new Date().toISOString()
+        }));
+        
+        res.json({
+            success: true,
+            nodes: formattedNodes,
+            metadata: {
+                total: formattedNodes.length,
+                dataSource: dataSource,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('[节点API] 获取节点列表失败:', err.message);
+        res.status(500).json({ 
+            success: false,
+            error: err.message,
+            nodes: [],
+            metadata: {
+                total: 0,
+                dataSource: 'error',
+                timestamp: new Date().toISOString()
+            }
+        });
     }
 });
 
@@ -60,6 +158,35 @@ router.get('/:name', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// 获取节点的ProxyNode结构体信息
+router.get('/:name/struct', async (req, res) => {
+    try {
+        const { name } = req.params;
+        const proxyNode = nodeManager.getProxyNode(name);
+        
+        if (!proxyNode) {
+            return res.status(404).json({ error: '节点不存在' });
+        }
+        
+        // 返回结构体的详细信息
+        res.json({
+            summary: proxyNode.getSummary(),
+            clashConfig: proxyNode.toClashConfig(),
+            metadata: {
+                id: proxyNode.id,
+                source: proxyNode.source,
+                version: proxyNode.version,
+                createTime: proxyNode.createTime,
+                updateTime: proxyNode.updateTime
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ========== 节点操作API ==========
 
 // 更新节点选择状态
 router.post('/select', async (req, res) => {
@@ -91,7 +218,7 @@ router.post('/select-multiple', async (req, res) => {
         }
         
         nodeManager.selectNodes(nodeNames);
-        res.json({ success: true });
+        res.json({ success: true, count: nodeNames.length });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -107,7 +234,7 @@ router.post('/deselect-multiple', async (req, res) => {
         }
         
         nodeManager.deselectNodes(nodeNames);
-        res.json({ success: true });
+        res.json({ success: true, count: nodeNames.length });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -117,7 +244,8 @@ router.post('/deselect-multiple', async (req, res) => {
 router.post('/select-all', async (req, res) => {
     try {
         nodeManager.selectAll();
-        res.json({ success: true });
+        const totalCount = nodeManager.getNodes().length;
+        res.json({ success: true, count: totalCount });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -133,11 +261,24 @@ router.post('/deselect-all', async (req, res) => {
     }
 });
 
+// ========== 节点筛选和搜索API ==========
+
 // 按类型筛选节点
 router.get('/filter/type/:type', async (req, res) => {
     try {
         const { type } = req.params;
         const nodes = nodeManager.filterByType(type);
+        res.json(nodes);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 按配置源筛选节点
+router.get('/filter/source/:source', async (req, res) => {
+    try {
+        const { source } = req.params;
+        const nodes = nodeManager.filterBySource(source);
         res.json(nodes);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -155,19 +296,58 @@ router.get('/search/:keyword', async (req, res) => {
     }
 });
 
-// 重新解析配置文件中的节点
+// ========== 数据管理API ==========
+
+// 重新从ConfigManager加载节点数据
 router.post('/reload', async (req, res) => {
     try {
-        await initNodeManager();
+        await nodeManager.refreshNodesFromConfigManager();
+        const status = nodeManager.getManagerStatus();
+        
         res.json({ 
             success: true, 
-            message: '节点重新加载成功',
-            count: nodeManager.getNodes().length
+            message: '节点数据重新加载成功',
+            status: status
         });
+    } catch (err) {
+        console.error('重新加载节点数据失败:', err.message);
+        
+        // 如果ConfigManager刷新失败，尝试兼容模式
+        try {
+            await fallbackToLegacyMode();
+            res.json({ 
+                success: true, 
+                message: '节点数据已从兼容模式重新加载',
+                count: nodeManager.getNodes().length,
+                mode: 'legacy'
+            });
+        } catch (fallbackErr) {
+            res.status(500).json({ error: fallbackErr.message });
+        }
+    }
+});
+
+// 获取节点管理器状态
+router.get('/manager/status', async (req, res) => {
+    try {
+        const status = nodeManager.getManagerStatus();
+        res.json(status);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
+// 获取配置源统计信息
+router.get('/sources/stats', async (req, res) => {
+    try {
+        const sourceStats = nodeManager.getSourceStats();
+        res.json(sourceStats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ========== 配置生成API ==========
 
 // 获取选中节点的配置
 router.get('/config/selected', async (req, res) => {
@@ -193,66 +373,117 @@ router.get('/config/processed', async (req, res) => {
     }
 });
 
+// 使用选中的ProxyNode结构体生成配置
+router.get('/config/selected-struct', async (req, res) => {
+    try {
+        const selectedProxyNodes = nodeManager.getSelectedProxyNodes();
+        
+        if (selectedProxyNodes.length === 0) {
+            return res.status(400).json({ error: '没有选中的节点' });
+        }
+        
+        // 使用ProxyNode结构体生成配置
+        const baseConfig = {
+            port: 7890,
+            'socks-port': 7891,
+            'allow-lan': true,
+            mode: 'rule',
+            'log-level': 'info',
+            proxies: selectedProxyNodes.map(node => node.toClashConfig()),
+            'proxy-groups': [
+                {
+                    name: '🚀 节点选择',
+                    type: 'select',
+                    proxies: selectedProxyNodes.map(node => node.getDisplayName())
+                }
+            ],
+            rules: ['MATCH,DIRECT']
+        };
+        
+        const YAML = require('yaml');
+        const yamlConfig = YAML.stringify(baseConfig);
+        
+        res.setHeader('Content-Type', 'text/yaml');
+        res.setHeader('Content-Disposition', 'attachment; filename="selected-struct-config.yaml"');
+        res.send(yamlConfig);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 导出选中节点的协议链接
 router.post('/export-links', async (req, res) => {
     try {
         const { nodeNames } = req.body;
-
-        if (!nodeNames || !Array.isArray(nodeNames) || nodeNames.length === 0) {
-            return res.status(400).json({ error: '需要提供有效的节点名称数组' });
+        
+        if (!nodeNames || !Array.isArray(nodeNames)) {
+            return res.status(400).json({ error: '节点名称数组是必需的' });
         }
-
-        // 引入转换器
-        const { clashToUri } = require('../converters');
-
+        
         const links = [];
         const errors = [];
-
+        
         for (const nodeName of nodeNames) {
-            const nodeDetails = nodeManager.getNodeDetails(nodeName);
-            if (!nodeDetails) {
-                errors.push(`节点 "${nodeName}" 未找到`);
-                continue; // 跳过未找到的节点
-            }
-
             try {
-                // 尝试将节点配置转换为URI
-                // 节点类型通常存储在 nodeDetails.type 中
-                const uri = clashToUri(nodeDetails, nodeDetails.type);
-                if (uri) {
-                    links.push(uri);
+                const proxyNode = nodeManager.getProxyNode(nodeName);
+                if (proxyNode && typeof proxyNode.toUri === 'function') {
+                    const uri = proxyNode.toUri();
+                    if (uri) {
+                        links.push({
+                            name: nodeName,
+                            uri: uri,
+                            type: proxyNode.type
+                        });
+                    } else {
+                        errors.push({
+                            name: nodeName,
+                            error: '无法生成协议链接'
+                        });
+                    }
                 } else {
-                    // 如果转换失败或不支持该类型
-                    errors.push(`节点 "${nodeName}" (类型: ${nodeDetails.type}) 无法转换为链接或不受支持`);
+                    // 回退到兼容模式，使用转换器
+                    const nodeDetails = nodeManager.getNodeDetails(nodeName);
+                    if (nodeDetails) {
+                        const { clashToUri } = require('../converters');
+                        const uri = clashToUri(nodeDetails, nodeDetails.type);
+                        if (uri) {
+                            links.push({
+                                name: nodeName,
+                                uri: uri,
+                                type: nodeDetails.type
+                            });
+                        } else {
+                            errors.push({
+                                name: nodeName,
+                                error: '转换协议链接失败'
+                            });
+                        }
+                    } else {
+                        errors.push({
+                            name: nodeName,
+                            error: '节点不存在'
+                        });
+                    }
                 }
-            } catch (convertError) {
-                console.error(`转换节点 "${nodeName}" 时出错:`, convertError);
-                errors.push(`转换节点 "${nodeName}" 时出错: ${convertError.message}`);
+            } catch (err) {
+                errors.push({
+                    name: nodeName,
+                    error: err.message
+                });
             }
         }
-
-        if (links.length === 0 && errors.length > 0) {
-            // 如果所有节点都转换失败
-            return res.status(400).json({ error: '所有选定节点都无法转换为链接', details: errors });
-        }
-
-        // 将链接用换行符连接
-        const linksText = links.join('\n');
-
-        // 设置响应头为纯文本
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.send(linksText);
-
-        // 如果有部分错误，可以在日志中记录或通过其他方式通知
-        if (errors.length > 0) {
-            console.warn('导出链接时遇到以下错误:', errors);
-            // 也可以考虑在响应头中添加警告信息，但这取决于具体需求
-            // res.setHeader('X-Export-Warnings', JSON.stringify(errors));
-        }
-
+        
+        res.json({
+            success: true,
+            links,
+            errors,
+            total: nodeNames.length,
+            exported: links.length,
+            failed: errors.length
+        });
     } catch (err) {
-        console.error('导出节点链接时发生错误:', err);
-        res.status(500).json({ error: '导出链接时发生内部服务器错误', details: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
+
 module.exports = router;

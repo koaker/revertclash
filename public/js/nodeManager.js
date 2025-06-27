@@ -4,6 +4,11 @@ let filteredNodes = [];
 let selectedNodes = new Set();
 let nodeTypes = new Set();
 
+// 分页相关变量
+let currentPage = 1;
+let nodesPerPage = 20; // 每页显示20个节点
+let totalPages = 1;
+
 // 页面加载完成后执行
 document.addEventListener('DOMContentLoaded', () => {
     // 初始加载节点
@@ -37,16 +42,42 @@ function hideLoading() {
 async function loadNodes() {
     showLoading();
     try {
+        console.log('[前端] 开始加载节点数据...');
+        
         const response = await fetch('/api/nodes');
         if (!response.ok) {
-            throw new Error('加载节点失败');
+            throw new Error(`HTTP ${response.status}: 加载节点失败`);
         }
         
-        allNodes = await response.json();
+        const responseData = await response.json();
+        console.log('[前端] 接收到API响应:', responseData);
+        
+        // 兼容新旧API格式
+        let nodes = [];
+        if (responseData.success && responseData.nodes) {
+            // 新格式：包装的响应
+            nodes = responseData.nodes;
+            console.log(`[前端] 使用新格式数据，数据源: ${responseData.metadata?.dataSource}, 节点数: ${nodes.length}`);
+        } else if (Array.isArray(responseData)) {
+            // 旧格式：直接返回数组
+            nodes = responseData;
+            console.log(`[前端] 使用兼容格式数据，节点数: ${nodes.length}`);
+        } else {
+            throw new Error('API返回了无效的数据格式');
+        }
+        
+        // 验证数据有效性
+        if (!Array.isArray(nodes)) {
+            throw new Error('节点数据必须是数组格式');
+        }
+        
+        allNodes = nodes;
         filteredNodes = [...allNodes];
         
-        // 提取节点类型
+        // 提取节点类型和选中状态
         nodeTypes.clear();
+        selectedNodes.clear();
+        
         allNodes.forEach(node => {
             if (node.type) {
                 nodeTypes.add(node.type);
@@ -56,20 +87,117 @@ async function loadNodes() {
             }
         });
         
-        // 更新类型筛选下拉框
+        console.log(`[前端] 节点加载完成: 总计 ${allNodes.length} 个，已选中 ${selectedNodes.size} 个，类型数 ${nodeTypes.size} 种`);
+        
+        // 更新UI
         updateTypeFilter();
-        
-        // 显示节点列表
         displayNodes(filteredNodes);
-        
-        // 更新节点计数
         updateNodeCount();
+        
+        // 显示数据源信息（如果有的话）
+        if (responseData.metadata?.dataSource) {
+            const statusMsg = `数据源: ${responseData.metadata.dataSource}`;
+            console.log(`[前端] ${statusMsg}`);
+            
+            // 如果是降级数据源，显示提示
+            if (responseData.metadata.dataSource === 'legacy' || responseData.metadata.dataSource === 'cached') {
+                showDataSourceWarning(responseData.metadata.dataSource);
+            }
+        }
+        
     } catch (error) {
-        console.error('加载节点失败:', error);
-        alert('加载节点失败: ' + error.message);
+        console.error('[前端] 加载节点失败:', error);
+        
+        // 尝试重试机制
+        if (!loadNodes.retryCount) {
+            loadNodes.retryCount = 0;
+        }
+        
+        if (loadNodes.retryCount < 2) {
+            loadNodes.retryCount++;
+            console.log(`[前端] 第 ${loadNodes.retryCount} 次重试加载节点...`);
+            
+            setTimeout(() => {
+                loadNodes();
+            }, 2000);
+            return;
+        }
+        
+        // 重试失败，显示错误
+        allNodes = [];
+        filteredNodes = [];
+        displayNodes([]);
+        updateNodeCount();
+        
+        showErrorMessage('加载节点失败: ' + error.message + '\n\n请检查系统状态或刷新页面重试。');
     } finally {
         hideLoading();
     }
+}
+
+// 显示数据源警告
+function showDataSourceWarning(dataSource) {
+    const warningMap = {
+        'legacy': '当前使用兼容模式数据，功能可能受限',
+        'cached': '当前使用缓存数据，可能不是最新状态',
+        'empty': '暂无节点数据，请检查配置'
+    };
+    
+    const message = warningMap[dataSource] || '数据源异常';
+    
+    // 创建警告提示
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-2';
+    alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // 插入到页面顶部
+    const container = document.querySelector('.rc-container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 5秒后自动消失
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// 显示错误消息
+function showErrorMessage(message) {
+    // 创建错误提示模态框
+    const errorModal = document.createElement('div');
+    errorModal.className = 'modal fade';
+    errorModal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle"></i> 加载失败
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>${message}</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="reloadNodes()">重新加载</button>
+                        <button class="btn btn-outline-secondary" onclick="location.reload()">刷新页面</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(errorModal);
+    const modal = new bootstrap.Modal(errorModal);
+    modal.show();
+    
+    // 模态框隐藏后移除DOM
+    errorModal.addEventListener('hidden.bs.modal', () => {
+        errorModal.remove();
+    });
 }
 
 // 更新类型筛选下拉框
@@ -90,17 +218,25 @@ function updateTypeFilter() {
     });
 }
 
-// 显示节点列表
+// 显示节点列表（支持分页）
 function displayNodes(nodes) {
     const nodeList = document.getElementById('nodeList');
     nodeList.innerHTML = '';
     
     if (nodes.length === 0) {
         nodeList.innerHTML = '<tr><td colspan="6" class="text-center">没有找到节点</td></tr>';
+        updatePagination(0);
         return;
     }
     
-    nodes.forEach(node => {
+    // 计算分页
+    totalPages = Math.ceil(nodes.length / nodesPerPage);
+    const startIndex = (currentPage - 1) * nodesPerPage;
+    const endIndex = Math.min(startIndex + nodesPerPage, nodes.length);
+    const currentPageNodes = nodes.slice(startIndex, endIndex);
+    
+    // 渲染当前页的节点
+    currentPageNodes.forEach(node => {
         const isSelected = selectedNodes.has(node.name);
         const row = document.createElement('tr');
         
@@ -111,7 +247,7 @@ function displayNodes(nodes) {
                        ${isSelected ? 'checked' : ''} 
                        onchange="toggleNode('${node.name}', this.checked)">
             </td>
-            <td>${node.name}</td>
+            <td title="${node.name}">${truncateText(node.name, 30)}</td>
             <td><span class="badge bg-secondary type-badge">${node.type || '未知'}</span></td>
             <td>${node.server || '未知'}</td>
             <td>${node.port || '未知'}</td>
@@ -125,8 +261,107 @@ function displayNodes(nodes) {
         nodeList.appendChild(row);
     });
     
+    // 更新分页控件
+    updatePagination(nodes.length);
+    
     // 更新全选复选框状态
     updateSelectAllCheckbox();
+}
+
+// 文本截断工具函数
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+}
+
+// 更新分页控件
+function updatePagination(totalNodes) {
+    let paginationContainer = document.getElementById('paginationContainer');
+    
+    // 如果不存在分页容器，创建一个
+    if (!paginationContainer) {
+        paginationContainer = document.createElement('div');
+        paginationContainer.id = 'paginationContainer';
+        paginationContainer.className = 'mt-3';
+        
+        // 插入到表格后面
+        const tableContainer = document.querySelector('.table-responsive');
+        tableContainer.parentNode.insertBefore(paginationContainer, tableContainer.nextSibling);
+    }
+    
+    if (totalNodes <= nodesPerPage) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    // 分页信息
+    const startItem = (currentPage - 1) * nodesPerPage + 1;
+    const endItem = Math.min(currentPage * nodesPerPage, totalNodes);
+    
+    paginationContainer.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted">显示 ${startItem}-${endItem} 共 ${totalNodes} 个节点</span>
+            <nav aria-label="节点分页">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
+                    </li>
+                    ${generatePageNumbers()}
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    `;
+}
+
+// 生成页码
+function generatePageNumbers() {
+    let pages = '';
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // 调整起始页
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // 第一页和省略号
+    if (startPage > 1) {
+        pages += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(1)">1</a></li>`;
+        if (startPage > 2) {
+            pages += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    // 页码范围
+    for (let i = startPage; i <= endPage; i++) {
+        pages += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+        </li>`;
+    }
+    
+    // 最后一页和省略号
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            pages += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        pages += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a></li>`;
+    }
+    
+    return pages;
+}
+
+// 切换页面
+function changePage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) {
+        return;
+    }
+    
+    currentPage = page;
+    displayNodes(filteredNodes);
 }
 
 // 更新节点计数
@@ -389,26 +624,69 @@ async function viewNodeDetails(nodeName) {
 async function reloadNodes() {
     showLoading();
     try {
-        const response = await fetch('/api/nodes/reload', {
-            method: 'POST'
+        console.log('[前端] 触发节点重新加载...');
+        
+        // 清空重试计数
+        loadNodes.retryCount = 0;
+        
+        // 步骤1: 调用后端重新加载API
+        const reloadResponse = await fetch('/api/nodes/reload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
         
-        if (!response.ok) {
-            throw new Error('重新加载节点失败');
+        if (reloadResponse.ok) {
+            const reloadResult = await reloadResponse.json();
+            console.log('[前端] 后端重新加载响应:', reloadResult);
+            
+            if (reloadResult.success) {
+                // 显示成功消息
+                showSuccessMessage(reloadResult.message || '节点重新加载成功');
+                
+                // 等待一秒确保后端处理完成
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+                console.warn('[前端] 后端重新加载失败，继续尝试获取数据');
+            }
+        } else {
+            console.warn('[前端] 重新加载API调用失败，继续尝试获取数据');
         }
         
-        const result = await response.json();
+        // 步骤2: 重新加载节点数据
+        await loadNodes();
         
-        if (result.success) {
-            alert(`节点重新加载成功，共加载 ${result.count} 个节点`);
-            await loadNodes();
-        }
-    } catch (error) {
-        console.error('重新加载节点失败:', error);
-        alert('重新加载节点失败: ' + error.message);
+        console.log('[前端] 节点重新加载完成');
+        
+    } catch (err) {
+        console.error('[前端] 重新加载节点失败:', err);
+        showErrorMessage('重新加载失败: ' + err.message);
     } finally {
         hideLoading();
     }
+}
+
+// 显示成功消息
+function showSuccessMessage(message) {
+    // 创建成功提示
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show mt-2';
+    alertDiv.innerHTML = `
+        <i class="bi bi-check-circle"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // 插入到页面顶部
+    const container = document.querySelector('.rc-container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
 }
 
 // 下载选中节点配置

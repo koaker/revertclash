@@ -31,6 +31,11 @@ class NodeAggregator {
         // 冲突解决器
         this.conflictResolver = new ConflictResolver();
         
+        // 聚合结果存储
+        this.aggregatedNodes = [];        // 聚合后的节点列表
+        this.sourceNodeMap = new Map();   // 配置源到节点的映射
+        this.lastAggregationResult = null; // 最后一次聚合的完整结果
+        
         // 聚合配置
         this.config = {
             mode: AggregationMode.MERGE,
@@ -63,6 +68,39 @@ class NodeAggregator {
             aggregationTime: 0,
             groupCount: 0
         };
+    }
+    
+    /**
+     * 获取聚合后的所有节点
+     * @returns {ProxyNode[]} - 聚合后的节点数组
+     */
+    getAggregatedNodes() {
+        return [...this.aggregatedNodes];
+    }
+    
+    /**
+     * 获取按配置源分组的节点
+     * @returns {Map<string, ProxyNode[]>} - 配置源到节点的映射
+     */
+    getNodesBySource() {
+        return new Map(this.sourceNodeMap);
+    }
+    
+    /**
+     * 获取最后一次聚合的完整结果
+     * @returns {object|null} - 聚合结果对象
+     */
+    getLastAggregationResult() {
+        return this.lastAggregationResult;
+    }
+    
+    /**
+     * 清空聚合结果
+     */
+    clearAggregatedNodes() {
+        this.aggregatedNodes = [];
+        this.sourceNodeMap.clear();
+        this.lastAggregationResult = null;
     }
     
     /**
@@ -191,6 +229,11 @@ class NodeAggregator {
             
             // 更新统计信息
             this.updateStats(allNodes, limitedNodes, startTime);
+            
+            // 存储聚合结果
+            this.aggregatedNodes = limitedNodes;
+            this.sourceNodeMap = sourceNodes;
+            this.lastAggregationResult = result;
             
             return result;
             
