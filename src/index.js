@@ -108,14 +108,27 @@ async function main() {
         // 最后设置配置监控和处理
         console.log('设置配置文件监控...');
         
+        // 创建防抖的配置处理函数
+        let configProcessTimeout = null;
+        const safeProcessConfigs = () => {
+            if (configProcessTimeout) {
+                clearTimeout(configProcessTimeout);
+            }
+            configProcessTimeout = setTimeout(() => {
+                processConfigs().catch(err => {
+                    console.error('配置处理出错:', err.message);
+                });
+            }, 1000); // 1秒防抖
+        };
+        
         // 监控配置文件变化
         chokidar.watch(CONFIG_FILE).on('all', (event, path) => {
             console.log(`检测到配置文件变化: ${event}`);
-            processConfigs();
+            safeProcessConfigs();
         });
 
         // 定期更新配置
-        setInterval(processConfigs, UPDATE_INTERVAL);
+        setInterval(safeProcessConfigs, UPDATE_INTERVAL);
         
         // 初始处理
         await processConfigs();
