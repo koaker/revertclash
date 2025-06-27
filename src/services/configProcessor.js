@@ -80,12 +80,31 @@ class ConfigProcessor {
             throw new Error('没有选中任何节点');
         }
         
-        // 添加选中的节点到配置
-        baseConfig.proxies = selectedNodes.map(node => node.details);
+        // 修复：正确提取节点的Clash配置
+        // 优先使用clashConfig，如果不存在则使用details，最后回退到节点对象本身
+        baseConfig.proxies = selectedNodes.map(node => {
+            if (node.clashConfig) {
+                return node.clashConfig;
+            } else if (node.details) {
+                return node.details;
+            } else {
+                // 回退：构建基本的代理配置
+                return {
+                    name: node.name,
+                    type: node.type,
+                    server: node.server,
+                    port: node.port,
+                    ...(node.password && { password: node.password }),
+                    ...(node.cipher && { cipher: node.cipher }),
+                    ...(node.uuid && { uuid: node.uuid }),
+                    udp: true
+                };
+            }
+        }).filter(proxy => proxy && proxy.name); // 过滤掉空的代理配置
         
         // 更新代理组中的节点列表
         if (baseConfig['proxy-groups'] && Array.isArray(baseConfig['proxy-groups'])) {
-            const nodeNames = selectedNodes.map(node => node.name);
+            const nodeNames = baseConfig.proxies.map(proxy => proxy.name);
             
             baseConfig['proxy-groups'].forEach(group => {
                 // 对于select类型的组，添加所有节点
@@ -97,6 +116,16 @@ class ConfigProcessor {
                     group.proxies = [...nodeNames];
                 }
             });
+        } else {
+            // 如果没有代理组，创建基础代理组
+            baseConfig['proxy-groups'] = [
+                {
+                    name: '手动选择所有节点',
+                    type: 'select',
+                    proxies: [],
+                    'include-all': true
+                }
+            ];
         }
         
         // 转换为YAML字符串

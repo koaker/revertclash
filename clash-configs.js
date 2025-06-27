@@ -848,6 +848,12 @@ function filterCrossProxies(proxies) {
     const cross = [];
     
     for (const proxy of proxies) {
+        // 添加空值检查，防止null/undefined导致的错误
+        if (!proxy || typeof proxy !== 'object') {
+            console.warn('发现无效的代理节点对象:', proxy);
+            continue;
+        }
+        
         const proxyName = proxy.name || "";
         
         // 如果是非代理节点，直接跳过

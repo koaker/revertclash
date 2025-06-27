@@ -240,6 +240,22 @@ router.post('/deselect-multiple', async (req, res) => {
     }
 });
 
+// 批量取消选择节点
+router.post('/deselect-multiple', async (req, res) => {
+    try {
+        const { nodeNames } = req.body;
+        
+        if (!nodeNames || !Array.isArray(nodeNames)) {
+            return res.status(400).json({ error: '节点名称数组是必需的' });
+        }
+        
+        nodeManager.deselectNodes(nodeNames);
+        res.json({ success: true, count: nodeNames.length });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // 全选所有节点
 router.post('/select-all', async (req, res) => {
     try {

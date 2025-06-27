@@ -370,42 +370,114 @@ function updateNodeCount() {
     document.getElementById('totalCount').textContent = allNodes.length;
 }
 
-// 切换节点选择状态
+// 节点操作队列和批处理
+let nodeOperationQueue = [];
+let operationTimer = null;
+
+// 切换节点选择状态（优化版：支持批处理）
 async function toggleNode(nodeName, checked) {
-    showLoading();
+    // 立即更新前端状态，提升用户体验
+    if (checked) {
+        selectedNodes.add(nodeName);
+    } else {
+        selectedNodes.delete(nodeName);
+    }
+    
+    // 更新UI
+    updateNodeCount();
+    updateSelectAllCheckbox();
+    
+    // 将操作加入队列
+    nodeOperationQueue.push({ nodeName, checked });
+    
+    // 防抖处理：500ms内的操作合并为一次批处理
+    if (operationTimer) {
+        clearTimeout(operationTimer);
+    }
+    
+    operationTimer = setTimeout(async () => {
+        await processBatchNodeOperations();
+    }, 500);
+}
+
+// 批处理节点操作
+async function processBatchNodeOperations() {
+    if (nodeOperationQueue.length === 0) return;
+    
+    const operations = [...nodeOperationQueue];
+    nodeOperationQueue = [];
+    
     try {
-        const response = await fetch('/api/nodes/select', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ nodeName })
-        });
+        // 分组操作：选中和取消选中
+        const toSelect = operations.filter(op => op.checked).map(op => op.nodeName);
+        const toDeselect = operations.filter(op => !op.checked).map(op => op.nodeName);
         
-        if (!response.ok) {
-            throw new Error('操作失败');
+        const promises = [];
+        
+        if (toSelect.length > 0) {
+            promises.push(
+                fetch('/api/nodes/select-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeNames: toSelect })
+                })
+            );
         }
         
-        const result = await response.json();
+        if (toDeselect.length > 0) {
+            promises.push(
+                fetch('/api/nodes/deselect-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeNames: toDeselect })
+                })
+            );
+        }
         
-        if (result.success) {
-            if (checked) {
-                selectedNodes.add(nodeName);
-            } else {
-                selectedNodes.delete(nodeName);
+        const responses = await Promise.all(promises);
+        
+        // 检查响应状态
+        for (const response of responses) {
+            if (!response.ok) {
+                throw new Error(`批量操作失败: ${response.status}`);
             }
+        }
+        
+        console.log(`批量处理完成: 选中 ${toSelect.length} 个，取消 ${toDeselect.length} 个`);
+        
+    } catch (error) {
+        console.error('批量节点操作失败:', error);
+        
+        // 错误恢复：重新同步状态
+        await syncNodeSelectionState();
+        
+        showErrorMessage('节点操作失败，已恢复状态: ' + error.message);
+    }
+}
+
+// 同步节点选择状态（错误恢复机制）
+async function syncNodeSelectionState() {
+    try {
+        const response = await fetch('/api/nodes/selected');
+        if (response.ok) {
+            const serverSelectedNodes = await response.json();
+            const serverSelectedNames = new Set(serverSelectedNodes.map(node => node.name));
             
-            // 更新节点计数
+            // 更新前端状态与服务器同步
+            selectedNodes.clear();
+            serverSelectedNames.forEach(name => selectedNodes.add(name));
+            
+            // 更新复选框状态
+            document.querySelectorAll('.node-checkbox').forEach(checkbox => {
+                const nodeName = checkbox.getAttribute('data-node-name');
+                checkbox.checked = selectedNodes.has(nodeName);
+            });
+            
             updateNodeCount();
-            
-            // 更新全选复选框状态
             updateSelectAllCheckbox();
         }
     } catch (error) {
-        console.error('切换节点状态失败:', error);
-        alert('操作失败: ' + error.message);
-    } finally {
-        hideLoading();
+        console.error('同步节点状态失败:', error);
     }
 }
 
@@ -729,21 +801,61 @@ async function exportSelectedNodeLinks() {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`导出链接失败: ${response.status} ${errorText || response.statusText}`);
+            const errorData = await response.json().catch(() => ({ error: response.statusText }));
+            throw new Error(`导出链接失败: ${response.status} ${errorData.error || response.statusText}`);
         }
 
-        const linksText = await response.text();
+        // 正确处理JSON响应
+        const responseData = await response.json();
+        
+        if (!responseData.success) {
+            throw new Error(responseData.error || '导出失败');
+        }
+
+        // 构建链接文本内容
+        const linksContent = [];
+        linksContent.push(`# 导出时间: ${new Date().toLocaleString()}`);
+        linksContent.push(`# 总计节点: ${responseData.total}`);
+        linksContent.push(`# 成功导出: ${responseData.exported}`);
+        linksContent.push(`# 失败数量: ${responseData.failed}`);
+        linksContent.push('');
+
+        // 添加成功导出的链接
+        if (responseData.links && responseData.links.length > 0) {
+            linksContent.push('# 成功导出的节点链接:');
+            responseData.links.forEach(link => {
+                linksContent.push(`# ${link.name} (${link.type})`);
+                linksContent.push(link.uri);
+                linksContent.push('');
+            });
+        }
+
+        // 添加失败信息
+        if (responseData.errors && responseData.errors.length > 0) {
+            linksContent.push('# 导出失败的节点:');
+            responseData.errors.forEach(error => {
+                linksContent.push(`# ${error.name}: ${error.error}`);
+            });
+        }
+
+        const linksText = linksContent.join('\n');
 
         // 创建并下载文本文件
         const blob = new Blob([linksText], { type: 'text/plain;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'selected_node_links.txt'; // 下载的文件名
-        document.body.appendChild(link); // 需要添加到DOM才能在某些浏览器中工作
+        link.download = `selected_node_links_${new Date().getTime()}.txt`;
+        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link); // 点击后移除
-        URL.revokeObjectURL(link.href); // 释放内存
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        // 显示导出结果摘要
+        if (responseData.failed > 0) {
+            showSuccessMessage(`导出完成！成功: ${responseData.exported}个，失败: ${responseData.failed}个`);
+        } else {
+            showSuccessMessage(`成功导出 ${responseData.exported} 个节点链接！`);
+        }
 
     } catch (error) {
         console.error('导出节点链接失败:', error);
