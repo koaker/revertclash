@@ -119,8 +119,10 @@ router.delete('/:name', async (req, res) => {
 // 更新配置
 router.post('/update', async (req, res) => {
     try {
+        console.log('=== 开始配置更新流程 ===');
         await processConfigs();
-        res.json({ status: 'success', message: '配置已更新' });
+        console.log('=== 配置更新流程完成 ===');
+        res.json({ status: 'success', message: '配置已更新，包含所有URL订阅和独立缓存' });
     } catch (err) {
         console.error('更新配置失败:', err);
         res.status(500).json({ error: err.message || '更新配置失败' });
@@ -292,6 +294,115 @@ router.post('/cache/:subscriptionName/refresh', async (req, res) => {
     } catch (err) {
         console.error(`刷新缓存失败 (${req.params.subscriptionName}):`, err);
         res.status(500).json({ error: '刷新缓存失败: ' + err.message });
+    }
+});
+
+// 修复API：修复缓存的is_cached标记
+router.post('/cache/repair', async (req, res) => {
+    try {
+        const db = require('../db');
+        
+        // 修复所有有内容但is_cached标记不正确的记录
+        const result = await db.run(`
+            UPDATE subscription_configs 
+            SET is_cached = 1 
+            WHERE config_content != '' AND (is_cached IS NULL OR is_cached = 0)
+        `);
+        
+        console.log(`修复了 ${result.changes} 个缓存记录的is_cached标记`);
+        
+        res.json({
+            status: 'success',
+            message: `已修复 ${result.changes} 个缓存记录的标记`,
+            repaired_count: result.changes
+        });
+    } catch (err) {
+        console.error('修复缓存标记失败:', err);
+        res.status(500).json({ error: '修复缓存标记失败: ' + err.message });
+    }
+});
+
+// 调试API：获取订阅的完整状态信息
+router.get('/debug/:subscriptionName', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        const debugInfo = {
+            subscriptionName,
+            timestamp: new Date().toISOString(),
+            urlList: null,
+            cache: null,
+            error: null
+        };
+        
+        // 检查是否在URL列表中
+        try {
+            const { URLManager, CONFIG_FILE } = require('../urlManager');
+            const urlManager = new URLManager(CONFIG_FILE);
+            const urls = await urlManager.readUrls();
+            const urlEntry = urls.find(u => u.name === subscriptionName);
+            debugInfo.urlList = urlEntry ? {
+                found: true,
+                url: urlEntry.url,
+                name: urlEntry.name
+            } : {
+                found: false,
+                message: '订阅名不在URL列表中'
+            };
+        } catch (urlErr) {
+            debugInfo.urlList = { error: urlErr.message };
+        }
+        
+        // 检查缓存状态
+        try {
+            const cachedConfig = await ConfigCacheService.getConfig(subscriptionName, true);
+            if (cachedConfig) {
+                debugInfo.cache = {
+                    found: true,
+                    hasContent: !!cachedConfig.configContent,
+                    contentLength: cachedConfig.configContent ? cachedConfig.configContent.length : 0,
+                    lastUpdated: cachedConfig.lastUpdated,
+                    lastFetchSuccess: cachedConfig.lastFetchSuccess,
+                    lastFetchAttempt: cachedConfig.lastFetchAttempt,
+                    isExpired: cachedConfig.isExpired,
+                    fetchSuccessCount: cachedConfig.fetchSuccessCount,
+                    fetchFailureCount: cachedConfig.fetchFailureCount,
+                    contentPreview: cachedConfig.configContent ? cachedConfig.configContent.substring(0, 200) + '...' : null
+                };
+                
+                // 尝试解析内容
+                if (cachedConfig.configContent) {
+                    try {
+                        const parserManager = require('../subscription/parserManager');
+                        const parsedProxies = await parserManager.parse(cachedConfig.configContent);
+                        debugInfo.cache.parseResult = {
+                            success: true,
+                            proxyCount: parsedProxies ? parsedProxies.length : 0,
+                            sampleProxy: parsedProxies && parsedProxies[0] ? parsedProxies[0].name : null
+                        };
+                    } catch (parseErr) {
+                        debugInfo.cache.parseResult = {
+                            success: false,
+                            error: parseErr.message
+                        };
+                    }
+                }
+            } else {
+                debugInfo.cache = {
+                    found: false,
+                    message: '缓存不存在'
+                };
+            }
+        } catch (cacheErr) {
+            debugInfo.cache = { error: cacheErr.message };
+        }
+        
+        res.json({
+            status: 'success',
+            data: debugInfo
+        });
+    } catch (err) {
+        console.error(`调试信息获取失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ error: '调试信息获取失败: ' + err.message });
     }
 });
 

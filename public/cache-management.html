@@ -122,14 +122,19 @@
                 </div>
                 <div class="rc-card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <button class="rc-btn rc-btn-success rc-w-100 rc-mb-2" onclick="showBatchUploadModal()">
                                 <i class="bi bi-upload me-1"></i>批量上传缓存
                             </button>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <button class="rc-btn rc-btn-warning rc-w-100 rc-mb-2" onclick="cleanupExpiredCache()">
                                 <i class="bi bi-trash me-1"></i>清理过期缓存
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="rc-btn rc-btn-info rc-w-100 rc-mb-2" onclick="repairCacheFlags()">
+                                <i class="bi bi-wrench me-1"></i>修复缓存标记
                             </button>
                         </div>
                     </div>
@@ -1086,6 +1091,34 @@
             } catch (err) {
                 console.error('清理过期缓存失败:', err);
                 showAlert('清理过期缓存失败: ' + err.message);
+            }
+        }
+
+        // 修复缓存标记
+        async function repairCacheFlags() {
+            if (!confirm('确定要修复缓存标记吗？这将修复手动上传的缓存可能出现的读取问题。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/configs/cache/repair', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                if (!response.ok) throw new Error('修复请求失败');
+                
+                const data = await response.json();
+                showAlert(data.message, 'success');
+                
+                // 刷新缓存数据
+                await Promise.all([loadCacheStats(), loadCacheList()]);
+            } catch (err) {
+                console.error('修复缓存标记失败:', err);
+                showAlert('修复缓存标记失败: ' + err.message);
             }
         }
     </script>

@@ -251,9 +251,13 @@
                         <i class="bi bi-plus-circle me-1"></i>
                         添加配置
                     </button>
-                    <button class="rc-btn rc-btn-outline-primary" onclick="showUploadConfigFileModal()">
+                    <button class="rc-btn rc-btn-outline-primary me-2" onclick="showUploadConfigFileModal()">
                         <i class="bi bi-cloud-upload me-1"></i>
                         上传配置文件
+                    </button>
+                    <button class="rc-btn rc-btn-outline-warning" onclick="showDebugModal()">
+                        <i class="bi bi-bug me-1"></i>
+                        调试订阅
                     </button>
                 </div>
                 <div class="table-responsive">
@@ -417,6 +421,37 @@
                     <button type="button" class="rc-btn rc-btn-primary" onclick="uploadConfigFile()">
                         <i class="bi bi-upload me-1"></i>上传配置
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 调试模态框 -->
+        <div id="debugModal" class="modal">
+            <div class="modal-content" style="width: 80%; max-width: 1000px;">
+                <span class="close" onclick="closeDebugModal()">&times;</span>
+                <h3><i class="bi bi-bug me-2"></i>订阅调试工具</h3>
+                
+                <div class="rc-form-group">
+                    <label for="debugSubscriptionName" class="rc-form-label">订阅名称</label>
+                    <input type="text" id="debugSubscriptionName" class="rc-form-control" 
+                           placeholder="输入要调试的订阅名称（如：ICMP）">
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="runDebugCheck()">
+                        <i class="bi bi-search me-1"></i>开始调试检查
+                    </button>
+                </div>
+                
+                <div id="debugResults" style="display: none;">
+                    <h4>调试结果：</h4>
+                    <div id="debugContent" style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; max-height: 400px; overflow-y: auto;">
+                        <!-- 调试结果将在此显示 -->
+                    </div>
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="rc-btn rc-btn-secondary" onclick="closeDebugModal()">关闭</button>
                 </div>
             </div>
         </div>
@@ -1297,6 +1332,101 @@ function formatDataUsage(download, upload, total) {
                 console.error('上传配置文件失败:', err);
                 showAlert('上传配置文件失败: ' + err.message);
             }
+        }
+
+        // 调试功能
+        function showDebugModal() {
+            document.getElementById('debugSubscriptionName').value = '';
+            document.getElementById('debugResults').style.display = 'none';
+            document.getElementById('debugModal').style.display = 'block';
+        }
+
+        function closeDebugModal() {
+            document.getElementById('debugModal').style.display = 'none';
+        }
+
+        async function runDebugCheck() {
+            const subscriptionName = document.getElementById('debugSubscriptionName').value.trim();
+            
+            if (!subscriptionName) {
+                showAlert('请输入订阅名称');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/configs/debug/${encodeURIComponent(subscriptionName)}`);
+                if (!response.ok) {
+                    throw new Error('调试请求失败');
+                }
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    displayDebugResults(data.data);
+                } else {
+                    throw new Error(data.error || '调试失败');
+                }
+            } catch (err) {
+                console.error('调试检查失败:', err);
+                showAlert('调试检查失败: ' + err.message);
+            }
+        }
+
+        function displayDebugResults(debugInfo) {
+            const resultsDiv = document.getElementById('debugResults');
+            const contentDiv = document.getElementById('debugContent');
+            
+            let html = `<strong>订阅名称:</strong> ${debugInfo.subscriptionName}<br>`;
+            html += `<strong>检查时间:</strong> ${debugInfo.timestamp}<br><br>`;
+            
+            // URL列表检查结果
+            html += `<strong>📋 URL列表检查:</strong><br>`;
+            if (debugInfo.urlList.error) {
+                html += `❌ 错误: ${debugInfo.urlList.error}<br>`;
+            } else if (debugInfo.urlList.found) {
+                html += `✅ 在URL列表中找到<br>`;
+                html += `   - 名称: ${debugInfo.urlList.name}<br>`;
+                html += `   - URL: ${debugInfo.urlList.url}<br>`;
+            } else {
+                html += `⚠️ 不在URL列表中 (${debugInfo.urlList.message})<br>`;
+            }
+            html += '<br>';
+            
+            // 缓存检查结果
+            html += `<strong>💾 缓存检查:</strong><br>`;
+            if (debugInfo.cache.error) {
+                html += `❌ 错误: ${debugInfo.cache.error}<br>`;
+            } else if (debugInfo.cache.found) {
+                html += `✅ 找到缓存<br>`;
+                html += `   - 有内容: ${debugInfo.cache.hasContent ? '是' : '否'}<br>`;
+                html += `   - 内容长度: ${debugInfo.cache.contentLength} 字符<br>`;
+                html += `   - 最后更新: ${debugInfo.cache.lastUpdated || '未知'}<br>`;
+                html += `   - 最后成功: ${debugInfo.cache.lastFetchSuccess || '从未'}<br>`;
+                html += `   - 是否过期: ${debugInfo.cache.isExpired ? '是' : '否'}<br>`;
+                html += `   - 成功次数: ${debugInfo.cache.fetchSuccessCount}<br>`;
+                html += `   - 失败次数: ${debugInfo.cache.fetchFailureCount}<br>`;
+                
+                if (debugInfo.cache.parseResult) {
+                    html += `   - 解析结果: ${debugInfo.cache.parseResult.success ? '✅ 成功' : '❌ 失败'}<br>`;
+                    if (debugInfo.cache.parseResult.success) {
+                        html += `   - 节点数量: ${debugInfo.cache.parseResult.proxyCount}<br>`;
+                        if (debugInfo.cache.parseResult.sampleProxy) {
+                            html += `   - 示例节点: ${debugInfo.cache.parseResult.sampleProxy}<br>`;
+                        }
+                    } else {
+                        html += `   - 解析错误: ${debugInfo.cache.parseResult.error}<br>`;
+                    }
+                }
+                
+                if (debugInfo.cache.contentPreview) {
+                    html += `<br><strong>内容预览:</strong><br>`;
+                    html += `<div style="background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 3px; white-space: pre-wrap;">${debugInfo.cache.contentPreview}</div>`;
+                }
+            } else {
+                html += `❌ 缓存不存在 (${debugInfo.cache.message})<br>`;
+            }
+            
+            contentDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
         }
 
         // 初始加载

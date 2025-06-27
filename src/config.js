@@ -110,6 +110,19 @@ async function processConfigs() {
     const currentUserInfo = await readUserInfoData(); // 读取现有的用户信息
     const newUserInfo = {}; // 存储本次更新获取的新用户信息
 
+    // === 调试信息：显示初始状态 ===
+    console.log('=== 调试信息开始 ===');
+    try {
+        const allCaches = await ConfigCacheService.getAllConfigs(true);
+        console.log(`当前系统中共有 ${allCaches.length} 个缓存配置:`);
+        allCaches.forEach(cache => {
+            console.log(`  - ${cache.subscriptionName}: ${cache.configContent ? '有内容' : '无内容'} (过期: ${cache.isExpired ? '是' : '否'})`);
+        });
+    } catch (debugErr) {
+        console.error('调试信息获取失败:', debugErr.message);
+    }
+    console.log('=== 调试信息结束 ===');
+
     // 1. 处理本地配置
     const localProxies = await readLocalConfigs();
     if (localProxies.length > 0) {
@@ -118,10 +131,17 @@ async function processConfigs() {
 
     // 2. 处理 URL 订阅
     const urls = await urlManager.readUrls();
+    const processedSubscriptionNames = new Set(); // 跟踪已处理的订阅名称
+    
+    console.log(`=== URL列表调试信息 ===`);
     if (urls.length > 0) {
-        console.log(`发现 ${urls.length} 个配置 URL`);
+        console.log(`发现 ${urls.length} 个配置 URL:`);
+        urls.forEach(({ name, url }) => {
+            console.log(`  - ${name}: ${url}`);
+        });
         for (const { url, name } of urls) {
             console.log(`正在处理订阅: ${name} (${url})`);
+            processedSubscriptionNames.add(name); // 记录已处理的订阅
             const { content, headers, error } = await fetchSubscription(url);
 
             if (error) {
@@ -136,28 +156,31 @@ async function processConfigs() {
                 
                 // 尝试从缓存中读取配置
                 try {
+                    console.log(`>>> 尝试为 ${name} 读取缓存配置...`);
                     const cachedConfig = await ConfigCacheService.getConfig(name, true); // 包含过期的缓存
                     if (cachedConfig && cachedConfig.configContent) {
-                        console.warn(`使用缓存配置降级处理: ${name} (上次成功: ${cachedConfig.lastFetchSuccess})`);
+                        console.warn(`>>> 找到缓存配置: ${name}`);
+                        console.log(`>>> 缓存详情: 内容长度=${cachedConfig.configContent.length}, 上次成功=${cachedConfig.lastFetchSuccess}, 过期=${cachedConfig.isExpired}`);
                         
                         // 解析缓存的配置内容
+                        console.log(`>>> 开始解析缓存内容: ${name}`);
                         const parsedProxies = await parserManager.parse(cachedConfig.configContent);
-                        if (parsedProxies) {
+                        if (parsedProxies && parsedProxies.length > 0) {
                             // 添加前缀
                             const prefixedProxies = parsedProxies.map(proxy => ({
                                 ...proxy,
                                 name: `${name}|-|${proxy.name}`
                             }));
                             allProxiesList.push(prefixedProxies);
-                            console.log(`从缓存中恢复了 ${parsedProxies.length} 个节点: ${name}`);
+                            console.log(`✅ 从缓存中恢复了 ${parsedProxies.length} 个节点: ${name}`);
                         } else {
-                            console.warn(`缓存的配置内容无法解析: ${name}`);
+                            console.warn(`❌ 缓存的配置内容无法解析或无节点: ${name}, parsedProxies=${parsedProxies ? parsedProxies.length : 'null'}`);
                         }
                     } else {
-                        console.warn(`没有可用的缓存配置: ${name}`);
+                        console.warn(`❌ 没有可用的缓存配置: ${name} (缓存=${cachedConfig ? '存在但无内容' : '不存在'})`);
                     }
                 } catch (cacheErr) {
-                    console.error(`读取缓存配置失败 ${name}:`, cacheErr.message);
+                    console.error(`❌ 读取缓存配置失败 ${name}:`, cacheErr.message);
                 }
                 
                 // 即使下载失败，也尝试保留旧的用户信息（如果存在）
@@ -168,9 +191,9 @@ async function processConfigs() {
             }
 
             if (content) {
-                // 解析订阅内容
+                // 增强内容验证：检查是否为有效的配置内容
                 const parsedProxies = await parserManager.parse(content);
-                if (parsedProxies) {
+                if (parsedProxies && parsedProxies.length > 0) {
                     // 添加前缀
                     const prefixedProxies = parsedProxies.map(proxy => ({
                         ...proxy,
@@ -187,12 +210,51 @@ async function processConfigs() {
                         // 缓存失败不影响主流程
                     }
                 } else {
-                    console.warn(`无法解析订阅 ${name} 的内容`);
+                    console.warn(`订阅 ${name} 内容无效或无代理节点，尝试使用缓存降级`);
+                    
+                    // 内容无效时也尝试缓存降级
+                    try {
+                        const cachedConfig = await ConfigCacheService.getConfig(name, true);
+                        if (cachedConfig && cachedConfig.configContent) {
+                            console.warn(`使用缓存配置降级处理 (内容无效): ${name}`);
+                            
+                            const cachedParsedProxies = await parserManager.parse(cachedConfig.configContent);
+                            if (cachedParsedProxies && cachedParsedProxies.length > 0) {
+                                const prefixedProxies = cachedParsedProxies.map(proxy => ({
+                                    ...proxy,
+                                    name: `${name}|-|${proxy.name}`
+                                }));
+                                allProxiesList.push(prefixedProxies);
+                                console.log(`从缓存中恢复了 ${cachedParsedProxies.length} 个节点: ${name}`);
+                            }
+                        }
+                    } catch (cacheErr) {
+                        console.error(`缓存降级失败 ${name}:`, cacheErr.message);
+                    }
                 }
             } else {
-                 console.warn(`订阅 ${name} 的内容为空`);
+                console.warn(`订阅 ${name} 的内容为空，尝试使用缓存降级`);
+                
+                // 内容为空时尝试缓存降级
+                try {
+                    const cachedConfig = await ConfigCacheService.getConfig(name, true);
+                    if (cachedConfig && cachedConfig.configContent) {
+                        console.warn(`使用缓存配置降级处理 (内容为空): ${name}`);
+                        
+                        const cachedParsedProxies = await parserManager.parse(cachedConfig.configContent);
+                        if (cachedParsedProxies && cachedParsedProxies.length > 0) {
+                            const prefixedProxies = cachedParsedProxies.map(proxy => ({
+                                ...proxy,
+                                name: `${name}|-|${proxy.name}`
+                            }));
+                            allProxiesList.push(prefixedProxies);
+                            console.log(`从缓存中恢复了 ${cachedParsedProxies.length} 个节点: ${name}`);
+                        }
+                    }
+                } catch (cacheErr) {
+                    console.error(`缓存降级失败 ${name}:`, cacheErr.message);
+                }
             }
-
 
             // 处理用户信息
             const userInfoHeader = headers ? headers['subscription-userinfo'] : null;
@@ -220,8 +282,68 @@ async function processConfigs() {
         console.log('没有找到有效的配置 URL');
     }
 
-    // 3. 聚合所有代理节点
+    // 3. 处理所有独立的缓存配置（不在URL列表中的手动上传缓存）
+    try {
+        console.log('正在检查独立缓存配置...');
+        const allCaches = await ConfigCacheService.getAllConfigs(true); // 包含过期的缓存
+        
+        const independentCaches = allCaches.filter(cache => 
+            !processedSubscriptionNames.has(cache.subscriptionName) && // 未在URL列表中处理过
+            cache.configContent // 有有效内容
+        );
+        
+        if (independentCaches.length > 0) {
+            console.log(`发现 ${independentCaches.length} 个独立缓存配置`);
+            
+            for (const cache of independentCaches) {
+                console.log(`正在处理独立缓存: ${cache.subscriptionName}`);
+                
+                try {
+                    const parsedProxies = await parserManager.parse(cache.configContent);
+                    if (parsedProxies && parsedProxies.length > 0) {
+                        // 添加前缀
+                        const prefixedProxies = parsedProxies.map(proxy => ({
+                            ...proxy,
+                            name: `${cache.subscriptionName}|-|${proxy.name}`
+                        }));
+                        allProxiesList.push(prefixedProxies);
+                        console.log(`从独立缓存中加载了 ${parsedProxies.length} 个节点: ${cache.subscriptionName} (缓存时间: ${cache.lastUpdated})`);
+                        
+                        // 将这个缓存的订阅名也加入到已处理列表，避免重复处理
+                        processedSubscriptionNames.add(cache.subscriptionName);
+                        
+                        // 为独立缓存也保留用户信息（如果存在）
+                        if (currentUserInfo[cache.subscriptionName]) {
+                            newUserInfo[cache.subscriptionName] = currentUserInfo[cache.subscriptionName];
+                            console.log(`保留了独立缓存 ${cache.subscriptionName} 的用户信息`);
+                        }
+                    } else {
+                        console.warn(`独立缓存 ${cache.subscriptionName} 的内容无法解析或无代理节点`);
+                    }
+                } catch (parseErr) {
+                    console.error(`解析独立缓存 ${cache.subscriptionName} 失败:`, parseErr.message);
+                }
+            }
+        } else {
+            console.log('没有发现可用的独立缓存配置');
+        }
+    } catch (cacheErr) {
+        console.error('处理独立缓存配置时出错:', cacheErr.message);
+        // 缓存处理失败不影响主流程
+    }
+
+    // 4. 聚合所有代理节点
+    console.log('=== 聚合节点调试信息 ===');
+    console.log(`总共收集到 ${allProxiesList.length} 个代理列表:`);
+    allProxiesList.forEach((proxyList, index) => {
+        console.log(`  列表${index + 1}: ${proxyList.length} 个节点`);
+        if (proxyList.length > 0) {
+            console.log(`    示例节点: ${proxyList[0].name || '无名称'}`);
+        }
+    });
+    
     const finalUniqueProxies = aggregateProxies(allProxiesList);
+    console.log(`聚合后唯一节点数量: ${finalUniqueProxies.length}`);
 
     if (finalUniqueProxies.length === 0) {
         console.error('错误：未能获取或解析任何有效的代理节点，无法生成配置文件。');
@@ -230,7 +352,7 @@ async function processConfigs() {
         return; // 提前退出
     }
 
-    // 4. 生成最终配置
+    // 5. 生成最终配置
     const baseConfig = createBaseClashConfig();
     baseConfig.proxies = finalUniqueProxies;
     // 动态生成或填充代理组 (简化示例：只创建一个包含所有节点的 select 组)
@@ -254,7 +376,7 @@ async function processConfigs() {
     let mergedConfigYaml = YAML.stringify(baseConfig);
     let processedConfigYaml = mergedConfigYaml; // 默认处理后的配置等于合并后的
 
-    // 5. 保存合并后的配置
+    // 6. 保存合并后的配置
     try {
         await fs.writeFile(OUTPUT_FILE, mergedConfigYaml);
         console.log(`合并后的配置已保存到: ${OUTPUT_FILE}`);
@@ -273,7 +395,7 @@ async function processConfigs() {
         // 处理失败，processedConfigYaml 保持为原始合并后的 YAML
     }
 
-    // 7. 保存处理后的配置
+    // 8. 保存处理后的配置
     try {
         await fs.writeFile(PROCESSED_OUTPUT_FILE, processedConfigYaml);
         console.log(`处理过的配置已保存到: ${PROCESSED_OUTPUT_FILE}`);
@@ -281,10 +403,10 @@ async function processConfigs() {
         console.error(`保存处理后配置文件 (${PROCESSED_OUTPUT_FILE}) 失败:`, err.message);
     }
 
-    // 8. 保存更新后的用户信息
+    // 9. 保存更新后的用户信息
     await writeUserInfoData(newUserInfo);
 
-    // 9. 定期清理过期缓存（可选：仅在成功处理时执行）
+    // 10. 定期清理过期缓存（可选：仅在成功处理时执行）
     try {
         const cleanedCount = await ConfigCacheService.cleanupExpiredConfigs(CONFIG_CACHE_SETTINGS.AUTO_CLEANUP_DAYS);
         if (cleanedCount > 0) {

@@ -40,26 +40,26 @@ class ConfigCacheService {
             );
 
             if (existing) {
-                // 如果内容哈希相同，只更新时间戳
+                // 如果内容哈希相同，只更新时间戳（确保is_cached标记正确）
                 if (existing.content_hash === contentHash) {
                     await db.run(`
                         UPDATE subscription_configs 
                         SET last_fetch_success = ?, last_fetch_attempt = ?, 
                             fetch_success_count = fetch_success_count + 1,
-                            expires_at = ?
+                            expires_at = ?, is_cached = 1
                         WHERE subscription_name = ?
                     `, [now.toISOString(), now.toISOString(), expiresAt.toISOString(), subscriptionName]);
                     
                     console.log(`配置缓存已更新时间戳: ${subscriptionName}`);
                     return { updated: true, contentChanged: false };
                 } else {
-                    // 内容有变化，更新所有字段
+                    // 内容有变化，更新所有字段（包括is_cached标记）
                     await db.run(`
                         UPDATE subscription_configs 
                         SET config_content = ?, content_hash = ?, last_updated = ?, 
                             last_fetch_success = ?, last_fetch_attempt = ?,
                             fetch_success_count = fetch_success_count + 1,
-                            expires_at = ?
+                            expires_at = ?, is_cached = 1
                         WHERE subscription_name = ?
                     `, [configContent, contentHash, now.toISOString(), now.toISOString(), 
                         now.toISOString(), expiresAt.toISOString(), subscriptionName]);
@@ -68,12 +68,12 @@ class ConfigCacheService {
                     return { updated: true, contentChanged: true };
                 }
             } else {
-                // 新增缓存记录
+                // 新增缓存记录（包括is_cached标记）
                 await db.run(`
                     INSERT INTO subscription_configs 
                     (subscription_name, config_content, content_hash, last_updated, 
-                     last_fetch_success, last_fetch_attempt, fetch_success_count, expires_at)
-                    VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+                     last_fetch_success, last_fetch_attempt, fetch_success_count, expires_at, is_cached)
+                    VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1)
                 `, [subscriptionName, configContent, contentHash, now.toISOString(), 
                     now.toISOString(), now.toISOString(), expiresAt.toISOString()]);
                 

@@ -226,4 +226,80 @@ async function batchUpload(configs, expireHours) {
 ### 3. 故障排查
 - **日志分析**: 通过日志快速定位问题
 - **状态检查**: 定期检查各组件状态
-- **恢复机制**: 建立快速恢复的标准流程 
+- **恢复机制**: 建立快速恢复的标准流程
+
+## 关键问题修复记录
+
+### 问题：手动上传的缓存未参与配置生成
+
+**发现时间**: 配置缓存系统实现后的测试阶段
+
+**问题描述**:
+- 用户手动上传的缓存配置在执行"立刻更新配置"时不被处理
+- `processConfigs()` 函数只处理 `clash-urls.txt` 文件中定义的URL
+- 如果手动上传的缓存订阅名不在URL列表中，完全被忽略
+
+**影响范围**:
+- 🔴 **严重性**: 高 - 核心功能缺陷
+- 所有手动上传的独立缓存配置
+- 备用/应急配置方案失效
+- 用户期望与实际行为不符
+
+**根本原因**:
+```javascript
+// 原有逻辑：只处理URL列表中的订阅
+const urls = await urlManager.readUrls();
+for (const { url, name } of urls) {
+    // 只会处理这些URL对应的订阅
+    // 手动上传但不在URL列表中的缓存被完全忽略
+}
+```
+
+**修复方案**:
+
+1. **双重处理策略**: 在原有URL处理后，增加独立缓存处理
+2. **去重机制**: 使用 `Set` 跟踪已处理的订阅名称，避免重复
+3. **增强降级**: 扩展降级条件，包括内容无效和内容为空的情况
+
+**修复实现**:
+
+```javascript
+// 新增：跟踪已处理的订阅
+const processedSubscriptionNames = new Set();
+
+// 1. 处理URL列表（原有逻辑）
+for (const { url, name } of urls) {
+    processedSubscriptionNames.add(name);
+    // ... 处理逻辑
+}
+
+// 2. 新增：处理独立缓存
+const allCaches = await ConfigCacheService.getAllConfigs(true);
+const independentCaches = allCaches.filter(cache => 
+    !processedSubscriptionNames.has(cache.subscriptionName) && 
+    cache.configContent
+);
+
+for (const cache of independentCaches) {
+    // 处理独立缓存，确保参与配置生成
+}
+```
+
+**增强特性**:
+- ✅ 支持完全独立的缓存配置
+- ✅ 智能去重避免重复处理
+- ✅ 增强的内容验证和降级机制
+- ✅ 详细的日志输出便于调试
+- ✅ 保持向后兼容性
+
+**修复验证**:
+- 手动上传缓存后执行配置更新，缓存内容应包含在最终配置中
+- 控制台日志应显示"正在处理独立缓存"相关信息
+- 生成的配置文件应包含独立缓存中的代理节点
+
+**相关文件**:
+- `src/config.js` - 主要修复文件
+- `src/routes/configs.js` - 增强日志输出
+- `src/services/configCacheService.js` - 缓存服务支持
+
+这个修复确保了配置缓存系统的完整性和用户期望的一致性。 
