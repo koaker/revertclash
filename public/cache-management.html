@@ -170,6 +170,163 @@
         </div>
     </div>
 
+    <!-- 单个上传模态框 -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cloud-upload me-2"></i>上传配置缓存
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="uploadForm">
+                        <div class="rc-form-group">
+                            <label for="subscriptionName" class="rc-form-label">订阅名称</label>
+                            <input type="text" id="subscriptionName" class="rc-form-control" required 
+                                   placeholder="输入订阅名称">
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label for="expireHours" class="rc-form-label">缓存过期时间（小时）</label>
+                            <input type="number" id="expireHours" class="rc-form-control" 
+                                   min="1" max="8760" value="24" 
+                                   placeholder="1-8760小时，默认24小时">
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label class="rc-form-label">配置内容</label>
+                            <div class="upload-area" onclick="document.getElementById('configFile').click()">
+                                <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                <p class="mb-2">点击选择文件或拖拽 YAML 文件到此处</p>
+                                <p class="small text-muted">支持 .yaml, .yml 格式</p>
+                                <input type="file" id="configFile" accept=".yaml,.yml" style="display: none;" onchange="handleFileSelect(this)">
+                            </div>
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label for="configContent" class="rc-form-label">
+                                配置内容预览
+                                <small class="text-muted">（可手动编辑）</small>
+                            </label>
+                            <textarea id="configContent" class="code-editor" required 
+                                      placeholder="粘贴或编辑 YAML 格式的配置内容..."></textarea>
+                        </div>
+                        
+                        <div id="validationResults" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>配置验证结果：</strong>
+                                <div id="validationDetails"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="rc-btn rc-btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="rc-btn rc-btn-outline-primary" onclick="validateConfiguration()">
+                        <i class="bi bi-check-circle me-1"></i>验证配置
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="uploadSingleCache()">
+                        <i class="bi bi-upload me-1"></i>上传缓存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量上传模态框 -->
+    <div class="modal fade" id="batchUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-upload me-2"></i>批量上传配置缓存
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="rc-form-group">
+                                <label for="batchExpireHours" class="rc-form-label">统一过期时间（小时）</label>
+                                <input type="number" id="batchExpireHours" class="rc-form-control" 
+                                       min="1" max="8760" value="24">
+                            </div>
+                            
+                            <div class="rc-form-group">
+                                <label class="rc-form-label">批量配置</label>
+                                <div id="batchConfigList">
+                                    <!-- 批量配置项将通过JavaScript动态生成 -->
+                                </div>
+                                <button type="button" class="rc-btn rc-btn-outline-primary rc-btn-sm" onclick="addBatchConfigItem()">
+                                    <i class="bi bi-plus me-1"></i>添加配置项
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="rc-form-group">
+                                <label class="rc-form-label">上传进度</label>
+                                <div id="batchUploadProgress" style="display: none;">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <div id="batchUploadStatus"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="rc-form-group">
+                                <label class="rc-form-label">上传结果</label>
+                                <div id="batchUploadResults" class="border rounded p-3" style="background-color: #f8f9fa; min-height: 200px; max-height: 400px; overflow-y: auto;">
+                                    <p class="text-muted text-center">上传结果将在此显示</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="rc-btn rc-btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="rc-btn rc-btn-outline-primary" onclick="validateAllBatchConfigs()">
+                        <i class="bi bi-check-circle me-1"></i>验证所有配置
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="batchUploadCache()">
+                        <i class="bi bi-upload me-1"></i>开始批量上传
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查看缓存内容模态框 -->
+    <div class="modal fade" id="viewCacheModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-eye me-2"></i>查看缓存内容
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="cacheDetails">
+                        <!-- 缓存详情将通过JavaScript动态生成 -->
+                    </div>
+                    <div class="rc-form-group">
+                        <label class="rc-form-label">配置内容</label>
+                        <textarea id="viewCacheContent" class="code-editor" readonly></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="rc-btn rc-btn-outline-primary" onclick="downloadCacheConfig()">
+                        <i class="bi bi-download me-1"></i>下载配置
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/navbar.js"></script>
     <script>
@@ -182,6 +339,7 @@
             loadCacheSettings();
             loadCacheStats();
             loadCacheList();
+            setupDragAndDrop();
         });
 
         // 工具函数
@@ -397,22 +555,512 @@
 
         // 显示上传模态框
         function showUploadModal() {
-            showAlert('上传功能开发中...', 'info');
+            document.getElementById('uploadForm').reset();
+            document.getElementById('configContent').value = '';
+            document.getElementById('validationResults').style.display = 'none';
+            document.getElementById('expireHours').max = cacheSettings.MAX_EXPIRE_HOURS || 8760;
+            new bootstrap.Modal(document.getElementById('uploadModal')).show();
         }
 
         // 为指定订阅上传缓存
         function uploadCacheForSubscription(subscriptionName) {
-            showAlert(`${subscriptionName} 的上传功能开发中...`, 'info');
+            document.getElementById('subscriptionName').value = subscriptionName;
+            showUploadModal();
+        }
+
+        // 文件拖拽上传设置
+        function setupDragAndDrop() {
+            const uploadArea = document.querySelector('.upload-area');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect({ files });
+                }
+            });
+        }
+
+        // 处理文件选择
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // 检查文件大小 (限制为5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                showAlert('文件大小不能超过5MB');
+                return;
+            }
+            
+            // 检查文件类型
+            const allowedTypes = ['.yaml', '.yml'];
+            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+            if (!allowedTypes.includes(fileExtension)) {
+                showAlert('只支持 .yaml 和 .yml 格式的文件');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('configContent').value = e.target.result;
+                showAlert('文件读取成功，请验证配置内容', 'success');
+            };
+            reader.onerror = function() {
+                showAlert('文件读取失败，请重试');
+            };
+            reader.readAsText(file);
+        }
+
+        // 验证配置内容
+        async function validateConfiguration() {
+            const content = document.getElementById('configContent').value.trim();
+            
+            if (!content) {
+                showAlert('请输入配置内容');
+                return;
+            }
+            
+            const validationResults = document.getElementById('validationResults');
+            const validationDetails = document.getElementById('validationDetails');
+            
+            try {
+                // 基础YAML格式验证
+                let yamlData;
+                try {
+                    // 尝试使用浏览器内置的方法或简单解析
+                    yamlData = parseYAMLBasic(content);
+                } catch (parseErr) {
+                    throw new Error('YAML格式错误: ' + parseErr.message);
+                }
+                
+                // 检查是否包含proxies字段
+                if (!yamlData.proxies || !Array.isArray(yamlData.proxies)) {
+                    throw new Error('配置必须包含有效的 proxies 数组');
+                }
+                
+                // 验证代理节点
+                const proxies = yamlData.proxies;
+                if (proxies.length === 0) {
+                    throw new Error('配置中没有发现任何代理节点');
+                }
+                
+                // 检查必要字段
+                const validProxies = [];
+                const errors = [];
+                
+                proxies.forEach((proxy, index) => {
+                    if (!proxy.name) {
+                        errors.push(`第${index + 1}个节点缺少name字段`);
+                        return;
+                    }
+                    
+                    if (!proxy.type) {
+                        errors.push(`节点"${proxy.name}"缺少type字段`);
+                        return;
+                    }
+                    
+                    if (!proxy.server) {
+                        errors.push(`节点"${proxy.name}"缺少server字段`);
+                        return;
+                    }
+                    
+                    if (!proxy.port) {
+                        errors.push(`节点"${proxy.name}"缺少port字段`);
+                        return;
+                    }
+                    
+                    validProxies.push(proxy);
+                });
+                
+                // 显示验证结果
+                let resultHtml = `
+                    <div class="mb-2">
+                        <span class="badge bg-success">${validProxies.length} 个有效节点</span>
+                        ${errors.length > 0 ? `<span class="badge bg-warning ms-2">${errors.length} 个错误</span>` : ''}
+                    </div>
+                `;
+                
+                if (errors.length > 0) {
+                    resultHtml += `
+                        <div class="mt-2">
+                            <strong>发现的问题：</strong>
+                            <ul class="mb-0 mt-1">
+                                ${errors.slice(0, 5).map(error => `<li>${error}</li>`).join('')}
+                                ${errors.length > 5 ? `<li>还有 ${errors.length - 5} 个其他问题...</li>` : ''}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                validationDetails.innerHTML = resultHtml;
+                validationResults.style.display = 'block';
+                
+                if (validProxies.length > 0) {
+                    showAlert(`配置验证完成：发现 ${validProxies.length} 个有效节点`, 'success');
+                } else {
+                    showAlert('配置验证失败：没有有效的代理节点');
+                }
+                
+            } catch (err) {
+                validationDetails.innerHTML = `<div class="text-danger">${err.message}</div>`;
+                validationResults.style.display = 'block';
+                showAlert('配置验证失败: ' + err.message);
+            }
+        }
+
+        // 简单的YAML解析（基础实现）
+        function parseYAMLBasic(yamlStr) {
+            // 这是一个简化的YAML解析，主要用于基础验证
+            // 在生产环境中建议使用完整的YAML解析库
+            
+            const lines = yamlStr.split('\n');
+            const result = {};
+            let currentArray = null;
+            let currentItem = null;
+            let indentLevel = 0;
+            
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+                
+                // 检测数组开始
+                if (trimmed.startsWith('proxies:')) {
+                    result.proxies = [];
+                    currentArray = result.proxies;
+                    continue;
+                }
+                
+                // 检测数组项
+                if (trimmed.startsWith('- ') && currentArray) {
+                    currentItem = {};
+                    currentArray.push(currentItem);
+                    
+                    // 解析第一个字段
+                    const firstField = trimmed.substring(2).trim();
+                    if (firstField.includes(':')) {
+                        const [key, value] = firstField.split(':').map(s => s.trim());
+                        currentItem[key] = value.replace(/['"]/g, '');
+                    }
+                    continue;
+                }
+                
+                // 解析普通字段
+                if (trimmed.includes(':') && currentItem) {
+                    const [key, value] = trimmed.split(':').map(s => s.trim());
+                    if (key && value) {
+                        // 处理数值
+                        if (/^\d+$/.test(value)) {
+                            currentItem[key] = parseInt(value);
+                        } else {
+                            currentItem[key] = value.replace(/['"]/g, '');
+                        }
+                    }
+                }
+            }
+            
+            return result;
+        }
+
+        // 上传单个缓存
+        async function uploadSingleCache() {
+            const subscriptionName = document.getElementById('subscriptionName').value.trim();
+            const expireHours = parseInt(document.getElementById('expireHours').value);
+            const content = document.getElementById('configContent').value.trim();
+            
+            if (!subscriptionName || !content) {
+                showAlert('请填写完整的订阅名称和配置内容');
+                return;
+            }
+            
+            if (expireHours < 1 || expireHours > (cacheSettings.MAX_EXPIRE_HOURS || 8760)) {
+                showAlert(`过期时间必须在1-${cacheSettings.MAX_EXPIRE_HOURS || 8760}小时之间`);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/configs/cache/${encodeURIComponent(subscriptionName)}/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        expire_hours: expireHours
+                    })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || '上传失败');
+                }
+                
+                const data = await response.json();
+                showAlert(data.message, 'success');
+                
+                bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                await Promise.all([loadCacheStats(), loadCacheList()]);
+            } catch (err) {
+                console.error('上传缓存失败:', err);
+                showAlert('上传缓存失败: ' + err.message);
+            }
         }
 
         // 显示批量上传模态框
         function showBatchUploadModal() {
-            showAlert('批量上传功能开发中...', 'info');
+            document.getElementById('batchConfigList').innerHTML = '';
+            document.getElementById('batchUploadResults').innerHTML = '<p class="text-muted text-center">上传结果将在此显示</p>';
+            document.getElementById('batchUploadProgress').style.display = 'none';
+            document.getElementById('batchExpireHours').max = cacheSettings.MAX_EXPIRE_HOURS || 8760;
+            
+            // 添加一个初始配置项
+            addBatchConfigItem();
+            
+            new bootstrap.Modal(document.getElementById('batchUploadModal')).show();
+        }
+
+        // 添加批量配置项
+        function addBatchConfigItem() {
+            const container = document.getElementById('batchConfigList');
+            const index = container.children.length;
+            
+            const div = document.createElement('div');
+            div.className = 'card mb-3';
+            div.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">配置项 ${index + 1}</h6>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBatchConfigItem(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <input type="text" class="form-control form-control-sm batch-subscription-name" placeholder="订阅名称" required>
+                    </div>
+                    <div class="mb-2">
+                        <textarea class="form-control form-control-sm batch-config-content" rows="4" placeholder="YAML配置内容" required></textarea>
+                    </div>
+                    <div class="batch-validation-result" style="display: none;">
+                        <div class="alert alert-sm"></div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+        }
+
+        // 移除批量配置项
+        function removeBatchConfigItem(button) {
+            button.closest('.card').remove();
+            
+            // 重新编号
+            const items = document.querySelectorAll('#batchConfigList .card-title');
+            items.forEach((title, index) => {
+                title.textContent = `配置项 ${index + 1}`;
+            });
+        }
+
+        // 验证所有批量配置
+        function validateAllBatchConfigs() {
+            const configItems = document.querySelectorAll('#batchConfigList .card');
+            let validCount = 0;
+            let errorCount = 0;
+            
+            configItems.forEach((item, index) => {
+                const name = item.querySelector('.batch-subscription-name').value.trim();
+                const content = item.querySelector('.batch-config-content').value.trim();
+                const resultDiv = item.querySelector('.batch-validation-result');
+                const alertDiv = resultDiv.querySelector('.alert');
+                
+                if (!name || !content) {
+                    alertDiv.className = 'alert alert-sm alert-warning';
+                    alertDiv.textContent = '请填写订阅名称和配置内容';
+                    resultDiv.style.display = 'block';
+                    errorCount++;
+                    return;
+                }
+                
+                try {
+                    const yamlData = parseYAMLBasic(content);
+                    if (!yamlData.proxies || !Array.isArray(yamlData.proxies) || yamlData.proxies.length === 0) {
+                        throw new Error('没有有效的代理节点');
+                    }
+                    
+                    alertDiv.className = 'alert alert-sm alert-success';
+                    alertDiv.textContent = `验证通过 (${yamlData.proxies.length} 个节点)`;
+                    resultDiv.style.display = 'block';
+                    validCount++;
+                } catch (err) {
+                    alertDiv.className = 'alert alert-sm alert-danger';
+                    alertDiv.textContent = '验证失败: ' + err.message;
+                    resultDiv.style.display = 'block';
+                    errorCount++;
+                }
+            });
+            
+            showAlert(`批量验证完成：${validCount} 个通过，${errorCount} 个失败`, 
+                     errorCount === 0 ? 'success' : 'warning');
+        }
+
+        // 批量上传缓存
+        async function batchUploadCache() {
+            const expireHours = parseInt(document.getElementById('batchExpireHours').value);
+            const configItems = document.querySelectorAll('#batchConfigList .card');
+            
+            if (configItems.length === 0) {
+                showAlert('请至少添加一个配置项');
+                return;
+            }
+            
+            const configs = [];
+            for (let item of configItems) {
+                const name = item.querySelector('.batch-subscription-name').value.trim();
+                const content = item.querySelector('.batch-config-content').value.trim();
+                
+                if (!name || !content) {
+                    showAlert('请填写完整的订阅名称和配置内容');
+                    return;
+                }
+                
+                configs.push({
+                    subscription_name: name,
+                    content: content
+                });
+            }
+            
+            if (configs.length > 50) {
+                showAlert('批量上传一次最多支持50个配置');
+                return;
+            }
+            
+            try {
+                document.getElementById('batchUploadProgress').style.display = 'block';
+                document.getElementById('batchUploadResults').innerHTML = '<p class="text-muted">正在上传...</p>';
+                
+                const response = await fetch('/api/configs/cache/batch-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expire_hours: expireHours,
+                        configs: configs
+                    })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || '批量上传失败');
+                }
+                
+                const data = await response.json();
+                
+                // 更新进度条
+                const progressBar = document.querySelector('#batchUploadProgress .progress-bar');
+                progressBar.style.width = '100%';
+                
+                // 显示结果
+                renderBatchUploadResults(data.data);
+                
+                showAlert(data.message, 'success');
+                await Promise.all([loadCacheStats(), loadCacheList()]);
+            } catch (err) {
+                console.error('批量上传失败:', err);
+                showAlert('批量上传失败: ' + err.message);
+                document.getElementById('batchUploadResults').innerHTML = `<p class="text-danger">上传失败: ${err.message}</p>`;
+            }
+        }
+
+        // 渲染批量上传结果
+        function renderBatchUploadResults(data) {
+            const container = document.getElementById('batchUploadResults');
+            
+            let html = `
+                <div class="mb-3">
+                    <strong>上传统计:</strong> 
+                    <span class="badge bg-success">${data.successCount} 成功</span>
+                    <span class="badge bg-danger">${data.errorCount} 失败</span>
+                </div>
+                <div class="mb-2"><strong>详细结果:</strong></div>
+            `;
+            
+            data.results.forEach(result => {
+                const statusClass = result.status === 'success' ? 'success' : 'danger';
+                const statusIcon = result.status === 'success' ? 'check-circle' : 'x-circle';
+                
+                html += `
+                    <div class="alert alert-${statusClass} alert-sm py-2 mb-2">
+                        <i class="bi bi-${statusIcon} me-1"></i>
+                        <strong>${result.subscriptionName}:</strong> 
+                        ${result.status === 'success' ? 
+                            `上传成功 (${result.proxyCount} 个节点, ${formatSize(result.contentLength)})` : 
+                            result.error
+                        }
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
         }
 
         // 查看缓存内容
-        function viewCacheContent(subscriptionName) {
-            showAlert(`查看 ${subscriptionName} 的内容功能开发中...`, 'info');
+        async function viewCacheContent(subscriptionName) {
+            try {
+                const response = await fetch(`/api/configs/cache/${encodeURIComponent(subscriptionName)}?include_expired=true`);
+                if (!response.ok) throw new Error('获取缓存详情失败');
+                const data = await response.json();
+                
+                currentViewingCache = data.data;
+                
+                // 渲染缓存详情
+                document.getElementById('cacheDetails').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>订阅名称:</strong> ${currentViewingCache.subscriptionName}</p>
+                            <p><strong>最后更新:</strong> ${formatDateTime(currentViewingCache.lastUpdated)}</p>
+                            <p><strong>最后成功:</strong> ${formatDateTime(currentViewingCache.lastFetchSuccess)}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>是否过期:</strong> <span class="badge bg-${currentViewingCache.isExpired ? 'warning' : 'success'}">${currentViewingCache.isExpired ? '已过期' : '正常'}</span></p>
+                            <p><strong>成功次数:</strong> ${currentViewingCache.fetchSuccessCount}</p>
+                            <p><strong>失败次数:</strong> ${currentViewingCache.fetchFailureCount}</p>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('viewCacheContent').value = currentViewingCache.configContent || '';
+                
+                new bootstrap.Modal(document.getElementById('viewCacheModal')).show();
+            } catch (err) {
+                console.error('查看缓存内容失败:', err);
+                showAlert('查看缓存内容失败: ' + err.message);
+            }
+        }
+
+        // 下载缓存配置
+        function downloadCacheConfig() {
+            if (!currentViewingCache) return;
+            
+            const blob = new Blob([currentViewingCache.configContent], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentViewingCache.subscriptionName}-cached.yaml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         // 清理过期缓存

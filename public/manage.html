@@ -160,6 +160,26 @@
             border-color: #c3e6cb;
             color: #155724;
         }
+        
+        .upload-area-config {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area-config:hover {
+            border-color: var(--primary-color);
+            background-color: #e9f0ff;
+        }
+        
+        .upload-area-config.dragover {
+            border-color: var(--primary-color);
+            background-color: #e9f0ff;
+        }
     </style>
 </head>
 <body>
@@ -226,10 +246,16 @@
                 配置文件管理
             </div>
             <div class="rc-card-body">
-                <button class="rc-btn rc-btn-primary rc-mb-3" onclick="showAddConfigModal()">
-                    <i class="bi bi-plus-circle me-1"></i>
-                    添加配置
-                </button>
+                <div class="rc-mb-3">
+                    <button class="rc-btn rc-btn-primary me-2" onclick="showAddConfigModal()">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        添加配置
+                    </button>
+                    <button class="rc-btn rc-btn-outline-primary" onclick="showUploadConfigFileModal()">
+                        <i class="bi bi-cloud-upload me-1"></i>
+                        上传配置文件
+                    </button>
+                </div>
                 <div class="table-responsive">
                     <table class="table" id="configTable">
                         <thead>
@@ -340,6 +366,57 @@
                         </div>
                         <button type="button" id="saveConfigBtn" class="rc-btn rc-btn-primary" style="margin-top: 10px; float: right;">保存为配置文件</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 上传配置文件模态框 -->
+        <div id="uploadConfigFileModal" class="modal">
+            <div class="modal-content" style="width: 70%; max-width: 800px;">
+                <span class="close" onclick="closeUploadConfigFileModal()">&times;</span>
+                <h3><i class="bi bi-cloud-upload me-2"></i>上传配置文件</h3>
+                
+                <div class="rc-form-group">
+                    <label for="uploadConfigFileName" class="rc-form-label">配置文件名称</label>
+                    <input type="text" id="uploadConfigFileName" class="rc-form-control" required 
+                           placeholder="输入文件名称（不需要添加.yaml后缀）">
+                </div>
+                
+                <div class="rc-form-group">
+                    <label class="rc-form-label">选择配置文件</label>
+                    <div class="upload-area-config" onclick="document.getElementById('uploadConfigFileInput').click()">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                        <p class="mb-2">点击选择文件或拖拽 YAML/YML 文件到此处</p>
+                        <p class="small text-muted">支持 .yaml, .yml 格式，最大5MB</p>
+                        <input type="file" id="uploadConfigFileInput" accept=".yaml,.yml" style="display: none;" onchange="handleConfigFileSelect(this)">
+                    </div>
+                </div>
+                
+                <div class="rc-form-group">
+                    <label for="uploadConfigFileContent" class="rc-form-label">
+                        配置内容预览
+                        <small class="text-muted">（可编辑）</small>
+                    </label>
+                    <textarea id="uploadConfigFileContent" class="rc-form-control" 
+                              style="min-height: 250px; font-family: monospace;" required
+                              placeholder="配置文件内容将在此显示，也可直接粘贴内容..."></textarea>
+                </div>
+                
+                <div id="configFileValidationResults" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <strong>配置验证结果：</strong>
+                        <div id="configFileValidationDetails"></div>
+                    </div>
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="button" class="rc-btn rc-btn-secondary me-2" onclick="closeUploadConfigFileModal()">取消</button>
+                    <button type="button" class="rc-btn rc-btn-outline-primary me-2" onclick="validateConfigFile()">
+                        <i class="bi bi-check-circle me-1"></i>验证配置
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="uploadConfigFile()">
+                        <i class="bi bi-upload me-1"></i>上传配置
+                    </button>
                 </div>
             </div>
         </div>
@@ -924,6 +1001,303 @@ function formatDataUsage(download, upload, total) {
                 showAlert(err.message);
             }
         });
+
+        // 配置文件上传功能
+        function showUploadConfigFileModal() {
+            document.getElementById('uploadConfigFileName').value = '';
+            document.getElementById('uploadConfigFileContent').value = '';
+            document.getElementById('configFileValidationResults').style.display = 'none';
+            setupConfigFileUploadDragDrop();
+            document.getElementById('uploadConfigFileModal').style.display = 'block';
+        }
+
+        function closeUploadConfigFileModal() {
+            document.getElementById('uploadConfigFileModal').style.display = 'none';
+        }
+
+        // 设置配置文件拖拽上传
+        function setupConfigFileUploadDragDrop() {
+            const uploadArea = document.querySelector('.upload-area-config');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleConfigFileSelect({ files });
+                }
+            });
+        }
+
+        // 处理配置文件选择
+        function handleConfigFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // 检查文件大小 (限制为5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (file.size > maxSize) {
+                showAlert('文件大小不能超过5MB');
+                return;
+            }
+            
+            // 检查文件类型
+            const allowedTypes = ['.yaml', '.yml'];
+            const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+            if (!allowedTypes.includes(fileExtension)) {
+                showAlert('只支持 .yaml 和 .yml 格式的文件');
+                return;
+            }
+            
+            // 自动填充文件名（去掉扩展名）
+            const fileName = file.name.replace(/\.(yaml|yml)$/i, '');
+            document.getElementById('uploadConfigFileName').value = fileName;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('uploadConfigFileContent').value = e.target.result;
+                showAlert('文件读取成功，请验证配置内容', 'success');
+            };
+            reader.onerror = function() {
+                showAlert('文件读取失败，请重试');
+            };
+            reader.readAsText(file);
+        }
+
+        // 验证配置文件
+        function validateConfigFile() {
+            const content = document.getElementById('uploadConfigFileContent').value.trim();
+            
+            if (!content) {
+                showAlert('请输入配置内容');
+                return;
+            }
+            
+            const validationResults = document.getElementById('configFileValidationResults');
+            const validationDetails = document.getElementById('configFileValidationDetails');
+            
+            try {
+                // 基础YAML格式验证
+                let yamlData;
+                try {
+                    yamlData = parseYAMLForConfig(content);
+                } catch (parseErr) {
+                    throw new Error('YAML格式错误: ' + parseErr.message);
+                }
+                
+                // 验证是否为有效的Clash配置
+                const validationResult = validateClashConfig(yamlData);
+                
+                let resultHtml = `
+                    <div class="mb-2">
+                        <span class="badge bg-${validationResult.isValid ? 'success' : 'warning'}">${validationResult.isValid ? '配置有效' : '配置有问题'}</span>
+                        ${validationResult.proxiesCount > 0 ? `<span class="badge bg-info ms-2">${validationResult.proxiesCount} 个代理节点</span>` : ''}
+                        ${validationResult.rulesCount > 0 ? `<span class="badge bg-info ms-2">${validationResult.rulesCount} 条规则</span>` : ''}
+                    </div>
+                `;
+                
+                if (validationResult.warnings.length > 0) {
+                    resultHtml += `
+                        <div class="mt-2">
+                            <strong>注意事项：</strong>
+                            <ul class="mb-0 mt-1">
+                                ${validationResult.warnings.slice(0, 5).map(warning => `<li>${warning}</li>`).join('')}
+                                ${validationResult.warnings.length > 5 ? `<li>还有 ${validationResult.warnings.length - 5} 个其他提示...</li>` : ''}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                validationDetails.innerHTML = resultHtml;
+                validationResults.style.display = 'block';
+                
+                if (validationResult.isValid) {
+                    showAlert('配置验证通过', 'success');
+                } else {
+                    showAlert('配置验证有警告，请检查', 'warning');
+                }
+                
+            } catch (err) {
+                validationDetails.innerHTML = `<div class="text-danger">${err.message}</div>`;
+                validationResults.style.display = 'block';
+                showAlert('配置验证失败: ' + err.message);
+            }
+        }
+
+        // 解析YAML配置（更全面的解析）
+        function parseYAMLForConfig(yamlStr) {
+            const lines = yamlStr.split('\n');
+            const result = {};
+            let currentSection = null;
+            let currentArray = null;
+            let currentItem = null;
+            
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+                
+                // 检测主要部分
+                if (trimmed.match(/^(port|socks-port|allow-lan|mode|log-level|external-controller):/)) {
+                    const [key, value] = trimmed.split(':').map(s => s.trim());
+                    result[key] = isNaN(value) ? value.replace(/['"]/g, '') : parseInt(value);
+                    continue;
+                }
+                
+                // 检测数组开始
+                if (trimmed.match(/^(proxies|proxy-groups|rules):/)) {
+                    const section = trimmed.replace(':', '');
+                    result[section] = [];
+                    currentArray = result[section];
+                    currentSection = section;
+                    continue;
+                }
+                
+                // 检测数组项
+                if (trimmed.startsWith('- ') && currentArray) {
+                    if (currentSection === 'rules') {
+                        // 规则是简单字符串
+                        currentArray.push(trimmed.substring(2).trim());
+                    } else {
+                        // 代理和代理组是对象
+                        currentItem = {};
+                        currentArray.push(currentItem);
+                        
+                        const firstField = trimmed.substring(2).trim();
+                        if (firstField.includes(':')) {
+                            const [key, value] = firstField.split(':').map(s => s.trim());
+                            currentItem[key] = value.replace(/['"]/g, '');
+                        }
+                    }
+                    continue;
+                }
+                
+                // 解析对象字段
+                if (trimmed.includes(':') && currentItem && currentSection !== 'rules') {
+                    const [key, value] = trimmed.split(':').map(s => s.trim());
+                    if (key && value) {
+                        if (/^\d+$/.test(value)) {
+                            currentItem[key] = parseInt(value);
+                        } else if (value.startsWith('[') && value.endsWith(']')) {
+                            // 处理数组
+                            try {
+                                currentItem[key] = JSON.parse(value);
+                            } catch {
+                                currentItem[key] = value.replace(/['"]/g, '');
+                            }
+                        } else {
+                            currentItem[key] = value.replace(/['"]/g, '');
+                        }
+                    }
+                }
+            }
+            
+            return result;
+        }
+
+        // 验证Clash配置
+        function validateClashConfig(config) {
+            const result = {
+                isValid: true,
+                warnings: [],
+                proxiesCount: 0,
+                rulesCount: 0
+            };
+            
+            // 检查基础字段
+            if (!config.port && !config['socks-port']) {
+                result.warnings.push('建议设置port或socks-port');
+            }
+            
+            if (!config.mode) {
+                result.warnings.push('建议设置mode (rule, global, direct)');
+            }
+            
+            // 检查代理
+            if (config.proxies && Array.isArray(config.proxies)) {
+                result.proxiesCount = config.proxies.length;
+                if (result.proxiesCount === 0) {
+                    result.warnings.push('配置中没有代理节点');
+                }
+            } else {
+                result.warnings.push('配置中缺少proxies部分');
+            }
+            
+            // 检查代理组
+            if (config['proxy-groups'] && Array.isArray(config['proxy-groups'])) {
+                if (config['proxy-groups'].length === 0) {
+                    result.warnings.push('建议设置proxy-groups代理组');
+                }
+            } else {
+                result.warnings.push('配置中缺少proxy-groups部分');
+            }
+            
+            // 检查规则
+            if (config.rules && Array.isArray(config.rules)) {
+                result.rulesCount = config.rules.length;
+                if (result.rulesCount === 0) {
+                    result.warnings.push('配置中没有规则');
+                }
+            } else {
+                result.warnings.push('配置中缺少rules部分');
+            }
+            
+            // 如果有太多严重问题，标记为无效
+            if (result.warnings.length > 3 && result.proxiesCount === 0) {
+                result.isValid = false;
+            }
+            
+            return result;
+        }
+
+        // 上传配置文件
+        async function uploadConfigFile() {
+            const fileName = document.getElementById('uploadConfigFileName').value.trim();
+            const content = document.getElementById('uploadConfigFileContent').value.trim();
+            
+            if (!fileName || !content) {
+                showAlert('请填写完整的文件名和配置内容');
+                return;
+            }
+            
+            // 确保文件名有正确的扩展名
+            const finalFileName = fileName.endsWith('.yaml') || fileName.endsWith('.yml') ? 
+                                  fileName : fileName + '.yaml';
+            
+            try {
+                const response = await fetch('/api/configs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: finalFileName,
+                        content: content
+                    })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || '上传失败');
+                }
+                
+                showAlert('配置文件上传成功', 'success');
+                closeUploadConfigFileModal();
+                await loadConfigs();
+            } catch (err) {
+                console.error('上传配置文件失败:', err);
+                showAlert('上传配置文件失败: ' + err.message);
+            }
+        }
 
         // 初始加载
         loadUrls();
