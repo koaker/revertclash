@@ -12,6 +12,7 @@ const userRoutes = require('./routes/users');
 const nodeRoutes = require('./routes/nodes');
 const subscriptionTokenRoutes = require('./routes/subscriptionTokens');
 const subscribeRoutes = require('./routes/subscribe');
+const newConfigRoutes = require('./routes/newconfig');
 const { processConfigs } = require('./config');
 const fs = require('fs').promises;
 const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE } = require('./config');
@@ -98,6 +99,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/urls', urlRoutes);
 app.use('/api/configs', configRoutes);
 app.use('/api/nodes', nodeRoutes);
+app.use('/api/newconfig', newConfigRoutes);
 app.use('/api/subscription-tokens', rateLimiter.createLimiter({
     windowMs: 1 * 60 * 1000,  // 1分钟窗口
     maxRequests: 30,          // 每IP每窗口最多30次请求
