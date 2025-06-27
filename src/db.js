@@ -75,13 +75,39 @@ function initDatabase() {
                     }
                     console.log('订阅token表已就绪');
                     
-                    // 检查并升级订阅Token表，添加访问统计字段
-                    upgradeSubscriptionTokensTable()
-                        .then(() => resolve())
-                        .catch(err => {
-                            console.error('升级订阅token表失败:', err.message);
+                    // 创建配置缓存表
+                    db.run(`
+                        CREATE TABLE IF NOT EXISTS subscription_configs (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            subscription_name TEXT UNIQUE NOT NULL,
+                            config_content TEXT NOT NULL,
+                            content_hash TEXT NOT NULL,
+                            last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
+                            last_fetch_success TEXT,
+                            last_fetch_attempt TEXT,
+                            fetch_success_count INTEGER DEFAULT 0,
+                            fetch_failure_count INTEGER DEFAULT 0,
+                            is_cached INTEGER DEFAULT 1,
+                            expires_at TEXT,
+                            file_path TEXT,
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `, (err) => {
+                        if (err) {
+                            console.error('创建配置缓存表失败:', err.message);
                             reject(err);
-                        });
+                            return;
+                        }
+                        console.log('配置缓存表已就绪');
+                        
+                        // 检查并升级订阅Token表，添加访问统计字段
+                        upgradeSubscriptionTokensTable()
+                            .then(() => resolve())
+                            .catch(err => {
+                                console.error('升级订阅token表失败:', err.message);
+                                reject(err);
+                            });
+                    });
                 });
             });
         });

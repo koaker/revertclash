@@ -2,7 +2,8 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const { ConfigManager, CONFIGS_DIR } = require('../configManager');
-const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE, processConfigs } = require('../config');
+const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE, processConfigs, CONFIG_CACHE_SETTINGS } = require('../config');
+const ConfigCacheService = require('../services/configCacheService');
 
 const router = express.Router();
 const configManager = new ConfigManager(CONFIGS_DIR);
@@ -163,6 +164,354 @@ router.get('/output/processed', async (req, res) => {
                 error: '服务器内部错误'
             });
         }
+    }
+});
+
+// ========== 配置缓存管理API ==========
+
+// 获取缓存配置设置
+router.get('/cache/settings', async (req, res) => {
+    try {
+        res.json({
+            status: 'success',
+            data: CONFIG_CACHE_SETTINGS
+        });
+    } catch (err) {
+        console.error('获取缓存配置设置失败:', err);
+        res.status(500).json({ error: '获取缓存配置设置失败: ' + err.message });
+    }
+});
+
+// 获取缓存统计信息
+router.get('/cache/stats', async (req, res) => {
+    try {
+        const stats = await ConfigCacheService.getCacheStats();
+        res.json({
+            status: 'success',
+            data: stats
+        });
+    } catch (err) {
+        console.error('获取缓存统计失败:', err);
+        res.status(500).json({ error: '获取缓存统计失败: ' + err.message });
+    }
+});
+
+// 获取所有缓存配置列表
+router.get('/cache/list', async (req, res) => {
+    try {
+        const includeExpired = req.query.include_expired === 'true';
+        const configs = await ConfigCacheService.getAllConfigs(includeExpired);
+        res.json({
+            status: 'success',
+            data: configs
+        });
+    } catch (err) {
+        console.error('获取缓存配置列表失败:', err);
+        res.status(500).json({ error: '获取缓存配置列表失败: ' + err.message });
+    }
+});
+
+// 获取指定订阅的缓存配置
+router.get('/cache/:subscriptionName', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        const includeExpired = req.query.include_expired === 'true';
+        
+        const config = await ConfigCacheService.getConfig(subscriptionName, includeExpired);
+        if (config) {
+            res.json({
+                status: 'success',
+                data: config
+            });
+        } else {
+            res.status(404).json({
+                status: 'error',
+                error: '缓存配置不存在或已过期'
+            });
+        }
+    } catch (err) {
+        console.error(`获取缓存配置失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ error: '获取缓存配置失败: ' + err.message });
+    }
+});
+
+// 删除指定订阅的缓存
+router.delete('/cache/:subscriptionName', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        const deleted = await ConfigCacheService.deleteConfig(subscriptionName);
+        
+        if (deleted) {
+            res.json({
+                status: 'success',
+                message: `已删除订阅 ${subscriptionName} 的缓存`
+            });
+        } else {
+            res.status(404).json({
+                status: 'error',
+                error: '缓存配置不存在'
+            });
+        }
+    } catch (err) {
+        console.error(`删除缓存配置失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ error: '删除缓存配置失败: ' + err.message });
+    }
+});
+
+// 清理过期的缓存
+router.post('/cache/cleanup', async (req, res) => {
+    try {
+        const { days_old } = req.body;
+        const daysOld = days_old && !isNaN(days_old) ? parseInt(days_old) : 7;
+        
+        const cleanedCount = await ConfigCacheService.cleanupExpiredConfigs(daysOld);
+        
+        res.json({
+            status: 'success',
+            message: `已清理 ${cleanedCount} 个过期的配置缓存`,
+            cleaned_count: cleanedCount
+        });
+    } catch (err) {
+        console.error('清理过期缓存失败:', err);
+        res.status(500).json({ error: '清理过期缓存失败: ' + err.message });
+    }
+});
+
+// 强制刷新指定订阅的缓存（重新获取并更新）
+router.post('/cache/:subscriptionName/refresh', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        
+        // 这里我们触发单个订阅的更新
+        // 注意：这需要重构processConfigs函数以支持单个订阅的处理
+        // 暂时返回提示信息，建议用户使用全量更新
+        res.json({
+            status: 'info',
+            message: `订阅 ${subscriptionName} 的缓存刷新已请求，请使用 POST /configs/update 进行全量更新`
+        });
+    } catch (err) {
+        console.error(`刷新缓存失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ error: '刷新缓存失败: ' + err.message });
+    }
+});
+
+// 获取缓存配置的原始内容（用于调试）
+router.get('/cache/:subscriptionName/content', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        const includeExpired = req.query.include_expired === 'true';
+        
+        const config = await ConfigCacheService.getConfig(subscriptionName, includeExpired);
+        if (config && config.configContent) {
+            res.setHeader('Content-Type', 'text/yaml');
+            res.setHeader('Content-Disposition', `attachment; filename="${subscriptionName}-cached.yaml"`);
+            res.send(config.configContent);
+        } else {
+            res.status(404).json({
+                status: 'error',
+                error: '缓存配置不存在或已过期'
+            });
+        }
+    } catch (err) {
+        console.error(`获取缓存配置内容失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ error: '获取缓存配置内容失败: ' + err.message });
+    }
+});
+
+// 手动上传指定订阅的缓存配置
+router.post('/cache/:subscriptionName/upload', async (req, res) => {
+    try {
+        const { subscriptionName } = req.params;
+        const { content, expire_hours } = req.body;
+        
+        // 验证输入参数
+        if (!content || typeof content !== 'string') {
+            return res.status(400).json({
+                status: 'error',
+                error: '配置内容不能为空且必须是字符串格式'
+            });
+        }
+        
+        if (content.trim().length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                error: '配置内容不能为空白'
+            });
+        }
+        
+        // 验证订阅名称格式
+        if (!subscriptionName || subscriptionName.trim().length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                error: '订阅名称不能为空'
+            });
+        }
+        
+                 // 处理过期时间参数
+         let expireHours = CONFIG_CACHE_SETTINGS.DEFAULT_EXPIRE_HOURS; // 使用配置中的默认值
+         if (expire_hours !== undefined) {
+             const parsedHours = parseInt(expire_hours);
+                           if (isNaN(parsedHours) || parsedHours < CONFIG_CACHE_SETTINGS.MIN_EXPIRE_HOURS || parsedHours > CONFIG_CACHE_SETTINGS.MAX_EXPIRE_HOURS) {
+                 return res.status(400).json({
+                     status: 'error',
+                     error: `过期时间必须是${CONFIG_CACHE_SETTINGS.MIN_EXPIRE_HOURS}-${CONFIG_CACHE_SETTINGS.MAX_EXPIRE_HOURS}小时之间的整数`
+                 });
+            }
+            expireHours = parsedHours;
+        }
+        
+        // 验证配置内容格式（基本检查）
+        const parserManager = require('../subscription/parserManager');
+        try {
+            const parsedProxies = await parserManager.parse(content);
+            if (!parsedProxies || parsedProxies.length === 0) {
+                return res.status(400).json({
+                    status: 'error',
+                    error: '配置内容格式无效或不包含有效的代理节点'
+                });
+            }
+            console.log(`手动上传的配置包含 ${parsedProxies.length} 个代理节点`);
+        } catch (parseErr) {
+            return res.status(400).json({
+                status: 'error',
+                error: '配置内容解析失败: ' + parseErr.message
+            });
+        }
+        
+        // 保存到缓存
+        const result = await ConfigCacheService.saveConfig(subscriptionName, content, expireHours);
+        
+        // 记录操作日志
+        console.log(`用户手动上传配置缓存: ${subscriptionName}, 过期时间: ${expireHours}小时`);
+        
+        res.json({
+            status: 'success',
+            message: `订阅 ${subscriptionName} 的缓存配置已手动上传`,
+            data: {
+                subscriptionName,
+                expireHours,
+                contentLength: content.length,
+                contentChanged: result.contentChanged || result.created || false,
+                operation: result.created ? 'created' : 'updated'
+            }
+        });
+        
+    } catch (err) {
+        console.error(`手动上传缓存配置失败 (${req.params.subscriptionName}):`, err);
+        res.status(500).json({ 
+            status: 'error',
+            error: '手动上传缓存配置失败: ' + err.message 
+        });
+    }
+});
+
+// 批量上传多个订阅的缓存配置
+router.post('/cache/batch-upload', async (req, res) => {
+    try {
+        const { configs, expire_hours } = req.body;
+        
+        // 验证输入参数
+        if (!configs || !Array.isArray(configs) || configs.length === 0) {
+            return res.status(400).json({
+                status: 'error',
+                error: 'configs必须是非空数组'
+            });
+        }
+        
+        if (configs.length > 50) {
+            return res.status(400).json({
+                status: 'error',
+                error: '批量上传一次最多支持50个订阅'
+            });
+        }
+        
+                 // 处理过期时间参数
+         let expireHours = CONFIG_CACHE_SETTINGS.DEFAULT_EXPIRE_HOURS; // 使用配置中的默认值
+         if (expire_hours !== undefined) {
+             const parsedHours = parseInt(expire_hours);
+             if (isNaN(parsedHours) || parsedHours < CONFIG_CACHE_SETTINGS.MIN_EXPIRE_HOURS || parsedHours > CONFIG_CACHE_SETTINGS.MAX_EXPIRE_HOURS) {
+                 return res.status(400).json({
+                     status: 'error',
+                     error: `过期时间必须是${CONFIG_CACHE_SETTINGS.MIN_EXPIRE_HOURS}-${CONFIG_CACHE_SETTINGS.MAX_EXPIRE_HOURS}小时之间的整数`
+                 });
+            }
+            expireHours = parsedHours;
+        }
+        
+        const results = [];
+        const parserManager = require('../subscription/parserManager');
+        
+        // 逐个处理配置
+        for (const configItem of configs) {
+            const { subscription_name, content } = configItem;
+            
+            try {
+                // 验证单个配置项
+                if (!subscription_name || !content) {
+                    results.push({
+                        subscriptionName: subscription_name || 'unknown',
+                        status: 'error',
+                        error: '订阅名称和内容不能为空'
+                    });
+                    continue;
+                }
+                
+                // 验证配置内容格式
+                const parsedProxies = await parserManager.parse(content);
+                if (!parsedProxies || parsedProxies.length === 0) {
+                    results.push({
+                        subscriptionName: subscription_name,
+                        status: 'error',
+                        error: '配置内容格式无效或不包含有效的代理节点'
+                    });
+                    continue;
+                }
+                
+                // 保存到缓存
+                const result = await ConfigCacheService.saveConfig(subscription_name, content, expireHours);
+                
+                results.push({
+                    subscriptionName: subscription_name,
+                    status: 'success',
+                    proxyCount: parsedProxies.length,
+                    contentLength: content.length,
+                    operation: result.created ? 'created' : 'updated'
+                });
+                
+                console.log(`批量上传: ${subscription_name} - ${parsedProxies.length} 个节点`);
+                
+            } catch (itemErr) {
+                results.push({
+                    subscriptionName: subscription_name || 'unknown',
+                    status: 'error',
+                    error: itemErr.message
+                });
+                console.error(`批量上传失败 (${subscription_name}):`, itemErr);
+            }
+        }
+        
+        // 统计结果
+        const successCount = results.filter(r => r.status === 'success').length;
+        const errorCount = results.filter(r => r.status === 'error').length;
+        
+        res.json({
+            status: 'completed',
+            message: `批量上传完成: ${successCount} 成功, ${errorCount} 失败`,
+            data: {
+                totalCount: configs.length,
+                successCount,
+                errorCount,
+                expireHours,
+                results
+            }
+        });
+        
+    } catch (err) {
+        console.error('批量上传缓存配置失败:', err);
+        res.status(500).json({ 
+            status: 'error',
+            error: '批量上传缓存配置失败: ' + err.message 
+        });
     }
 });
 

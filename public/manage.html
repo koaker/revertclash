@@ -175,10 +175,19 @@
         <div class="rc-card" style="margin-bottom: 20px;">
             <div class="rc-card-body">
                 <div class="rc-d-flex rc-justify-between rc-align-center">
-                    <button class="rc-btn rc-btn-primary" onclick="updateConfig()" style="font-size: 16px; padding: 10px 20px;">
-                        <span id="updateBtnText">立即更新配置</span>
-                        <span id="updateSpinner" style="display: none;">更新中...</span>
-                    </button>
+                    <div>
+                        <button class="rc-btn rc-btn-primary" onclick="updateConfig()" style="font-size: 16px; padding: 10px 20px;">
+                            <span id="updateBtnText">立即更新配置</span>
+                            <span id="updateSpinner" style="display: none;">更新中...</span>
+                        </button>
+                        <button class="rc-btn rc-btn-outline-primary rc-ml-2" onclick="window.open('/cache-management.html', '_blank')" style="margin-left: 10px;">
+                            <i class="bi bi-database me-1"></i>
+                            缓存管理
+                        </button>
+                    </div>
+                    <div id="cacheOverview" style="font-size: 0.9em; color: #666;">
+                        <!-- 缓存概览信息将通过JavaScript动态加载 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -363,7 +372,7 @@
                 showAlert(data.message, 'success');
                 
                 // 刷新列表
-                await Promise.all([loadUrls(), loadConfigs()]);
+                await Promise.all([loadUrls(), loadConfigs(), loadCacheOverview()]);
             } catch (err) {
                 showAlert(err.message);
             } finally {
@@ -371,6 +380,29 @@
                 btn.disabled = false;
                 btnText.style.display = 'inline';
                 spinner.style.display = 'none';
+            }
+        }
+
+        // 加载缓存概览信息
+        async function loadCacheOverview() {
+            try {
+                const response = await fetch('/api/configs/cache/stats');
+                if (!response.ok) return; // 静默失败
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const stats = data.data;
+                    const overview = document.getElementById('cacheOverview');
+                    overview.innerHTML = `
+                        <i class="bi bi-database me-1"></i>
+                        缓存状态: ${stats.cachedSubscriptions}/${stats.totalSubscriptions} 已缓存
+                        <span style="color: #28a745; margin-left: 8px;">✓ ${stats.totalSuccessCount}</span>
+                        <span style="color: #dc3545; margin-left: 4px;">✗ ${stats.totalFailureCount}</span>
+                    `;
+                }
+            } catch (err) {
+                // 静默处理错误，不影响主要功能
+                console.log('加载缓存概览失败:', err);
             }
         }
 
@@ -449,9 +481,25 @@ function formatDataUsage(download, upload, total) {
         // URL管理功能
         async function loadUrls() {
             try {
-                const response = await fetch('/api/urls');
-                if (!response.ok) throw new Error('加载URL失败');
-                const urls = await response.json();
+                // 并行加载URL列表和缓存状态
+                const [urlResponse, cacheResponse] = await Promise.all([
+                    fetch('/api/urls'),
+                    fetch('/api/configs/cache/list?include_expired=true').catch(() => ({ ok: false }))
+                ]);
+                
+                if (!urlResponse.ok) throw new Error('加载URL失败');
+                const urls = await urlResponse.json();
+                
+                // 获取缓存状态映射
+                let cacheMap = new Map();
+                if (cacheResponse.ok) {
+                    const cacheData = await cacheResponse.json();
+                    if (cacheData.status === 'success') {
+                        cacheData.data.forEach(cache => {
+                            cacheMap.set(cache.subscriptionName, cache);
+                        });
+                    }
+                }
                 
                 const tbody = document.querySelector('#urlTable tbody');
                 tbody.innerHTML = '';
@@ -472,15 +520,42 @@ function formatDataUsage(download, upload, total) {
                         `;
                     }
 
+                    // 构建缓存状态信息
+                    let cacheStatusHtml = '';
+                    const cacheInfo = cacheMap.get(name);
+                    if (cacheInfo) {
+                        let statusColor, statusText;
+                        if (!cacheInfo.hasContent) {
+                            statusColor = '#dc3545'; // 红色
+                            statusText = '无缓存';
+                        } else if (cacheInfo.isExpired) {
+                            statusColor = '#ffc107'; // 黄色
+                            statusText = '缓存过期';
+                        } else {
+                            statusColor = '#28a745'; // 绿色
+                            statusText = '缓存正常';
+                        }
+                        
+                        cacheStatusHtml = `
+                            <div style="font-size: 0.7em; margin-top: 4px;">
+                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor}; margin-right: 4px;"></span>
+                                <span style="color: ${statusColor};">${statusText}</span>
+                                <span style="color: #999; margin-left: 8px;">成功: ${cacheInfo.fetchSuccessCount || 0} | 失败: ${cacheInfo.fetchFailureCount || 0}</span>
+                            </div>
+                        `;
+                    }
+
                     tr.innerHTML = `
                         <td style="width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</td>
                         <td class="url-cell" title="${url}">
                             ${url}
                             ${userInfoHtml}
+                            ${cacheStatusHtml}
                         </td>
                         <td style="width: 150px; min-width: 150px;">
                             <button class="btn" onclick="editUrl('${name}', '${url}')">编辑</button>
                             <button class="btn btn-danger" onclick="deleteUrl('${name}')">删除</button>
+                            ${cacheInfo ? `<button class="btn" style="background-color: #17a2b8; color: white; font-size: 12px; padding: 2px 6px; margin-top: 2px;" onclick="window.open('/cache-management.html', '_blank')" title="查看缓存详情">缓存</button>` : ''}
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -853,6 +928,7 @@ function formatDataUsage(download, upload, total) {
         // 初始加载
         loadUrls();
         loadConfigs();
+        loadCacheOverview();
     </script>
     </div>
 </body>

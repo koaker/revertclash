@@ -7,11 +7,20 @@ const { fetchSubscription } = require('./subscription/fetcher');
 const parserManager = require('./subscription/parserManager');
 const { parseUserInfoHeader, readUserInfoData, writeUserInfoData } = require('./subscription/userInfoManager');
 const { URLManager, CONFIG_FILE: URL_CONFIG_FILE } = require('./urlManager'); // 从 urlManager 获取 URL 列表
+const ConfigCacheService = require('./services/configCacheService'); // 配置缓存服务
 
 // 配置文件路径 (可以考虑移到配置中心)
 const CONFIGS_DIR = path.join(__dirname, '..', 'configs');
 const OUTPUT_FILE = path.join(__dirname, '../data', 'merged-config.yaml');
 const PROCESSED_OUTPUT_FILE = path.join(__dirname, '../data', 'processed-merged-config.yaml');
+
+// 配置缓存设置
+const CONFIG_CACHE_SETTINGS = {
+    DEFAULT_EXPIRE_HOURS: 24,        // 默认缓存过期时间（小时）
+    MAX_EXPIRE_HOURS: 8760,          // 最大缓存时间（365天）
+    MIN_EXPIRE_HOURS: 1,             // 最小缓存时间（1小时）
+    AUTO_CLEANUP_DAYS: 7             // 自动清理过期缓存的天数
+};
 
 const urlManager = new URLManager(URL_CONFIG_FILE);
 
@@ -117,6 +126,40 @@ async function processConfigs() {
 
             if (error) {
                 console.error(`获取订阅 ${name} 失败: ${error.message}`);
+                
+                // 记录获取失败
+                try {
+                    await ConfigCacheService.recordFetchFailure(name, error.message);
+                } catch (recordErr) {
+                    console.error(`记录获取失败时出错 ${name}:`, recordErr.message);
+                }
+                
+                // 尝试从缓存中读取配置
+                try {
+                    const cachedConfig = await ConfigCacheService.getConfig(name, true); // 包含过期的缓存
+                    if (cachedConfig && cachedConfig.configContent) {
+                        console.warn(`使用缓存配置降级处理: ${name} (上次成功: ${cachedConfig.lastFetchSuccess})`);
+                        
+                        // 解析缓存的配置内容
+                        const parsedProxies = await parserManager.parse(cachedConfig.configContent);
+                        if (parsedProxies) {
+                            // 添加前缀
+                            const prefixedProxies = parsedProxies.map(proxy => ({
+                                ...proxy,
+                                name: `${name}|-|${proxy.name}`
+                            }));
+                            allProxiesList.push(prefixedProxies);
+                            console.log(`从缓存中恢复了 ${parsedProxies.length} 个节点: ${name}`);
+                        } else {
+                            console.warn(`缓存的配置内容无法解析: ${name}`);
+                        }
+                    } else {
+                        console.warn(`没有可用的缓存配置: ${name}`);
+                    }
+                } catch (cacheErr) {
+                    console.error(`读取缓存配置失败 ${name}:`, cacheErr.message);
+                }
+                
                 // 即使下载失败，也尝试保留旧的用户信息（如果存在）
                 if (currentUserInfo[name]) {
                     newUserInfo[name] = currentUserInfo[name];
@@ -134,6 +177,15 @@ async function processConfigs() {
                         name: `${name}|-|${proxy.name}`
                     }));
                     allProxiesList.push(prefixedProxies);
+                    
+                    // 保存到缓存
+                    try {
+                        await ConfigCacheService.saveConfig(name, content, CONFIG_CACHE_SETTINGS.DEFAULT_EXPIRE_HOURS);
+                        console.log(`已缓存订阅配置: ${name}`);
+                    } catch (cacheErr) {
+                        console.error(`缓存订阅配置失败 ${name}:`, cacheErr.message);
+                        // 缓存失败不影响主流程
+                    }
                 } else {
                     console.warn(`无法解析订阅 ${name} 的内容`);
                 }
@@ -232,11 +284,23 @@ async function processConfigs() {
     // 8. 保存更新后的用户信息
     await writeUserInfoData(newUserInfo);
 
+    // 9. 定期清理过期缓存（可选：仅在成功处理时执行）
+    try {
+        const cleanedCount = await ConfigCacheService.cleanupExpiredConfigs(CONFIG_CACHE_SETTINGS.AUTO_CLEANUP_DAYS);
+        if (cleanedCount > 0) {
+            console.log(`配置处理完成时清理了 ${cleanedCount} 个过期缓存`);
+        }
+    } catch (cleanupErr) {
+        console.error('清理过期缓存时出错:', cleanupErr.message);
+        // 清理失败不影响主流程
+    }
+
     console.log('配置处理流程完成。');
 }
 
 module.exports = {
     processConfigs,
     OUTPUT_FILE, // 仍然导出，可能其他地方需要
-    PROCESSED_OUTPUT_FILE // 仍然导出
+    PROCESSED_OUTPUT_FILE, // 仍然导出
+    CONFIG_CACHE_SETTINGS // 导出缓存配置设置
 };
