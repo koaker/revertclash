@@ -149,8 +149,8 @@ class ProxyNode {
      */
     toClashConfig() {
         return {
-            name: this.getDisplayName(),
-            ...this.config
+            ...this.config,
+            name: this.getDisplayName(), // config存在属性覆盖 
         };
     }
     

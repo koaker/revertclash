@@ -977,7 +977,7 @@ function filterAllProxies(proxies) {
     // 使用一次遍历对节点做完整归类
     const { buckets } = classifyProxies(filteredProvidersProxies.otherProxies);
     
-    console.log(buckets.low)
+    //console.log(buckets.low)
     const returnedProxies = {
         lowQualityProxies: buckets.low,
         lowLowQualityProxies: [...buckets.veryLow, ...filteredProvidersProxies.lowQualityProviderProxies],

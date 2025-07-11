@@ -143,7 +143,7 @@ app.use((req, res, next) => {
     }
     next();
 });
-
+/*
 // 兼容原始路径的配置文件访问 (应用频率限制)
 // 合并后的配置文件访问
 app.get('/config', rateLimiter.createLimiter({
@@ -200,5 +200,5 @@ app.get('/processed-config', rateLimiter.createLimiter({
         }
     }
 });
-
+*/
 module.exports = app;

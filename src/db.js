@@ -22,96 +22,88 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 });
 
 // 初始化数据库表 - 返回Promise确保完成
-function initDatabase() {
-    return new Promise((resolve, reject) => {
-        console.log('正在初始化数据库表...');
+async function initDatabase() {
+    console.log('正在初始化数据库');
+    try {
         // 启用外键约束
-        db.run('PRAGMA foreign_keys = ON', (err) => {
-            if (err) {
-                console.error('启用外键约束失败:', err.message);
-                reject(err);
-                return;
-            }
+        await run ('PRAGMA foreign_keys = ON');
+        console.log('外键约束已启用');
 
-            // 创建用户表
-            db.run(`
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    is_admin INTEGER DEFAULT 0,
-                    is_first_login INTEGER DEFAULT 1,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            `, (err) => {
-                if (err) {
-                    console.error('创建用户表失败:', err.message);
-                    reject(err);
-                    return;
-                }
-                console.log('用户表已就绪');
-                
-                // 创建订阅token表
-                db.run(`
-                    CREATE TABLE IF NOT EXISTS subscription_tokens (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        token TEXT UNIQUE NOT NULL,
-                        name TEXT NOT NULL,
-                        config_types TEXT NOT NULL, 
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        expires_at TEXT,
-                        is_active INTEGER DEFAULT 1,
-                        last_accessed TEXT,
-                        access_count INTEGER DEFAULT 0,
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                    )
-                `, (err) => {
-                    if (err) {
-                        console.error('创建订阅token表失败:', err.message);
-                        reject(err);
-                        return;
-                    }
-                    console.log('订阅token表已就绪');
-                    
-                    // 创建配置缓存表
-                    db.run(`
-                        CREATE TABLE IF NOT EXISTS subscription_configs (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            subscription_name TEXT UNIQUE NOT NULL,
-                            config_content TEXT NOT NULL,
-                            content_hash TEXT NOT NULL,
-                            last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
-                            last_fetch_success TEXT,
-                            last_fetch_attempt TEXT,
-                            fetch_success_count INTEGER DEFAULT 0,
-                            fetch_failure_count INTEGER DEFAULT 0,
-                            is_cached INTEGER DEFAULT 1,
-                            expires_at TEXT,
-                            file_path TEXT,
-                            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `, (err) => {
-                        if (err) {
-                            console.error('创建配置缓存表失败:', err.message);
-                            reject(err);
-                            return;
-                        }
-                        console.log('配置缓存表已就绪');
-                        
-                        // 检查并升级订阅Token表，添加访问统计字段
-                        upgradeSubscriptionTokensTable()
-                            .then(() => resolve())
-                            .catch(err => {
-                                console.error('升级订阅token表失败:', err.message);
-                                reject(err);
-                            });
-                    });
-                });
-            });
-        });
-    });
+        // 创建用户表
+        await run(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                is_admin INTEGER DEFAULT 0,
+                is_first_login INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `)
+        console.log('用户表已就绪');
+
+        // 创建订阅token表
+        await run(`
+            CREATE TABLE IF NOT EXISTS subscription_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                config_types TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT,
+                is_active INTEGER DEFAULT 1,
+                last_accessed TEXT,
+                access_count INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `)
+        console.log('订阅token表已就绪');
+
+        // 创建用户url表
+        await run(`
+            CREATE TABLE IF NOT EXISTS user_urls (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL, 
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE (user_id, name)
+            )
+        `)
+        console.log('用户URL表已就绪');
+
+        // 创建配置缓存表
+        await run(`
+            CREATE TABLE IF NOT EXISTS subscription_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subscription_name TEXT UNIQUE NOT NULL,
+                config_content TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_fetch_success TEXT,
+                last_fetch_attempt TEXT,
+                fetch_success_count INTEGER DEFAULT 0,
+                fetch_failure_count INTEGER DEFAULT 0,
+                is_cached INTEGER DEFAULT 1,
+                expires_at TEXT,
+                file_path TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `)
+        console.log('配置缓存表已就绪');
+
+        // 检查并升级订阅Token表，添加访问统计字段
+        await upgradeSubscriptionTokensTable();
+        console.log('订阅token表升级完成');
+
+    } catch (err) {
+        console.error('初始化数据库表失败:', err.message);
+        throw err; // 抛出错误以便调用者处理
+    }
 }
 
 // 升级订阅Token表，添加访问统计相关字段
