@@ -265,7 +265,7 @@
                         <thead>
                             <tr>
                                 <th>名称</th>
-                                <th>大小</th>
+                                <th>节点数量</th>
                                 <th>修改时间</th>
                                 <th>操作</th>
                             </tr>
@@ -309,6 +309,7 @@
                 <span class="close" onclick="closeUrlModal()">&times;</span>
                 <h3>URL配置</h3>
                 <form id="urlForm">
+                    <input type="hidden" id="urlId">
                     <input type="hidden" id="urlOldName">
                     <div class="rc-form-group">
                         <label for="urlName" class="rc-form-label">名称</label>
@@ -333,6 +334,7 @@
                         <label for="configName" class="rc-form-label">文件名 (.yaml)</label>
                         <input type="text" id="configName" class="rc-form-control" required>
                         <input type="hidden" id="configOldName" value="">
+                        <input type="hidden" id="configId">
                     </div>
                     <div class="rc-form-group">
                         <label for="configContent" class="rc-form-label">内容</label>
@@ -472,18 +474,7 @@
                 btnText.style.display = 'none';
                 spinner.style.display = 'inline';
                 
-                const response = await fetch('/api/update', {
-                    method: 'POST'
-                });
-                
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || '更新失败');
-                }
-                
-                showAlert(data.message, 'success');
-                
-                // 刷新列表
+                showAlert('正在刷新数据...', 'success');
                 await Promise.all([loadUrls(), loadConfigs(), loadCacheOverview()]);
             } catch (err) {
                 showAlert(err.message);
@@ -498,18 +489,20 @@
         // 加载缓存概览信息
         async function loadCacheOverview() {
             try {
-                const response = await fetch('/api/configs/cache/stats');
+                const response = await fetch('/api/newconfig/manager/status');
                 if (!response.ok) return; // 静默失败
                 
-                const data = await response.json();
-                if (data.status === 'success') {
-                    const stats = data.data;
+                const result = await response.json();
+                if (result.success) {
+                    const stats = result.data; // 新API的数据在 result.data 中
                     const overview = document.getElementById('cacheOverview');
+                    
+                    // 使用新的数据结构来渲染
+                    const failedCount = stats.totalSources - stats.enabledSources; // 举例：可以计算失败/禁用的数量
                     overview.innerHTML = `
-                        <i class="bi bi-database me-1"></i>
-                        缓存状态: ${stats.cachedSubscriptions}/${stats.totalSubscriptions} 已缓存
-                        <span style="color: #28a745; margin-left: 8px;">✓ ${stats.totalSuccessCount}</span>
-                        <span style="color: #dc3545; margin-left: 4px;">✗ ${stats.totalFailureCount}</span>
+                        <i class="bi bi-hdd-stack me-1"></i>
+                        配置源: ${stats.enabledSources}/${stats.totalSources} 已启用
+                        ${stats.lastUpdateTime ? `| 上次更新: ${new Date(stats.lastUpdateTime).toLocaleTimeString()}` : ''}
                     `;
                 }
             } catch (err) {
@@ -593,22 +586,23 @@ function formatDataUsage(download, upload, total) {
         // URL管理功能
         async function loadUrls() {
             try {
-                // 并行加载URL列表和缓存状态
-                const [urlResponse, cacheResponse] = await Promise.all([
+                // 1. 并行加载URL列表和新的健康状态API
+                const [urlResponse, healthResponse] = await Promise.all([
                     fetch('/api/urls'),
-                    fetch('/api/configs/cache/list?include_expired=true').catch(() => ({ ok: false }))
+                    fetch('/api/newconfig/manager/health').catch(() => ({ ok: false }))
                 ]);
                 
-                if (!urlResponse.ok) throw new Error('加载URL失败');
+                if (!urlResponse.ok) throw new Error('加载URL列表失败');
                 const urls = await urlResponse.json();
                 
-                // 获取缓存状态映射
-                let cacheMap = new Map();
-                if (cacheResponse.ok) {
-                    const cacheData = await cacheResponse.json();
-                    if (cacheData.status === 'success') {
-                        cacheData.data.forEach(cache => {
-                            cacheMap.set(cache.subscriptionName, cache);
+                // 2. 构建健康状态的Map，只存储更新失败的源
+                let healthMap = new Map();
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    if (healthData.success && healthData.data.failedDetails) {
+                        // 新的API返回的是一个对象，我们遍历其中的 failedDetails 数组
+                        healthData.data.failedDetails.forEach(failedSource => {
+                            healthMap.set(failedSource.name, failedSource); // 使用源的名称作为key
                         });
                     }
                 }
@@ -616,11 +610,11 @@ function formatDataUsage(download, upload, total) {
                 const tbody = document.querySelector('#urlTable tbody');
                 tbody.innerHTML = '';
 
-                urls.forEach(urlItem => { // 修改变量名以包含 userInfo
-                    const { name, url, userInfo } = urlItem; // 解构获取 userInfo
+                urls.forEach(urlItem => {
+                    const { name, url, userInfo, id } = urlItem;
                     const tr = document.createElement('tr');
 
-                    // 构建用户信息 HTML 字符串
+                    // 构建用户信息HTML (这部分逻辑不变)
                     let userInfoHtml = '';
                     if (userInfo) {
                         const usageInfo = formatDataUsage(userInfo.download, userInfo.upload, userInfo.total);
@@ -632,42 +626,40 @@ function formatDataUsage(download, upload, total) {
                         `;
                     }
 
-                    // 构建缓存状态信息
-                    let cacheStatusHtml = '';
-                    const cacheInfo = cacheMap.get(name);
-                    if (cacheInfo) {
-                        let statusColor, statusText;
-                        if (!cacheInfo.hasContent) {
-                            statusColor = '#dc3545'; // 红色
-                            statusText = '无缓存';
-                        } else if (cacheInfo.isExpired) {
-                            statusColor = '#ffc107'; // 黄色
-                            statusText = '缓存过期';
-                        } else {
-                            statusColor = '#28a745'; // 绿色
-                            statusText = '缓存正常';
-                        }
-                        
-                        cacheStatusHtml = `
-                            <div style="font-size: 0.7em; margin-top: 4px;">
-                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor}; margin-right: 4px;"></span>
-                                <span style="color: ${statusColor};">${statusText}</span>
-                                <span style="color: #999; margin-left: 8px;">成功: ${cacheInfo.fetchSuccessCount || 0} | 失败: ${cacheInfo.fetchFailureCount || 0}</span>
-                            </div>
-                        `;
+                    // 3. 构建新的健康状态HTML
+                    let healthStatusHtml = '';
+                    const healthInfo = healthMap.get(name); // 检查当前URL是否存在于失败列表
+                    
+                    let statusColor, statusText, errorTitle = '';
+                    if (healthInfo) {
+                        // 如果在失败列表里，标记为红色
+                        statusColor = '#dc3545';
+                        statusText = '更新失败';
+                        errorTitle = `错误: ${healthInfo.error}`; // 鼠标悬浮时显示错误信息
+                    } else {
+                        // 如果不在，说明状态正常
+                        statusColor = '#28a745';
+                        statusText = '正常';
                     }
+                    
+                    healthStatusHtml = `
+                        <div style="font-size: 0.7em; margin-top: 4px;" title="${errorTitle}">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor}; margin-right: 4px;"></span>
+                            <span style="color: ${statusColor};">${statusText}</span>
+                        </div>
+                    `;
 
                     tr.innerHTML = `
                         <td style="width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</td>
                         <td class="url-cell" title="${url}">
                             ${url}
                             ${userInfoHtml}
-                            ${cacheStatusHtml}
+                            ${healthStatusHtml}
                         </td>
                         <td style="width: 150px; min-width: 150px;">
-                            <button class="btn" onclick="editUrl('${name}', '${url}')">编辑</button>
-                            <button class="btn btn-danger" onclick="deleteUrl('${name}')">删除</button>
-                            ${cacheInfo ? `<button class="btn" style="background-color: #17a2b8; color: white; font-size: 12px; padding: 2px 6px; margin-top: 2px;" onclick="window.open('/cache-management.html', '_blank')" title="查看缓存详情">缓存</button>` : ''}
+                            <button class="btn" onclick="editUrl('${name}', '${url}', '${id}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteUrl('${name}', '${id}')">删除</button>
+                            <button class="btn" style="background-color: #6c757d; color: white; font-size: 12px; padding: 2px 6px; margin-top: 2px;" onclick="document.getElementById('debugSubscriptionName').value='${name}'; showDebugModal();" title="调试此订阅">调试</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -687,19 +679,20 @@ function formatDataUsage(download, upload, total) {
             document.getElementById('urlModal').style.display = 'none';
         }
 
-        function editUrl(name, url) {
+        function editUrl(name, url, id) {
             isEditing = true;
             document.getElementById('urlOldName').value = name;
             document.getElementById('urlName').value = name;
             document.getElementById('urlValue').value = url;
+            document.getElementById('urlId').value = id;
             document.getElementById('urlModal').style.display = 'block';
         }
 
-        async function deleteUrl(name) {
+        async function deleteUrl(name, id) {
             if (!confirm(`确定要删除 ${name} 吗？`)) return;
             
             try {
-                const response = await fetch(`/api/urls/${name}`, {
+                const response = await fetch(`/api/urls/${id}`, {
                     method: 'DELETE'
                 });
                 if (!response.ok) throw new Error('删除失败');
@@ -715,9 +708,10 @@ function formatDataUsage(download, upload, total) {
             const name = document.getElementById('urlName').value;
             const url = document.getElementById('urlValue').value;
             const oldName = document.getElementById('urlOldName').value;
+            const urlId = document.getElementById('urlId').value;
 
             try {
-                const response = await fetch(isEditing ? `/api/urls/${oldName}` : '/api/urls', {
+                const response = await fetch(isEditing ? `/api/urls/${urlId}` : '/api/urls', {
                     method: isEditing ? 'PUT' : 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -748,15 +742,20 @@ function formatDataUsage(download, upload, total) {
                 const tbody = document.querySelector('#configTable tbody');
                 tbody.innerHTML = '';
                 
-                configs.forEach(({name, size, modifiedTime}) => {
+                configs.forEach((configItem) => {
                     const tr = document.createElement('tr');
+
+                    const proxyCount = configItem.config.split('\n').filter(line => line.trim().startsWith('- name:')).length;
+
+                    const modifiedTime = configItem.updated_at;
+
                     tr.innerHTML = `
-                        <td>${name}</td>
-                        <td>${formatSize(size)}</td>
+                        <td>${configItem.name}</td>
+                        <td>${proxyCount}</td>
                         <td>${formatDate(modifiedTime)}</td>
                         <td>
-                            <button class="btn" onclick="editConfig('${name}')">编辑</button>
-                            <button class="btn btn-danger" onclick="deleteConfig('${name}')">删除</button>
+                            <button class="btn" onclick="editConfig('${configItem.id}')">编辑</button>
+                            <button class="btn btn-danger" onclick="deleteConfig('${configItem.name}', '${configItem.id}')">删除</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -781,29 +780,29 @@ function formatDataUsage(download, upload, total) {
             document.getElementById('configModal').style.display = 'none';
         }
 
-        async function editConfig(name) {
+        async function editConfig(id) {
             try {
-                const response = await fetch(`/api/configs/${name}`);
+                const response = await fetch(`/api/configs/${id}`);
                 if (!response.ok) throw new Error('加载配置失败');
-                const {content} = await response.json();
+                const configData = await response.json();
                 
                 isConfigEditing = true;
-                const configNameInput = document.getElementById('configName');
-                configNameInput.value = name;
-                // 允许编辑文件名，删除readOnly属性
-                document.getElementById('configOldName').value = name; // 保存原始文件名
-                document.getElementById('configContent').value = content;
+
+                document.getElementById('configId').value = configData.id; 
+                document.getElementById('configName').value = configData.name;
+                document.getElementById('configContent').value = configData.config;
+                
                 document.getElementById('configModal').style.display = 'block';
             } catch (err) {
                 showAlert(err.message);
             }
         }
 
-        async function deleteConfig(name) {
+        async function deleteConfig(name, id) {
             if (!confirm(`确定要删除 ${name} 吗？`)) return;
             
             try {
-                const response = await fetch(`/api/configs/${name}`, {
+                const response = await fetch(`/api/configs/${id}`, {
                     method: 'DELETE'
                 });
                 if (!response.ok) throw new Error('删除失败');
@@ -816,26 +815,20 @@ function formatDataUsage(download, upload, total) {
 
         document.getElementById('configForm').onsubmit = async (e) => {
             e.preventDefault();
+            const id = document.getElementById('configId').value;
             const name = document.getElementById('configName').value;
-            const oldName = document.getElementById('configOldName').value;
             const content = document.getElementById('configContent').value;
 
+            const url = isConfigEditing ? `/api/configs/${id}` : '/api/configs';
+            const method = isConfigEditing ? 'PUT' : 'POST';
             try {
-                // 判断是否需要重命名
-                const isRenaming = isConfigEditing && name !== oldName;
-                
-                // 如果是编辑模式且文件名发生变化，使用原始名称作为路径
-                const url = isConfigEditing ? `/api/configs/${oldName}` : '/api/configs';
                 
                 const response = await fetch(url, {
-                    method: isConfigEditing ? 'PUT' : 'POST',
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    // 新增重命名字段
-                    body: JSON.stringify(isConfigEditing ? 
-                        (isRenaming ? { content, newName: name } : { content }) : 
-                        { name, content })
+                    body: JSON.stringify({ name, content }) // 后端只需要name和content
                 });
 
                 if (!response.ok) {
@@ -843,7 +836,7 @@ function formatDataUsage(download, upload, total) {
                     throw new Error(data.error || '保存失败');
                 }
 
-                showAlert(isRenaming ? '配置文件重命名成功' : '保存成功', 'success');
+                showAlert('保存成功', 'success');
                 closeConfigModal();
                 await loadConfigs();
             } catch (err) {

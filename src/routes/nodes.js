@@ -3,8 +3,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const NodeManager = require('../services/nodeManager');
 const ConfigProcessor = require('../services/configProcessor');
-const { getConfigManager } = require('../config');
 
+module.exports = (configManager) => {
 const router = express.Router();
 
 // 创建节点管理器实例并连接到ConfigManager
@@ -13,37 +13,23 @@ const configProcessor = new ConfigProcessor(nodeManager);
 
 // 初始化节点管理器与ConfigManager的连接
 async function initNodeManagerConnection() {
+    if (!configManager) {
+        console.error('ConfigManager 未提供，节点管理器无法初始化。');
+        // 可以在这里抛出错误，让应用启动失败，以便及早发现问题
+        throw new Error('ConfigManager is required for NodeManager initialization.');
+    }
     try {
-        const configManager = getConfigManager();
+        // 设置ConfigManager引用
+        nodeManager.setConfigManager(configManager);
         
-        if (configManager) {
-            // 设置ConfigManager引用
-            nodeManager.setConfigManager(configManager);
-            
-            // 首次加载节点数据
-            await nodeManager.refreshNodesFromConfigManager();
-            
-            console.log('节点管理器与ConfigManager连接成功，共加载节点:', nodeManager.getNodes().length);
-        } else {
-            console.warn('ConfigManager未初始化，回退到兼容模式');
-            await fallbackToLegacyMode();
-        }
+        // 首次加载节点数据
+        await nodeManager.refreshNodesFromConfigManager();
+        
+        console.log('节点管理器与ConfigManager连接成功，共加载节点:', nodeManager.getNodes().length);
     } catch (err) {
         console.error('节点管理器连接ConfigManager失败:', err.message);
-        console.log('回退到兼容模式...');
-        await fallbackToLegacyMode();
-    }
-}
-
-// 回退到兼容模式的初始化
-async function fallbackToLegacyMode() {
-    try {
-        const { OUTPUT_FILE } = require('../config');
-        const configContent = await fs.readFile(OUTPUT_FILE, 'utf8');
-        await nodeManager.parseNodes(configContent);
-        console.log('节点管理器兼容模式初始化完成，共加载节点:', nodeManager.getNodes().length);
-    } catch (err) {
-        console.error('兼容模式初始化失败:', err.message);
+        // 启动时失败，这是一个严重问题，直接抛出错误
+        throw err;
     }
 }
 
@@ -503,3 +489,4 @@ router.post('/export-links', async (req, res) => {
 });
 
 module.exports = router;
+}

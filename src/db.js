@@ -23,7 +23,7 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 // 初始化数据库表 - 返回Promise确保完成
 async function initDatabase() {
-    console.log('正在初始化数据库');
+    //console.log('正在初始化数据库');
     try {
         // 启用外键约束
         await run ('PRAGMA foreign_keys = ON');
@@ -75,6 +75,21 @@ async function initDatabase() {
             )
         `)
         console.log('用户URL表已就绪');
+
+        // 创建用户自定义配置表
+        await run(`
+            CREATE TABLE IF NOT EXISTS user_custom_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                config TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE (user_id, name)
+            )
+        `)
+        console.log('用户自定义配置表已就绪');
 
         // 创建配置缓存表
         await run(`

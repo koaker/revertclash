@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const subscriptionTokenService = require('../services/subscriptionTokenService');
-const configService = require('../services/configService');
 
+const UrlManager = require('../managers/UrlManager');
+const UserContentManager = require('../managers/UserContentManager');
+const ConfigManager = require('../managers/ConfigManager');
+const { SourceType } = require('../models/ConfigSource');
 /**
  * 安全地验证和清理输入
  * @param {string} input - 输入字符串
@@ -82,13 +85,47 @@ router.get('/:token/:type', async (req, res) => {
         // 获取Token详细信息
         const token = await subscriptionTokenService.getTokenByString(tokenString);
         
-        // 获取用户ID对应的配置
-        const config = await configService.getLatestConfigByUserId(token.userId, configType);
-        
-        if (!config) {
-            return res.status(404).json({ error: '未找到配置' });
+        const urlSources = await UrlManager.getUrlsByUserId(token.userId);
+        const customConfigSources = await UserContentManager.getUserCustomConfigs(token.userId);
+
+        console.log(`即将开始获取配置`);
+        const sources = [];
+        urlSources.forEach(s => {
+            sources.push({
+                name: s.name,
+                type: SourceType.URL,
+                data: s.url
+            });
+        })
+        customConfigSources.forEach(s => {
+            sources.push({
+                name: s.name,
+                type: SourceType.MANUAL,
+                data: s.config
+            });
+            console.log(`添加自定义配置源: ${s.name}` );
+            console.log(`配置内容: ${s.config}`);
+
+        })
+
+        if (sources.length === 0) {
+            return res.status(404).json({ error: '未找到任何配置源' });
         }
-        
+
+        const configManager = new ConfigManager();
+        const result = await configManager.process(sources);
+        if (!result || !result.processedConfig) {
+            return res.status(500).json({ error: '配置处理失败' });
+        }
+        let configContent;
+        if (configType === 'config') {
+            configContent = result.mergedConfig;
+        } else if (configType === 'processed-config') {
+            configContent = result.processedConfig;
+        }
+        if (!configContent) {
+            return res.status(500).json({ error: '处理后的配置内容为空' });
+        }
         // 添加安全相关的HTTP头
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Frame-Options', 'DENY');
@@ -100,12 +137,12 @@ router.get('/:token/:type', async (req, res) => {
             res.setHeader('Content-Type', 'application/octet-stream');
             // 使用不带引号的格式并保留配置类型信息
             res.setHeader('Content-Disposition', `attachment; filename=${configType}.yaml`);
-            return res.send(config.content);
+            return res.send(configContent);
         }
         
         // 其他类型按JSON返回
         res.setHeader('Content-Type', 'application/json');
-        res.send(config.content);
+        res.send(configContent);
     } catch (err) {
         console.error('获取订阅配置失败:', err);
         res.status(500).json({ error: '获取订阅配置失败: ' + sanitizeInput(err.message) });

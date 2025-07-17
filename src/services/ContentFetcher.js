@@ -162,20 +162,21 @@ class ContentFetcher {
         try {
             console.log(`获取手动上传的配置: ${source.id}`);
             
+            console.log(`手动上传内容: ${source.config}`);
             // 从缓存中获取手动上传的内容
-            const cachedConfig = await ConfigCacheService.getConfig(source.id, true);
+            const cachedConfig = source.config.content;
             
-            if (!cachedConfig || !cachedConfig.configContent) {
+            if (!cachedConfig) {
                 throw new Error('未找到手动上传的配置内容');
             }
             
             return {
                 success: true,
-                content: cachedConfig.configContent,
+                content: cachedConfig,
                 headers: null,
                 fromCache: true,
                 source: 'manual_upload',
-                lastUpdated: cachedConfig.lastUpdated
+                //lastUpdated: cachedConfig.lastUpdated
             };
             
         } catch (error) {

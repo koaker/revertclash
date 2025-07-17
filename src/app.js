@@ -4,19 +4,24 @@ const session = require('express-session');
 const ConnectSQLite = require('connect-sqlite3')(session);
 const { sessionAuthMiddleware, setupRedirectMiddleware } = require('./middleware/authMiddleware');
 const converterApi = require('./converters/api');
+
+const ConfigManager = require('./managers/ConfigManager');
+const configManager = new ConfigManager();
+
 const urlRoutes = require('./routes/urls');
-const configRoutes = require('./routes/configs');
 const pageRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const nodeRoutes = require('./routes/nodes');
 const subscriptionTokenRoutes = require('./routes/subscriptionTokens');
 const subscribeRoutes = require('./routes/subscribe');
-const newConfigRoutes = require('./routes/newconfig');
-const { processConfigs } = require('./config');
-const fs = require('fs').promises;
-const { OUTPUT_FILE, PROCESSED_OUTPUT_FILE } = require('./config');
+const newConfigRoutes = require('./routes/newconfig')(configManager);
+
+
+
 const rateLimiter = require('./middleware/rateLimiter');
+const customConfigRoutes = require('./routes/customConfig');
+
 
 // 创建Express应用
 const app = express();
@@ -97,7 +102,7 @@ app.use('/', pageRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/urls', urlRoutes);
-app.use('/api/configs', configRoutes);
+app.use('/api/configs', customConfigRoutes);
 app.use('/api/nodes', nodeRoutes);
 app.use('/api/newconfig', newConfigRoutes);
 app.use('/api/subscription-tokens', rateLimiter.createLimiter({
@@ -116,22 +121,6 @@ app.get('/subscription', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'subscription.html'));
 });
 
-// 手动更新配置API
-app.post('/api/update', async (req, res) => {
-    try {
-        await processConfigs();
-        res.json({
-            status: 'success',
-            message: '配置已更新'
-        });
-    } catch (err) {
-        console.error('更新配置失败:', err);
-        res.status(500).json({
-            error: '更新配置失败: ' + err.message
-        });
-    }
-});
-
 // 为所有API响应添加安全相关的HTTP头
 app.use((req, res, next) => {
     // 只为API响应和下载添加安全头
@@ -143,62 +132,5 @@ app.use((req, res, next) => {
     }
     next();
 });
-/*
-// 兼容原始路径的配置文件访问 (应用频率限制)
-// 合并后的配置文件访问
-app.get('/config', rateLimiter.createLimiter({
-    windowMs: 1 * 60 * 1000,  // 1分钟窗口
-    maxRequests: 5,           // 每IP每窗口最多5次请求
-    message: '请求过于频繁，请稍后再试'
-}), async (req, res) => {
-    try {
-        const config = await fs.readFile(OUTPUT_FILE, 'utf8');
-        res.setHeader('Content-Type', 'text/yaml');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('X-Frame-Options', 'DENY');
-        res.setHeader('Content-Security-Policy', "default-src 'none'");
-        res.setHeader('Cache-Control', 'no-store, max-age=0');
-        res.send(config);
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            res.status(404).json({
-                error: '配置文件尚未生成'
-            });
-        } else {
-            console.error('读取配置文件失败:', err);
-            res.status(500).json({
-                error: '服务器内部错误'
-            });
-        }
-    }
-});
 
-// 处理后的配置文件访问
-app.get('/processed-config', rateLimiter.createLimiter({
-    windowMs: 1 * 60 * 1000,  // 1分钟窗口
-    maxRequests: 5,           // 每IP每窗口最多5次请求
-    message: '请求过于频繁，请稍后再试'
-}), async (req, res) => {
-    try {
-        const config = await fs.readFile(PROCESSED_OUTPUT_FILE, 'utf8');
-        res.setHeader('Content-Type', 'text/yaml');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        res.setHeader('X-Frame-Options', 'DENY');
-        res.setHeader('Content-Security-Policy', "default-src 'none'");
-        res.setHeader('Cache-Control', 'no-store, max-age=0');
-        res.send(config);
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            res.status(404).json({
-                error: '配置文件尚未生成'
-            });
-        } else {
-            console.error('读取配置文件失败:', err);
-            res.status(500).json({
-                error: '服务器内部错误'
-            });
-        }
-    }
-});
-*/
 module.exports = app;

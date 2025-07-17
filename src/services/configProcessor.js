@@ -1,7 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 const yaml = require('js-yaml');
-const { processConfigs } = require('../config');
 
 /**
  * 配置处理器类

@@ -1,12 +1,9 @@
-const fs = require('fs').promises;
-const path = require('path');
 const YAML = require('yaml');
 
 // 引入新的模块化组件
-const { ConfigSource, SourceType, ProxyNode } = require('../models');
+const { SourceType, ProxyNode } = require('../models');
 const ConfigSourceManager = require('./ConfigSourceManager');
 const { NodeAggregator } = require('../aggregators');
-const { URLManager } = require('../urlManager');
 
 /**
  * 主配置管理器
@@ -14,27 +11,12 @@ const { URLManager } = require('../urlManager');
  */
 class ConfigManager {
     constructor(options = {}) {
-        // 配置路径
-        this.paths = {
-            configsDir: options.configsDir || path.join(__dirname, '..', '..', 'configs'),
-            outputFile: options.outputFile || path.join(__dirname, '..', '..', 'data', 'merged-config.yaml'),
-            processedOutputFile: options.processedOutputFile || path.join(__dirname, '..', '..', 'data', 'processed-merged-config.yaml'),
-            urlConfigFile: options.urlConfigFile || path.join(__dirname, '..', '..', 'clash-urls.txt')
-        };
-        
         // 核心组件
         this.sourceManager = new ConfigSourceManager();
         this.nodeAggregator = new NodeAggregator();
-        this.urlManager = new URLManager(this.paths.urlConfigFile);
-        
-        // 配置状态
-        this.isInitialized = false;
-        this.isProcessing = false;
-        this.lastProcessTime = null;
         
         // 配置选项
         this.config = {
-            enableCache: true,
             enableConflictResolution: true,
             enableFiltering: true,
             cacheExpireHours: 24,
@@ -44,247 +26,88 @@ class ConfigManager {
             ...options
         };
         
-        // 绑定事件处理器
-        this.setupEventHandlers();
-        
-        // 统计信息
-        this.stats = {
-            lastProcess: null,
-            totalProcessCount: 0,
-            successCount: 0,
-            errorCount: 0,
-            totalNodes: 0,
-            activeNodes: 0
-        };
-        
+        this.configureAggregator();
+        this.lastAggregationTime = null;
         console.log('ConfigManager 初始化完成');
     }
     
-    /**
-     * 初始化配置管理器
-     * @returns {Promise<boolean>} - 初始化是否成功
-     */
-    async initialize() {
-        if (this.isInitialized) {
-            console.log('ConfigManager 已经初始化');
-            return true;
-        }
-        
-        if (this.isProcessing) {
-            console.log('ConfigManager 正在初始化中，等待完成...');
-            // 等待初始化完成
-            while (this.isProcessing) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            return this.isInitialized;
-        }
-        
-        try {
-            console.log('开始初始化 ConfigManager...');
-            
-            // 1. 注册本地配置源
-            await this.registerLocalSources();
-            
-            // 2. 注册URL配置源
-            await this.registerUrlSources();
-            
-            // 3. 发现并注册缓存配置源
-            await this.registerCacheSources();
-            
-            // 4. 配置节点聚合器
-            this.configureAggregator();
-            
-            this.isInitialized = true;
-            console.log('ConfigManager 初始化成功');
-            
-            return true;
-            
-        } catch (error) {
-            console.error('ConfigManager 初始化失败:', error.message);
-            throw error;
-        }
-    }
-    
-    /**
-     * 处理所有配置源并生成最终配置文件
-     * @param {object} options - 处理选项
-     * @returns {Promise<object>} - 处理结果
-     */
-    async processConfigs(options = {}) {
-        if (!this.isInitialized) {
-            await this.initialize();
-        }
-        
-        if (this.isProcessing) {
-            console.warn('配置处理正在进行中，等待完成...');
-            // 等待当前处理完成
-            while (this.isProcessing) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            console.log('前一个配置处理已完成，开始新的处理...');
-        }
-        
-        this.isProcessing = true;
+    /* source格式: [
+        { name: '订阅链接1', type: SourceType.URL, data: 'http://...' },
+        { name: '我的节点', type: SourceType.MANUAL, data: 'proxies:\n- name: ...' }
+        ]
+        公开暴露的处理方法供外部调用
+    */
+    async process(sources, options = {}) {
         const startTime = new Date();
-        
         try {
-            console.log('开始处理配置 (重构版)...');
-            
-            // 合并处理选项
-            const processOptions = { ...this.config, ...options };
-            
-            // 第一阶段：更新所有配置源
-            console.log('=== 阶段1：更新配置源 ===');
+            for (const source of sources) {
+                if (!source.name || !source.type || !source.data) {
+                    console.log('配置源缺少必要字段:', source);
+                    throw new Error('配置源必须包含 name, type 和 data 字段');
+                }
+                if (source.type === SourceType.URL) {
+                    await this.sourceManager.registerSource(source.name, SourceType.URL, {
+                        url: source.data,
+                        description: `订阅源: ${source.name}`,
+                        enabled: true
+                    });
+                } else if (source.type === SourceType.MANUAL) {
+                    await this.sourceManager.registerSource(source.name, SourceType.MANUAL, {
+                        content: source.data,
+                        description: `手动上传配置: ${source.name}`,
+                        enabled: true
+                    });
+                } else if (source.type === SourceType.LOCAL) {
+                    await this.sourceManager.registerSource(source.name, SourceType.LOCAL, {
+                        path: source.data,
+                        description: `本地配置文件: ${source.name}`,
+                        enabled: true
+                    });
+                }
+            }
             const updateResults = await this.sourceManager.updateAllSources({
                 parallel: true,
                 maxConcurrency: 5,
                 continueOnError: true
             });
-            
-            // 统计更新结果
+
             const successSources = Array.from(updateResults.values()).filter(r => r.success);
             const failedSources = Array.from(updateResults.values()).filter(r => !r.success);
-            
-            console.log(`配置源更新完成: ${successSources.length} 成功, ${failedSources.length} 失败`);
-            
-            // 第二阶段：聚合节点
-            console.log('=== 阶段2：聚合节点 ===');
-            const sourceNodes = this.collectSourceNodes();
-            
+
+            const sourceNodes = await this.collectSourceNodes();
+            console.log(`收集到 ${sourceNodes.size} 个源节点`);
+
             const aggregationResult = await this.nodeAggregator.aggregate(sourceNodes, {
-                maxNodes: processOptions.maxNodes,
-                enableConflictResolution: processOptions.enableConflictResolution,
-                enableFiltering: processOptions.enableFiltering
+                maxNodes: options.maxNodes || null,
+                enableConflictResolution: options.enableConflictResolution || true,
+                enableFiltering: options.enableFiltering || true
             });
-            
-            console.log(`节点聚合完成: ${aggregationResult.total} 个最终节点`);
-            
-            // 第三阶段：生成配置文件
-            console.log('=== 阶段3：生成配置文件 ===');
-            const configResult = await this.generateConfigFiles(aggregationResult.nodes, processOptions);
-            
-            // 第四阶段：更新统计信息
-            this.updateProcessStats(startTime, aggregationResult, updateResults);
-            
-            const result = {
+
+            this.lastAggregationResult = aggregationResult;
+            const result = await this.generateConfigContent(aggregationResult.nodes, options);
+            //console.log('配置文件生成完成:', result);
+            return {
                 success: true,
                 timestamp: startTime,
                 duration: Date.now() - startTime.getTime(),
-                sources: {
-                    total: updateResults.size,
-                    success: successSources.length,
-                    failed: failedSources.length,
-                    results: updateResults
-                },
-                nodes: {
-                    total: aggregationResult.total,
-                    byType: aggregationResult.statistics.nodesByType,
-                    bySource: aggregationResult.statistics.nodesBySource
-                },
-                files: configResult,
-                stats: this.stats
+                processedConfig: result.processedConfigContent,
+                mergedConfig: result.mergedConfigContent,
+                stats: {
+                    sources: {
+                        total: updateResults.size,
+                        success: successSources.length,
+                        failed: failedSources.length,
+                    },
+                    nodes: {
+                        total: aggregationResult.total,
+                        byType: aggregationResult.statistics.nodesByType,
+                    }
+                }
             };
-            
-            console.log('配置处理流程完成');
-            return result;
-            
         } catch (error) {
-            console.error('配置处理失败:', error.message);
-            this.stats.errorCount += 1;
-            throw error;
-            
-        } finally {
-            this.isProcessing = false;
-            this.lastProcessTime = new Date();
+            console.error('处理配置源时出错:', error.message);
         }
     }
-    
-    /**
-     * 注册本地配置源
-     * @private
-     */
-    async registerLocalSources() {
-        try {
-            const files = await fs.readdir(this.paths.configsDir);
-            const yamlFiles = files.filter(file => 
-                file.endsWith('.yaml') || file.endsWith('.yml')
-            );
-            
-            for (const file of yamlFiles) {
-                const sourceId = file.replace(/\.(yaml|yml)$/, '');
-                const filePath = path.join(this.paths.configsDir, file);
-                
-                await this.sourceManager.registerSource(sourceId, SourceType.LOCAL, {
-                    path: filePath,
-                    description: `本地配置文件: ${file}`,
-                    enabled: true
-                });
-            }
-            
-            console.log(`注册了 ${yamlFiles.length} 个本地配置源`);
-            
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                console.log('configs 目录不存在，跳过本地配置源注册');
-            } else {
-                console.error('注册本地配置源失败:', error.message);
-            }
-        }
-    }
-    
-    /**
-     * 注册URL配置源
-     * @private
-     */
-    async registerUrlSources() {
-        try {
-            const urls = await this.urlManager.readUrls();
-            
-            for (const { name, url } of urls) {
-                await this.sourceManager.registerSource(name, SourceType.URL, {
-                    url: url,
-                    description: `订阅源: ${name}`,
-                    enabled: true
-                });
-            }
-            
-            console.log(`注册了 ${urls.length} 个URL配置源`);
-            
-        } catch (error) {
-            console.error('注册URL配置源失败:', error.message);
-        }
-    }
-    
-    /**
-     * 注册缓存配置源（手动上传等）
-     * @private
-     */
-    async registerCacheSources() {
-        try {
-            const ConfigCacheService = require('../services/configCacheService');
-            const allCaches = await ConfigCacheService.getAllConfigs(true);
-            
-            // 找出不在URL列表中的独立缓存
-            const urlNames = new Set((await this.urlManager.readUrls()).map(u => u.name));
-            const independentCaches = allCaches.filter(cache => 
-                !urlNames.has(cache.subscriptionName) && cache.configContent
-            );
-            
-            for (const cache of independentCaches) {
-                await this.sourceManager.registerSource(cache.subscriptionName, SourceType.MANUAL, {
-                    description: `手动上传配置: ${cache.subscriptionName}`,
-                    enabled: true,
-                    uploadTime: cache.lastUpdated
-                });
-            }
-            
-            console.log(`注册了 ${independentCaches.length} 个缓存配置源`);
-            
-        } catch (error) {
-            console.error('注册缓存配置源失败:', error.message);
-        }
-    }
-    
     /**
      * 配置节点聚合器
      * @private
@@ -308,7 +131,56 @@ class ConfigManager {
         
         console.log('节点聚合器配置完成');
     }
-    
+
+    /**
+     * 获取上一次聚合的节点统计信息
+     */
+    getNodeStatistics() {
+        if (!this.lastAggregationResult) {
+            return {
+                total: 0,
+                byType: {},
+                bySource: {},
+                message: '尚未处理任何配置，无统计信息'
+            };
+        }
+        return this.lastAggregationResult.statistics;
+    }
+
+    /**
+     * 获取系统状态，主要关注配置源
+     */
+    getSystemStatus() {
+        const sources = this.sourceManager.getAllSources();
+        const status = {
+            totalSources: sources.length,
+            enabledSources: sources.filter(s => s.enabled).length,
+            lastUpdateTime: this.sourceManager.lastUpdateTime,
+            sources: sources.map(s => s.getStats())
+        };
+        return status;
+    }
+
+    /**
+     * 获取健康报告，识别更新失败的配置源
+     */
+    getHealthReport() {
+        const sources = this.sourceManager.getAllSources();
+        const failedSources = sources.filter(s => s.isAvailable() === false && s.lastUpdateError !== null);
+        
+        return {
+            isHealthy: failedSources.length === 0,
+            totalSources: sources.length,
+            failedCount: failedSources.length,
+            failedDetails: failedSources.map(s => ({
+                id: s.id,
+                name: s.name,
+                error: s.lastUpdateError,
+                lastAttempt: s.lastUpdateTime
+            }))
+        };
+    }
+
     /**
      * 收集所有配置源的节点
      * @returns {Map<string, ProxyNode[]>} - 按配置源分组的节点映射
@@ -337,10 +209,12 @@ class ConfigManager {
      * @returns {Promise<object>} - 生成结果
      * @private
      */
-    async generateConfigFiles(nodes, options) {
+    async generateConfigContent(nodes, options) {
         const result = {
             mergedFile: null,
-            processedFile: null
+            processedFile: null,
+            mergedConfigContent: null,
+            processedConfigContent: null
         };
         
         try {
@@ -355,11 +229,8 @@ class ConfigManager {
             
             // 保存合并后的配置
             const mergedConfigYaml = YAML.stringify(baseConfig);
-            await fs.writeFile(this.paths.outputFile, mergedConfigYaml);
-            result.mergedFile = this.paths.outputFile;
-            
-            console.log(`合并后的配置已保存到: ${this.paths.outputFile}`);
-            
+            result.mergedConfigContent = mergedConfigYaml;
+
             // 应用clash-configs处理（如果存在）
             let processedConfig = baseConfig;
             try {
@@ -369,14 +240,11 @@ class ConfigManager {
             } catch (err) {
                 console.warn('clash-configs.js 处理失败，使用原始配置:', err.message);
             }
-            
+    
             // 保存处理后的配置
             const processedConfigYaml = YAML.stringify(processedConfig);
-            await fs.writeFile(this.paths.processedOutputFile, processedConfigYaml);
-            result.processedFile = this.paths.processedOutputFile;
-            
-            console.log(`处理过的配置已保存到: ${this.paths.processedOutputFile}`);
-            
+            result.processedConfigContent = processedConfigYaml;
+
         } catch (error) {
             console.error('生成配置文件失败:', error.message);
             throw error;
@@ -422,254 +290,6 @@ class ConfigManager {
         ];
         
         return groups;
-    }
-    
-    /**
-     * 更新处理统计信息
-     * @param {Date} startTime - 开始时间
-     * @param {object} aggregationResult - 聚合结果
-     * @param {Map} updateResults - 更新结果
-     * @private
-     */
-    updateProcessStats(startTime, aggregationResult, updateResults) {
-        this.stats.lastProcess = startTime;
-        this.stats.totalProcessCount += 1;
-        
-        const successCount = Array.from(updateResults.values()).filter(r => r.success).length;
-        if (successCount > 0) {
-            this.stats.successCount += 1;
-        } else {
-            this.stats.errorCount += 1;
-        }
-        
-        this.stats.totalNodes = aggregationResult.total;
-        this.stats.activeNodes = aggregationResult.statistics.activeNodes;
-    }
-    
-    /**
-     * 设置事件处理器
-     * @private
-     */
-    setupEventHandlers() {
-        // 监听配置源更新事件
-        this.sourceManager.on('sourceUpdated', (sourceId, updateResult) => {
-            console.log(`配置源更新: ${sourceId} - ${updateResult.nodeCount} 个节点`);
-        });
-        
-        this.sourceManager.on('sourceError', (sourceId, error) => {
-            console.error(`配置源错误: ${sourceId} - ${error.message}`);
-        });
-        
-        this.sourceManager.on('globalUpdateCompleted', (summary) => {
-            console.log(`全局更新完成: ${summary.successCount}/${summary.totalSources} 成功`);
-        });
-    }
-    
-    /**
-     * 获取系统状态
-     * @returns {object} - 系统状态信息
-     */
-    getStatus() {
-        return {
-            initialized: this.isInitialized,
-            processing: this.isProcessing,
-            lastProcessTime: this.lastProcessTime,
-            sourceManager: this.sourceManager.getStats(),
-            nodeAggregator: this.nodeAggregator.getStats(),
-            stats: this.stats,
-            config: this.config
-        };
-    }
-    
-    /**
-     * 获取健康状态报告
-     * @returns {Promise<object>} - 健康状态报告
-     */
-    async getHealthReport() {
-        const sourceHealth = await this.sourceManager.getHealthReport();
-        
-        return {
-            overall: sourceHealth.overall,
-            timestamp: new Date(),
-            components: {
-                configManager: {
-                    status: this.isInitialized ? 'healthy' : 'not_initialized',
-                    processing: this.isProcessing,
-                    lastProcess: this.lastProcessTime,
-                    stats: this.stats
-                },
-                sourceManager: sourceHealth,
-                nodeAggregator: {
-                    status: 'healthy',
-                    stats: this.nodeAggregator.getStats()
-                }
-            }
-        };
-    }
-    
-    /**
-     * 手动添加配置源
-     * @param {string} sourceId - 配置源ID
-     * @param {string} type - 配置源类型
-     * @param {object} config - 配置源配置
-     * @returns {Promise<ConfigSource>} - 配置源对象
-     */
-    async addSource(sourceId, type, config) {
-        const source = await this.sourceManager.registerSource(sourceId, type, config);
-        
-        // 立即尝试更新新添加的配置源
-        try {
-            await this.sourceManager.updateSource(sourceId);
-        } catch (error) {
-            console.warn(`新添加的配置源 ${sourceId} 初始更新失败:`, error.message);
-        }
-        
-        return source;
-    }
-    
-    /**
-     * 移除配置源
-     * @param {string} sourceId - 配置源ID
-     * @returns {Promise<boolean>} - 是否成功移除
-     */
-    async removeSource(sourceId) {
-        return await this.sourceManager.unregisterSource(sourceId);
-    }
-    
-    /**
-     * 获取节点统计信息
-     * @returns {object} - 节点统计信息
-     */
-    getNodeStatistics() {
-        const aggregatedNodes = this.nodeAggregator.getAggregatedNodes();
-        const sourceNodes = this.nodeAggregator.getNodesBySource();
-        
-        const stats = {
-            total: aggregatedNodes.length,
-            byType: {},
-            bySource: {},
-            conflictResolved: this.nodeAggregator.getConflictResolver().getStats().resolved
-        };
-        
-        // 按类型统计
-        for (const node of aggregatedNodes) {
-            stats.byType[node.type] = (stats.byType[node.type] || 0) + 1;
-        }
-        
-        // 按配置源统计
-        for (const [sourceId, nodes] of sourceNodes) {
-            stats.bySource[sourceId] = nodes.length;
-        }
-        
-        return stats;
-    }
-
-    /**
-     * 获取所有聚合后的节点 (供NodeManager使用)
-     * @returns {ProxyNode[]} - 聚合后的节点数组
-     */
-    getAllAggregatedNodes() {
-        return this.nodeAggregator.getAggregatedNodes();
-    }
-
-    /**
-     * 获取按配置源分组的节点 (供NodeManager使用)
-     * @returns {Map<string, ProxyNode[]>} - 按配置源分组的节点映射
-     */
-    getNodesBySource() {
-        return this.nodeAggregator.getNodesBySource();
-    }
-
-    /**
-     * 获取指定配置源的节点
-     * @param {string} sourceId - 配置源ID
-     * @returns {ProxyNode[]} - 节点数组
-     */
-    getSourceNodes(sourceId) {
-        const sourceNodes = this.nodeAggregator.getNodesBySource();
-        return sourceNodes.get(sourceId) || [];
-    }
-
-    /**
-     * 按类型筛选节点
-     * @param {string} type - 节点类型
-     * @returns {ProxyNode[]} - 筛选后的节点数组
-     */
-    filterNodesByType(type) {
-        const allNodes = this.nodeAggregator.getAggregatedNodes();
-        return allNodes.filter(node => node.type === type);
-    }
-
-    /**
-     * 搜索节点
-     * @param {string} keyword - 搜索关键词
-     * @returns {ProxyNode[]} - 搜索结果
-     */
-    searchNodes(keyword) {
-        const allNodes = this.nodeAggregator.getAggregatedNodes();
-        const lowerKeyword = keyword.toLowerCase();
-        
-        return allNodes.filter(node => {
-            const displayName = node.getDisplayName().toLowerCase();
-            const server = node.server.toLowerCase();
-            return displayName.includes(lowerKeyword) || server.includes(lowerKeyword);
-        });
-    }
-
-    /**
-     * 获取节点详细信息
-     * @param {string} nodeId - 节点ID
-     * @returns {ProxyNode|null} - 节点对象
-     */
-    getNodeById(nodeId) {
-        const allNodes = this.nodeAggregator.getAggregatedNodes();
-        return allNodes.find(node => node.id === nodeId) || null;
-    }
-
-    /**
-     * 获取节点详细信息（按显示名称）
-     * @param {string} displayName - 节点显示名称
-     * @returns {ProxyNode|null} - 节点对象
-     */
-    getNodeByDisplayName(displayName) {
-        const allNodes = this.nodeAggregator.getAggregatedNodes();
-        return allNodes.find(node => node.getDisplayName() === displayName) || null;
-    }
-
-    /**
-     * 生成包含指定节点的配置文件
-     * @param {ProxyNode[]} selectedNodes - 选中的节点数组
-     * @returns {object} - Clash配置对象
-     */
-    generateConfigWithNodes(selectedNodes) {
-        if (!Array.isArray(selectedNodes) || selectedNodes.length === 0) {
-            throw new Error('必须提供有效的节点数组');
-        }
-
-        // 创建基础配置
-        const baseConfig = this.createBaseClashConfig();
-        
-        // 添加选中的节点
-        baseConfig.proxies = selectedNodes.map(node => node.toClashConfig());
-        
-        // 生成代理组
-        baseConfig['proxy-groups'] = this.generateProxyGroups(selectedNodes);
-        
-        return baseConfig;
-    }
-
-    /**
-     * 注册节点更新回调
-     * @param {Function} callback - 回调函数
-     */
-    onNodesUpdated(callback) {
-        if (typeof callback === 'function') {
-            this.sourceManager.on('configsUpdated', () => {
-                const aggregatedNodes = this.nodeAggregator.getAggregatedNodes();
-                const sourceNodes = this.nodeAggregator.getNodesBySource();
-                callback(aggregatedNodes, sourceNodes);
-            });
-        }
     }
 }
 

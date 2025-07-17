@@ -3,7 +3,7 @@
 
 // 会话认证中间件
 const sessionAuthMiddleware = (req, res, next) => {
-    console.log(`[会话认证] 路径: ${req.path}, 方法: ${req.method}, 用户: ${req.session && req.session.user ? req.session.user.username : '未登录'}`);
+    //console.log(`[会话认证] 路径: ${req.path}, 方法: ${req.method}, 用户: ${req.session && req.session.user ? req.session.user.username : '未登录'}`);
     
     // 跳过认证页面和认证接口
     const skipPaths = [
@@ -27,8 +27,11 @@ const sessionAuthMiddleware = (req, res, next) => {
 
     // 检查用户是否已登录
     if (req.session && req.session.user) {
-        // 将用户信息添加到res.locals中，便于视图访问
+        // res.locals.user 用于向视图传递数据
         res.locals.user = req.session.user;
+
+        // res.user 用户服务器端的用户
+        req.user = req.session.user; // 确保req.user可用
         next();
     } else {
         console.log(`[会话认证] 用户未登录，重定向到登录页面，请求路径: ${req.path}`);
@@ -65,7 +68,7 @@ const adminAuthMiddleware = (req, res, next) => {
 
 // 初始设置重定向中间件
 const setupRedirectMiddleware = (req, res, next) => {
-    console.log(`[设置重定向] 路径: ${req.path}, needInitialSetup: ${global.needInitialSetup}`);
+    //console.log(`[设置重定向] 路径: ${req.path}, needInitialSetup: ${global.needInitialSetup}`);
     
     // 设置默认值，避免初始化问题
     if (global.needInitialSetup === undefined) {
@@ -74,7 +77,7 @@ const setupRedirectMiddleware = (req, res, next) => {
     
     // 跳过订阅访问路径的重定向
     if (req.path.startsWith('/subscribe/')) {
-        console.log(`[设置重定向] 订阅访问路径: ${req.path}，跳过重定向`);
+        //console.log(`[设置重定向] 订阅访问路径: ${req.path}，跳过重定向`);
         return next();
     }
     

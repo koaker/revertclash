@@ -48,7 +48,8 @@ class ConfigSource {
         // 基本信息
         this.id = id;
         this.type = type;
-        this.config = { ...config };
+        this.config = config;
+        console.log(`创建配置源: ${this.id}, 类型: ${this.type} 配置:`, this.config);
         
         // 版本和状态管理
         this.version = null;
@@ -119,6 +120,7 @@ class ConfigSource {
             
             // 解析新内容
             console.log(`开始解析配置源 ${this.id} 的内容...`);
+            //console.log(`原始内容: ${rawContent}`);
             const parsedNodes = await parserManager.parse(rawContent);
             
             if (!parsedNodes || parsedNodes.length === 0) {
