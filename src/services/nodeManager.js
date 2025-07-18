@@ -1,5 +1,5 @@
 const yaml = require('js-yaml');
-
+const ConfigManager = require('../managers/ConfigManager');
 /**
  * 节点管理器类 (重构版 v2.0)
  * 负责管理ProxyNode结构体数组，与新架构ConfigManager对接
@@ -8,133 +8,36 @@ class NodeManager {
     constructor() {
         this.nodes = new Map(); // 存储节点信息: Map<string, ProxyNodeWrapper>
         this.selectedNodes = new Set(); // 存储选中的节点名称
-        this.configManager = null; // ConfigManager引用
         this.lastUpdateTime = null; // 最后更新时间
         this.sourceNodeMap = new Map(); // 配置源到节点的映射
     }
 
+    
     /**
-     * 设置ConfigManager引用，实现数据联通
-     * @param {ConfigManager} configManager - 配置管理器实例
+     * 刷新节点，从ConfigManager获取最新数据
      */
-    setConfigManager(configManager) {
-        this.configManager = configManager;
-        
-        // 监听配置更新事件，自动刷新节点数据
-        if (configManager && configManager.sourceManager) {
-            configManager.sourceManager.on('configsUpdated', () => {
-                this.refreshNodesFromConfigManager();
-            });
-        }
-    }
-
-    /**
-     * 从ConfigManager刷新节点数据
-     * @returns {Promise<Array>} - 格式化的节点列表
-     */
-    async refreshNodesFromConfigManager() {
-        if (!this.configManager) {
-            console.warn('NodeManager: ConfigManager未设置，无法刷新节点数据');
+    async refreshNodes(sources) {
+        if (!sources || sources.length === 0) {
+            console.warn('NodeManager: 未提供配置源，无法刷新节点数据');
             return this.getNodes();
         }
 
         try {
-            console.log('NodeManager: 开始从ConfigManager刷新节点数据...');
-            
-            // 检查ConfigManager是否已初始化
-            if (!this.configManager.isInitialized) {
-                console.log('NodeManager: ConfigManager未初始化，正在初始化...');
-                await this.configManager.initialize();
+            console.log(`NodeManager: 开始刷新`);
+
+            const configManager = new ConfigManager();
+
+            const { nodes, sourceNodeMap } = await configManager.processAndGetNodes(sources);
+
+            if (!nodes || nodes.length === 0) {
+                console.warn('NodeManager: 刷新后未获取到任何节点');
+                return this.getNodes();
             }
-            
-            // 先检查是否有聚合的节点数据
-            let aggregatedNodes = this.configManager.nodeAggregator.getAggregatedNodes();
-            let sourceNodes = this.configManager.nodeAggregator.getNodesBySource();
-            
-            console.log(`NodeManager: 当前聚合节点数量: ${aggregatedNodes.length}`);
-            
-            // 如果没有聚合数据或数据过期，强制触发配置处理
-            if (aggregatedNodes.length === 0 || this.shouldRefreshData()) {
-                console.log('NodeManager: 聚合数据为空或过期，触发配置处理...');
-                
-                try {
-                    // 强制处理配置以触发节点聚合
-                    await this.configManager.processConfigs();
-                    
-                    // 重新获取聚合数据
-                    aggregatedNodes = this.configManager.nodeAggregator.getAggregatedNodes();
-                    sourceNodes = this.configManager.nodeAggregator.getNodesBySource();
-                    
-                    console.log(`NodeManager: 配置处理后聚合节点数量: ${aggregatedNodes.length}`);
-                    
-                } catch (processError) {
-                    console.error('NodeManager: 配置处理失败:', processError.message);
-                    // 继续尝试获取现有数据
-                }
-            }
-            
-            // 如果仍然没有数据，尝试直接从配置源收集
-            if (aggregatedNodes.length === 0) {
-                console.warn('NodeManager: 仍无聚合数据，尝试直接从配置源收集节点...');
-                aggregatedNodes = await this.collectDirectFromSources();
-                sourceNodes = new Map(); // 空的源映射
-            }
-            
-            console.log(`NodeManager: 最终获取到 ${aggregatedNodes.length} 个节点用于更新`);
-            
-            return this.updateNodesFromStructArray(aggregatedNodes, sourceNodes);
-            
+
+            return this.updateNodesFromStructArray(nodes, sourceNodeMap);
         } catch (error) {
-            console.error('NodeManager: 从ConfigManager刷新节点失败:', error.message);
-            console.error('NodeManager: 错误详情:', error.stack);
+            console.error('NodeManager: 刷新节点失败:', error.message);
             return this.getNodes();
-        }
-    }
-
-    /**
-     * 检查是否应该刷新数据
-     * @returns {boolean} - 是否需要刷新
-     * @private
-     */
-    shouldRefreshData() {
-        if (!this.lastUpdateTime) {
-            return true;
-        }
-        
-        // 如果超过5分钟没有更新，认为需要刷新
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        return this.lastUpdateTime < fiveMinutesAgo;
-    }
-
-    /**
-     * 直接从配置源收集节点（降级方案）
-     * @returns {Promise<Array>} - 收集到的节点数组
-     * @private
-     */
-    async collectDirectFromSources() {
-        try {
-            console.log('NodeManager: 尝试直接从配置源收集节点...');
-            
-            const sources = this.configManager.sourceManager.getAllSources();
-            const allNodes = [];
-            
-            for (const source of sources) {
-                try {
-                    if (source.nodeCount > 0 && source.nodes) {
-                        console.log(`NodeManager: 从配置源 ${source.id} 收集到 ${source.nodes.length} 个节点`);
-                        allNodes.push(...source.nodes);
-                    }
-                } catch (sourceError) {
-                    console.error(`NodeManager: 从配置源 ${source.id} 收集节点失败:`, sourceError.message);
-                }
-            }
-            
-            console.log(`NodeManager: 直接收集总计 ${allNodes.length} 个节点`);
-            return allNodes;
-            
-        } catch (error) {
-            console.error('NodeManager: 直接从配置源收集节点失败:', error.message);
-            return [];
         }
     }
 

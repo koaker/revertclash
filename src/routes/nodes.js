@@ -1,123 +1,62 @@
 const express = require('express');
-const fs = require('fs').promises;
-const path = require('path');
 const NodeManager = require('../services/nodeManager');
 const ConfigProcessor = require('../services/configProcessor');
 
-module.exports = (configManager) => {
+const UrlManager = require('../managers/UrlManager');
+const UserContentManager =require('../managers/UserContentManager');
+const { SourceType } = require('../models');
+
+module.exports = () => {
 const router = express.Router();
 
 // 创建节点管理器实例并连接到ConfigManager
 const nodeManager = new NodeManager();
 const configProcessor = new ConfigProcessor(nodeManager);
 
-// 初始化节点管理器与ConfigManager的连接
-async function initNodeManagerConnection() {
-    if (!configManager) {
-        console.error('ConfigManager 未提供，节点管理器无法初始化。');
-        // 可以在这里抛出错误，让应用启动失败，以便及早发现问题
-        throw new Error('ConfigManager is required for NodeManager initialization.');
-    }
-    try {
-        // 设置ConfigManager引用
-        nodeManager.setConfigManager(configManager);
-        
-        // 首次加载节点数据
-        await nodeManager.refreshNodesFromConfigManager();
-        
-        console.log('节点管理器与ConfigManager连接成功，共加载节点:', nodeManager.getNodes().length);
-    } catch (err) {
-        console.error('节点管理器连接ConfigManager失败:', err.message);
-        // 启动时失败，这是一个严重问题，直接抛出错误
-        throw err;
-    }
-}
-
-// 启动时初始化连接
-initNodeManagerConnection();
-
 // ========== 节点查询API ==========
 
 // 获取所有节点列表
 router.get('/', async (req, res) => {
     try {
-        let nodes = [];
-        let dataSource = 'unknown';
-        
-        // 尝试从ConfigManager刷新最新数据
-        try {
-            if (nodeManager.configManager) {
-                await nodeManager.refreshNodesFromConfigManager();
-                nodes = nodeManager.getNodes();
-                dataSource = 'ConfigManager';
-                console.log(`[节点API] 从ConfigManager获取到 ${nodes.length} 个节点`);
-            } else {
-                console.warn('[节点API] ConfigManager未连接，尝试其他数据源');
-                throw new Error('ConfigManager未连接');
-            }
-        } catch (refreshErr) {
-            console.warn('[节点API] ConfigManager刷新失败，尝试备用方案:', refreshErr.message);
-            
-            // 备用方案1: 使用现有缓存数据
-            nodes = nodeManager.getNodes();
-            if (nodes.length > 0) {
-                dataSource = 'cached';
-                console.log(`[节点API] 使用缓存数据，共 ${nodes.length} 个节点`);
-            } else {
-                // 备用方案2: 尝试从文件直接解析
-                try {
-                    await fallbackToLegacyMode();
-                    nodes = nodeManager.getNodes();
-                    dataSource = 'legacy';
-                    console.log(`[节点API] 使用兼容模式，共 ${nodes.length} 个节点`);
-                } catch (legacyErr) {
-                    console.error('[节点API] 兼容模式也失败:', legacyErr.message);
-                    // 返回空数组，但不报错
-                    nodes = [];
-                    dataSource = 'empty';
-                }
-            }
-        }
-        
-        // 确保返回的数据格式符合前端期望
-        const formattedNodes = nodes.map(node => ({
-            name: node.name || '未知节点',
-            type: node.type || 'unknown',
-            server: node.server || '未知',
-            port: node.port || 0,
-            selected: node.selected || false,
-            
-            // 新增字段（向后兼容）
-            source: node.source || 'unknown',
-            id: node.id || `fallback-${node.name}`,
-            version: node.version || 1,
-            updateTime: node.updateTime || new Date().toISOString()
-        }));
-        
+        console.log('[节点API] 获取所有节点列表');
+        const userId = req.user.id;
+
+        const urlSourcesData = await UrlManager.getUrlsByUserId(userId);
+        const customConfigSourcesData = await UserContentManager.getUserCustomConfigs(userId);
+
+        const sources = [];
+        urlSourcesData.forEach(s => {
+            sources.push({ name: s.name, type: SourceType.URL, data: s.url });
+        });
+        customConfigSourcesData.forEach(s => {
+            sources.push({ name: s.name, type: SourceType.MANUAL, data: s.config });
+        });
+
+        console.log(`共找到 ${sources.length} 个数据源`);
+        await nodeManager.refreshNodes(sources);
+        const nodes = nodeManager.getNodes();
+        let dataSource = 'live';
+
         res.json({
             success: true,
-            nodes: formattedNodes,
+            nodes: nodes,
             metadata: {
-                total: formattedNodes.length,
+                total: nodes.length,
                 dataSource: dataSource,
                 timestamp: new Date().toISOString()
             }
         });
-        
     } catch (err) {
         console.error('[节点API] 获取节点列表失败:', err.message);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             error: err.message,
             nodes: [],
-            metadata: {
-                total: 0,
-                dataSource: 'error',
-                timestamp: new Date().toISOString()
-            }
         });
     }
-});
+
+
+}); // 结束节点查询API
 
 // 获取选中的节点
 router.get('/selected', async (req, res) => {
@@ -298,37 +237,6 @@ router.get('/search/:keyword', async (req, res) => {
     }
 });
 
-// ========== 数据管理API ==========
-
-// 重新从ConfigManager加载节点数据
-router.post('/reload', async (req, res) => {
-    try {
-        await nodeManager.refreshNodesFromConfigManager();
-        const status = nodeManager.getManagerStatus();
-        
-        res.json({ 
-            success: true, 
-            message: '节点数据重新加载成功',
-            status: status
-        });
-    } catch (err) {
-        console.error('重新加载节点数据失败:', err.message);
-        
-        // 如果ConfigManager刷新失败，尝试兼容模式
-        try {
-            await fallbackToLegacyMode();
-            res.json({ 
-                success: true, 
-                message: '节点数据已从兼容模式重新加载',
-                count: nodeManager.getNodes().length,
-                mode: 'legacy'
-            });
-        } catch (fallbackErr) {
-            res.status(500).json({ error: fallbackErr.message });
-        }
-    }
-});
-
 // 获取节点管理器状态
 router.get('/manager/status', async (req, res) => {
     try {
@@ -488,5 +396,5 @@ router.post('/export-links', async (req, res) => {
     }
 });
 
-module.exports = router;
+return router
 }

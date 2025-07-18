@@ -54,17 +54,14 @@ async function loadNodes() {
         
         // 兼容新旧API格式
         let nodes = [];
-        if (responseData.success && responseData.nodes) {
-            // 新格式：包装的响应
-            nodes = responseData.nodes;
-            console.log(`[前端] 使用新格式数据，数据源: ${responseData.metadata?.dataSource}, 节点数: ${nodes.length}`);
-        } else if (Array.isArray(responseData)) {
-            // 旧格式：直接返回数组
-            nodes = responseData;
-            console.log(`[前端] 使用兼容格式数据，节点数: ${nodes.length}`);
-        } else {
+
+        if (!responseData.success || !responseData.nodes) {
             throw new Error('API返回了无效的数据格式');
         }
+
+        nodes = responseData.nodes;
+        console.log(`[前端] 使用新格式数据，数据源: ${responseData.metadata?.dataSource}, 节点数: ${nodes.length}`);
+
         
         // 验证数据有效性
         if (!Array.isArray(nodes)) {
@@ -702,33 +699,9 @@ async function reloadNodes() {
         loadNodes.retryCount = 0;
         
         // 步骤1: 调用后端重新加载API
-        const reloadResponse = await fetch('/api/nodes/reload', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (reloadResponse.ok) {
-            const reloadResult = await reloadResponse.json();
-            console.log('[前端] 后端重新加载响应:', reloadResult);
-            
-            if (reloadResult.success) {
-                // 显示成功消息
-                showSuccessMessage(reloadResult.message || '节点重新加载成功');
-                
-                // 等待一秒确保后端处理完成
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            } else {
-                console.warn('[前端] 后端重新加载失败，继续尝试获取数据');
-            }
-        } else {
-            console.warn('[前端] 重新加载API调用失败，继续尝试获取数据');
-        }
-        
-        // 步骤2: 重新加载节点数据
         await loadNodes();
-        
+
+        showSuccessMessage('节点重新加载成功！');
         console.log('[前端] 节点重新加载完成');
         
     } catch (err) {

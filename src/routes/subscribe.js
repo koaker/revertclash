@@ -105,7 +105,6 @@ router.get('/:token/:type', async (req, res) => {
             });
             console.log(`添加自定义配置源: ${s.name}` );
             console.log(`配置内容: ${s.config}`);
-
         })
 
         if (sources.length === 0) {

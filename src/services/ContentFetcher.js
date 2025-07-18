@@ -161,9 +161,6 @@ class ContentFetcher {
     async fetchManualContent(source) {
         try {
             console.log(`获取手动上传的配置: ${source.id}`);
-            
-            console.log(`手动上传内容: ${source.config}`);
-            // 从缓存中获取手动上传的内容
             const cachedConfig = source.config.content;
             
             if (!cachedConfig) {

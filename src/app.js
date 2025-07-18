@@ -12,7 +12,6 @@ const urlRoutes = require('./routes/urls');
 const pageRoutes = require('./routes/pages');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const nodeRoutes = require('./routes/nodes');
 const subscriptionTokenRoutes = require('./routes/subscriptionTokens');
 const subscribeRoutes = require('./routes/subscribe');
 const newConfigRoutes = require('./routes/newconfig')(configManager);
@@ -103,7 +102,7 @@ app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/urls', urlRoutes);
 app.use('/api/configs', customConfigRoutes);
-app.use('/api/nodes', nodeRoutes);
+app.use('/api/nodes', require('./routes/nodes')());
 app.use('/api/newconfig', newConfigRoutes);
 app.use('/api/subscription-tokens', rateLimiter.createLimiter({
     windowMs: 1 * 60 * 1000,  // 1分钟窗口

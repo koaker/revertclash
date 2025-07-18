@@ -40,48 +40,11 @@ class ConfigManager {
     async process(sources, options = {}) {
         const startTime = new Date();
         try {
-            for (const source of sources) {
-                if (!source.name || !source.type || !source.data) {
-                    console.log('配置源缺少必要字段:', source);
-                    throw new Error('配置源必须包含 name, type 和 data 字段');
-                }
-                if (source.type === SourceType.URL) {
-                    await this.sourceManager.registerSource(source.name, SourceType.URL, {
-                        url: source.data,
-                        description: `订阅源: ${source.name}`,
-                        enabled: true
-                    });
-                } else if (source.type === SourceType.MANUAL) {
-                    await this.sourceManager.registerSource(source.name, SourceType.MANUAL, {
-                        content: source.data,
-                        description: `手动上传配置: ${source.name}`,
-                        enabled: true
-                    });
-                } else if (source.type === SourceType.LOCAL) {
-                    await this.sourceManager.registerSource(source.name, SourceType.LOCAL, {
-                        path: source.data,
-                        description: `本地配置文件: ${source.name}`,
-                        enabled: true
-                    });
-                }
-            }
-            const updateResults = await this.sourceManager.updateAllSources({
-                parallel: true,
-                maxConcurrency: 5,
-                continueOnError: true
-            });
+            // 调用核心处理逻辑获取聚合节点
+            const {aggregationResult, updateResults} = await this._processSources(sources, options);
 
             const successSources = Array.from(updateResults.values()).filter(r => r.success);
             const failedSources = Array.from(updateResults.values()).filter(r => !r.success);
-
-            const sourceNodes = await this.collectSourceNodes();
-            console.log(`收集到 ${sourceNodes.size} 个源节点`);
-
-            const aggregationResult = await this.nodeAggregator.aggregate(sourceNodes, {
-                maxNodes: options.maxNodes || null,
-                enableConflictResolution: options.enableConflictResolution || true,
-                enableFiltering: options.enableFiltering || true
-            });
 
             this.lastAggregationResult = aggregationResult;
             const result = await this.generateConfigContent(aggregationResult.nodes, options);
@@ -108,6 +71,68 @@ class ConfigManager {
             console.error('处理配置源时出错:', error.message);
         }
     }
+
+    /**
+     * 内部处理逻辑：数据源注册和聚合节点
+     * @private
+     */
+    async _processSources(sources, options = {}) {
+        for (const source of sources) {
+            if (!source.name || !source.type || !source.data) {
+                console.log('配置源缺少必要字段:', source);
+                throw new Error('配置源必须包含 name, type 和 data 字段');
+            }
+            if (source.type === SourceType.URL) {
+                await this.sourceManager.registerSource(source.name, SourceType.URL, {
+                    url: source.data,
+                    description: `订阅源: ${source.name}`,
+                    enabled: true
+                });
+            } else if (source.type === SourceType.MANUAL) {
+                await this.sourceManager.registerSource(source.name, SourceType.MANUAL, {
+                    content: source.data,
+                    description: `手动上传配置: ${source.name}`,
+                    enabled: true
+                });
+            } else if (source.type === SourceType.LOCAL) {
+                await this.sourceManager.registerSource(source.name, SourceType.LOCAL, {
+                    path: source.data,
+                    description: `本地配置文件: ${source.name}`,
+                    enabled: true
+                });
+            }
+        }
+        const updateResults = await this.sourceManager.updateAllSources({
+            parallel: true,
+            maxConcurrency: 5,
+            continueOnError: true
+        });
+
+        const sourceNodes = await this.collectSourceNodes();
+        console.log(`收集到 ${sourceNodes.size} 个源节点`);
+
+        const aggregationResult = await this.nodeAggregator.aggregate(sourceNodes, {
+            maxNodes: options.maxNodes || null,
+            enableConflictResolution: options.enableConflictResolution || true,
+            enableFiltering: options.enableFiltering || true
+        });
+
+        this.lastAggregationResult = aggregationResult;
+
+        return {aggregationResult, updateResults};
+    }
+
+    /*
+     * 处理所有配置源并直接返回结构化数据
+     */
+    async processAndGetNodes(sources, options = {}) {
+        const {aggregationResult} = await this._processSources(sources, options);
+        if (!aggregationResult) {
+            return null;
+        }
+        return {nodes: aggregationResult.nodes, sourceNodeMap: aggregationResult.sourceNodeMap};
+    }
+
     /**
      * 配置节点聚合器
      * @private
