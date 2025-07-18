@@ -1,6 +1,4 @@
 const express = require('express');
-const path = require('path');
-const { authConfig, saveAuthConfig } = require('../auth');
 const userAuthService = require('../services/userAuth');
 const db = require('../db'); // 添加数据库直接引用
 

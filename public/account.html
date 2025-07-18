@@ -127,8 +127,8 @@
                             <input type="text" class="rc-form-control" id="new-username" required>
                         </div>
                         <div class="rc-form-group">
-                            <label for="new-password" class="rc-form-label">密码</label>
-                            <input type="password" class="rc-form-control" id="new-password" required>
+                            <label for="add-new-password" class="rc-form-label">密码</label>
+                            <input type="password" class="rc-form-control" id="add-new-password" required>
                             <div class="rc-form-text">密码长度至少6个字符</div>
                         </div>
                         <div class="rc-form-group">
@@ -313,7 +313,7 @@
         // 添加新用户
         async function addUser() {
             const username = document.getElementById('new-username').value;
-            const password = document.getElementById('new-password').value;
+            const password = document.getElementById('add-new-password').value;
             const isAdmin = document.getElementById('isAdmin').checked;
             const errorDiv = document.getElementById('add-user-error');
             
@@ -322,7 +322,8 @@
             
             // 验证输入
             if (!username || !password) {
-                errorDiv.textContent = '用户名和密码不能为空';
+
+                errorDiv.textContent = '用户名和密码不能为空, 账号：' + username + '，密码：' + password;
                 errorDiv.style.display = 'block';
                 return;
             }

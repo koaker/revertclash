@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const db = require('../db');
+const UserManager = require('../managers/UserManager');
 
 // 密码加密的盐轮数
 const SALT_ROUNDS = 10;
@@ -10,8 +11,9 @@ async function registerUser(username, password, isAdmin = false) {
     try {
         // 检查用户名是否已存在
         console.log(`[userAuth] 检查用户名 ${username} 是否存在`);
-        const existingUser = await db.get('SELECT * FROM users WHERE username = ?', [username]);
-        if (existingUser) {
+        
+        const userExists = await UserManager.usernameExists(username);
+        if (userExists) {
             console.log(`[userAuth] 用户名 ${username} 已存在，注册失败`);
             throw new Error('用户名已存在');
         }
@@ -22,15 +24,15 @@ async function registerUser(username, password, isAdmin = false) {
 
         // 插入新用户
         console.log(`[userAuth] 插入新用户到数据库: ${username}`);
-        const result = await db.run(
-            'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
-            [username, passwordHash, isAdmin ? 1 : 0]
-        );
+        const userId = await UserManager.createUser(username, passwordHash, isAdmin);
+        if (!userId) {
+            throw new Error('插入新用户失败');
+        }
 
-        console.log(`[userAuth] 用户 ${username} 创建成功，ID: ${result.lastID}, isAdmin: ${isAdmin}`);
-        
+        console.log(`[userAuth] 用户 ${username} 创建成功，ID: ${userId}, isAdmin: ${isAdmin}`);
+
         // 检查初始设置状态
-        if (isAdmin) {
+        if (await UserManager.adminExists()) {
             console.log(`[userAuth] 创建了管理员账户，更新初始设置状态`);
             if (global.needInitialSetup !== undefined) {
                 global.needInitialSetup = false;
@@ -39,7 +41,7 @@ async function registerUser(username, password, isAdmin = false) {
         }
 
         return {
-            id: result.lastID,
+            id: userId,
             username,
             isAdmin
         };
@@ -55,7 +57,7 @@ async function authenticateUser(username, password) {
     try {
         // 查找用户
         console.log(`[userAuth] 查询用户: ${username}`);
-        const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
+        const user = await UserManager.getUserByUsername(username);
         if (!user) {
             console.log(`[userAuth] 用户名 ${username} 不存在`);
             return { success: false, message: '用户名不存在' };
@@ -122,10 +124,7 @@ async function changePassword(userId, currentPassword, newPassword) {
 
         // 更新密码
         console.log(`[userAuth] 更新用户 ${user.username} 的密码`);
-        await db.run(
-            'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [newPasswordHash, userId]
-        );
+        await UserManager.changeUserPasswordByUserId(userId, newPasswordHash);
 
         console.log(`[userAuth] 用户 ${user.username} 密码修改成功`);
         return { success: true, message: '密码修改成功' };
@@ -138,23 +137,7 @@ async function changePassword(userId, currentPassword, newPassword) {
 // 获取用户列表 (仅管理员可用)
 async function getUserList() {
     console.log(`[userAuth] 获取用户列表`);
-    try {
-        const users = await db.all(
-            'SELECT id, username, is_admin, created_at, updated_at FROM users'
-        );
-        
-        console.log(`[userAuth] 获取到 ${users.length} 个用户`);
-        return users.map(user => ({
-            id: user.id,
-            username: user.username,
-            isAdmin: user.is_admin === 1,
-            createdAt: user.created_at,
-            updatedAt: user.updated_at
-        }));
-    } catch (error) {
-        console.error(`[userAuth] 获取用户列表失败:`, error);
-        throw error;
-    }
+    return await UserManager.getAllUsers();
 }
 
 // 检查系统中是否有初始管理员
@@ -162,23 +145,22 @@ async function hasInitialAdmin() {
     console.log(`[userAuth] 检查系统是否有用户`);
     try {
         // 检查数据库表是否存在
-        const tableCheck = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
-        if (!tableCheck) {
+        if (!UserManager.checkTableExists()) {
             console.log(`[userAuth] 用户表不存在，需要设置`);
             return false;
         }
         
         // 查询用户数量
-        const count = await db.get('SELECT COUNT(*) as count FROM users');
-        console.log(`[userAuth] 系统中有 ${count.count} 个用户`);
-        
+        const isAdminExists = await UserManager.adminExists();
+        console.log(`[userAuth] 系统中是否有管理员存在: ${isAdminExists ? '有管理员' : '没有管理员'} 存在`);
+
         // 更新全局状态
-        if (global.needInitialSetup !== undefined && count.count > 0) {
+        if (global.needInitialSetup !== undefined && isAdminExists) {
             global.needInitialSetup = false;
-            console.log(`[userAuth] 检测到用户，更新全局状态: needInitialSetup=${global.needInitialSetup}`);
+            console.log(`[userAuth] 检测到管理员，更新全局状态: needInitialSetup=${global.needInitialSetup}`);
         }
-        
-        return count.count > 0;
+
+        return isAdminExists;
     } catch (error) {
         console.error(`[userAuth] 检查初始管理员失败:`, error);
         return false;
