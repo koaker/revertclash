@@ -8,7 +8,7 @@ const VlessConverter = require('./vlessConverter');
 const Hysteria2Converter = require('./hysteria2Converter');
 const VMessConverter = require('./vmessConverter');
 const TrojanConverter = require('./trojanConverter');
-
+const S5Converter = require('./s5Converter');
 // 创建协议转换管理器实例
 const protocolConverter = new ProtocolConverter();
 
@@ -18,6 +18,7 @@ protocolConverter.registerConverter('vless', new VlessConverter());
 protocolConverter.registerConverter('hysteria2', new Hysteria2Converter());
 protocolConverter.registerConverter('vmess', new VMessConverter());
 protocolConverter.registerConverter('trojan', new TrojanConverter());
+protocolConverter.registerConverter('socks', new S5Converter());
 
 /**
  * 将URI转换为Clash配置

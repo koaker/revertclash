@@ -180,8 +180,10 @@ class ProtocolConverter {
       return 'vmess';
     } else if (uri.startsWith('trojan://')) {
       return 'trojan';
+    } else if (uri.startsWith('socks://') || uri.startsWith('socks5://') || uri.startsWith('s5://')) {
+      return 'socks';
     }
-    
+
     return null;
   }
 }
