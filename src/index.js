@@ -36,22 +36,13 @@ async function startServer() {
         httpsServer.listen(HTTPS_PORT, () => {
             console.log(`HTTPS服务器已启动: https://localhost:${HTTPS_PORT}`);
             console.log(`配置文件地址: https://localhost:${HTTPS_PORT}/config`);
-            if (global.needInitialSetup) {
-                console.log(`系统需要初始设置，请访问: https://localhost:${HTTPS_PORT}/setup`);
-            } else {
-                console.log(`默认验证密码: ${authConfig.password}`);
-            }
         });
         
         return { httpServer, httpsServer };
     } catch (err) {
         console.log('未找到SSL证书文件，仅启动HTTP服务');
         console.log(`配置文件地址: http://localhost:${PORT}/config`);
-        if (global.needInitialSetup) {
-            console.log(`系统需要初始设置，请访问: http://localhost:${PORT}/setup`);
-        } else {
-            console.log(`默认验证密码: ${authConfig.password}`);
-        }
+
         
         return { httpServer };
     }
@@ -65,9 +56,6 @@ async function main() {
         console.log('正在初始化数据库...');
         await initDatabase(); // 确保先初始化数据库表
         
-        // 初始化全局设置状态
-        global.needInitialSetup = true; // 默认需要设置
-        console.log(`初始化全局状态: needInitialSetup=${global.needInitialSetup}`);
         
         // 检查数据库表是否存在
         try {
@@ -77,28 +65,17 @@ async function main() {
                 // 然后检查是否需要初始设置
                 const hasAdmin = await userAuthService.hasInitialAdmin();
                 console.log(`检查用户结果: hasAdmin=${hasAdmin}`);
-                global.needInitialSetup = !hasAdmin;
-                console.log(`更新全局状态: needInitialSetup=${global.needInitialSetup}`);
             } else {
                 console.log('用户表不存在，需要初始设置');
-                global.needInitialSetup = true;
             }
         } catch (error) {
             console.error('检查数据库表失败:', error);
-            global.needInitialSetup = true; // 出错时默认需要初始设置
-        }
-        
-        if (global.needInitialSetup) {
-            console.log('检测到系统需要初始设置，将在启动后引导您完成设置');
-        } else {
-            console.log('系统已初始化，无需初始设置');
         }
         
         // 然后启动HTTP服务器
         const servers = await startServer();
         
         console.log('RevertClash服务初始化完成');
-        console.log(`当前系统状态: needInitialSetup=${global.needInitialSetup}`);
     } catch (error) {
         console.error('启动RevertClash服务失败:', error);
         process.exit(1);

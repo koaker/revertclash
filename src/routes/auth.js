@@ -1,6 +1,5 @@
 const express = require('express');
 const userAuthService = require('../services/userAuth');
-const db = require('../db'); // 添加数据库直接引用
 
 const router = express.Router();
 
@@ -97,56 +96,29 @@ router.post('/password', express.json(), async (req, res) => {
 // 用户注册API - 仅在初始设置时可用
 router.post('/register', express.json(), async (req, res) => {
     console.log(`[注册] 收到注册请求`);
-    
-    // 检查是否是初始设置
-    let hasAdmin = false;
-    try {
-        hasAdmin = await userAuthService.hasInitialAdmin();
-        console.log(`[注册] 检查管理员: hasAdmin=${hasAdmin}, needInitialSetup=${global.needInitialSetup}`);
-    } catch (error) {
-        console.error(`[注册] 检查管理员失败:`, error);
-    }
-    
-    if (hasAdmin && (!req.session || !req.session.user || !req.session.user.isAdmin)) {
-        console.log(`[注册] 失败: 系统已初始化，非管理员用户尝试注册`);
-        return res.status(403).json({ error: '系统已初始化，只有管理员可以添加用户' });
-    }
-    
     const { username, password, isAdmin } = req.body;
-    
-    console.log(`[注册] 用户信息: username=${username}, isAdmin=${isAdmin}`);
-    
     if (!username || !password) {
         console.log(`[注册] 失败: 用户名或密码为空`);
         return res.status(400).json({ error: '用户名和密码不能为空' });
     }
-    
+
     try {
-        // 尝试创建用户
-        const user = await userAuthService.registerUser(username, password, isAdmin);
-        console.log(`[注册] 成功: 用户 ${username} 已创建, ID=${user.id}, isAdmin=${user.isAdmin}`);
-        
-        // 显式更新全局设置状态
-        global.needInitialSetup = false;
-        console.log(`[注册] 更新全局状态: needInitialSetup=${global.needInitialSetup}`);
-        
-        // 进行双重检查确认用户已存在
-        try {
-            const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-            console.log(`[注册] 数据库用户数量检查: ${userCount.count}`);
-            
-            if (userCount.count > 0) {
-                global.needInitialSetup = false;
-                console.log(`[注册] 数据库确认有用户，已更新needInitialSetup=${global.needInitialSetup}`);
-            }
-        } catch (err) {
-            console.error(`[注册] 检查用户数量失败:`, err);
+        const hasAdmin = await userAuthService.hasInitialAdmin();
+        console.log(`[注册] 检查管理员: hasAdmin=${hasAdmin}`);
+        if (hasAdmin && (!req.session || !req.session.user || !req.session.user.isAdmin)) {
+            console.log(`[注册] 失败: 系统已初始化，非管理员用户尝试注册`);
+            return res.status(403).json({ error: '系统已初始化，只有管理员可以添加用户' });
         }
+        // 如果没有管理员，则第一个注册的用户强制设为管理员
+        const isFirstUserAdmin = !hasAdmin || isAdmin;
+
+        // 尝试创建用户
+        const user = await userAuthService.registerUser(username, password, isFirstUserAdmin);
+        console.log(`[注册] 成功: 用户 ${username} 已创建, ID=${user.id}, isAdmin=${user.isAdmin}`);
         
         res.json({
             status: 'success',
             message: '用户创建成功',
-            needInitialSetup: global.needInitialSetup,
             user: {
                 id: user.id,
                 username: user.username,
@@ -154,10 +126,13 @@ router.post('/register', express.json(), async (req, res) => {
             }
         });
     } catch (error) {
+        console.error(`[注册] 检查管理员失败:`, error);
+
+        if (error.message === '用户已存在') {
+            return res.status(400).json({ error: '用户名已存在' });
+        }
         console.error(`[注册] 失败:`, error);
-        res.status(400).json({
-            error: error.message
-        });
+        res.status(500).json({ error: '注册用户失败，请稍后再试' });
     }
 });
 
@@ -187,52 +162,16 @@ router.get('/setup-status', async (req, res) => {
     
     try {
         hasAdmin = await userAuthService.hasInitialAdmin();
-        console.log(`[设置状态] 检查: hasAdmin=${hasAdmin}, needInitialSetup=${global.needInitialSetup}`);
-        
-        // 根据数据库查询结果更新全局状态
-        if (hasAdmin && global.needInitialSetup) {
-            global.needInitialSetup = false;
-            console.log(`[设置状态] 更新全局状态: needInitialSetup=${global.needInitialSetup}`);
-        }
-    } catch (error) {
-        console.error(`[设置状态] 检查失败:`, error);
-        hasAdmin = false;
-    }
-    
-    res.json({
-        needsSetup: !hasAdmin
-    });
-});
-
-// 添加重置设置状态API - 用于手动重置安装状态
-router.post('/reset-setup', express.json(), async (req, res) => {
-    console.log(`[重置设置] 请求重置设置状态`);
-    
-    // 只允许管理员或未初始化状态下重置
-    if (global.needInitialSetup === false && (!req.session || !req.session.user || !req.session.user.isAdmin)) {
-        console.log(`[重置设置] 失败: 需要管理员权限`);
-        return res.status(403).json({ error: '需要管理员权限才能重置设置状态' });
-    }
-    
-    try {
-        // 检查用户数量
-        const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-        console.log(`[重置设置] 数据库用户数量: ${userCount.count}`);
-        
-        global.needInitialSetup = userCount.count === 0;
-        console.log(`[重置设置] 更新全局状态: needInitialSetup=${global.needInitialSetup}`);
+        console.log(`[设置状态] 检查: hasAdmin=${hasAdmin}`);
         
         res.json({
-            status: 'success',
-            message: '设置状态已重置',
-            needInitialSetup: global.needInitialSetup
+            needsSetup: !hasAdmin
         });
     } catch (error) {
-        console.error(`[重置设置] 失败:`, error);
-        res.status(500).json({
-            error: '重置设置状态失败: ' + error.message
-        });
+        console.error(`[设置状态] 检查失败:`, error);
+        res.status(500).json({ error: '检查设置状态失败' });
     }
+    
 });
 
 module.exports = router;

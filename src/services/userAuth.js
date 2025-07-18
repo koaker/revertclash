@@ -31,15 +31,6 @@ async function registerUser(username, password, isAdmin = false) {
 
         console.log(`[userAuth] 用户 ${username} 创建成功，ID: ${userId}, isAdmin: ${isAdmin}`);
 
-        // 检查初始设置状态
-        if (await UserManager.adminExists()) {
-            console.log(`[userAuth] 创建了管理员账户，更新初始设置状态`);
-            if (global.needInitialSetup !== undefined) {
-                global.needInitialSetup = false;
-                console.log(`[userAuth] 全局初始设置状态已更新: needInitialSetup=${global.needInitialSetup}`);
-            }
-        }
-
         return {
             id: userId,
             username,
@@ -74,10 +65,7 @@ async function authenticateUser(username, password) {
         // 如果是首次登录，更新标志
         if (user.is_first_login === 1) {
             console.log(`[userAuth] 用户 ${username} 首次登录，更新首次登录标志`);
-            await db.run(
-                'UPDATE users SET is_first_login = 0 WHERE id = ?', 
-                [user.id]
-            );
+            await UserManager.updateFirstLoginFlag(user.id);
         }
 
         console.log(`[userAuth] 用户 ${username} 验证成功，ID: ${user.id}, 是否管理员: ${user.is_admin === 1}, 是否首次登录: ${user.is_first_login === 1}`);
@@ -104,7 +92,7 @@ async function changePassword(userId, currentPassword, newPassword) {
     try {
         // 查找用户
         console.log(`[userAuth] 查询用户 ID: ${userId}`);
-        const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+        const user = await UserManager.getUserById(userId);
         if (!user) {
             console.log(`[userAuth] 用户 ID: ${userId} 不存在`);
             return { success: false, message: '用户不存在' };
@@ -112,7 +100,12 @@ async function changePassword(userId, currentPassword, newPassword) {
 
         // 验证当前密码
         console.log(`[userAuth] 验证用户 ${user.username} 的当前密码`);
-        const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        const passwordHash = await UserManager.getPasswordHashByUserId(userId);
+        if (!passwordHash) {
+            console.log(`[userAuth] 用户 ${user.username} 的密码哈希不存在`);
+            return { success: false, message: '用户密码未设置' };
+        }
+        const passwordMatch = await bcrypt.compare(currentPassword, passwordHash);
         if (!passwordMatch) {
             console.log(`[userAuth] 用户 ${user.username} 当前密码验证失败`);
             return { success: false, message: '当前密码错误' };
@@ -153,13 +146,6 @@ async function hasInitialAdmin() {
         // 查询用户数量
         const isAdminExists = await UserManager.adminExists();
         console.log(`[userAuth] 系统中是否有管理员存在: ${isAdminExists ? '有管理员' : '没有管理员'} 存在`);
-
-        // 更新全局状态
-        if (global.needInitialSetup !== undefined && isAdminExists) {
-            global.needInitialSetup = false;
-            console.log(`[userAuth] 检测到管理员，更新全局状态: needInitialSetup=${global.needInitialSetup}`);
-        }
-
         return isAdminExists;
     } catch (error) {
         console.error(`[userAuth] 检查初始管理员失败:`, error);

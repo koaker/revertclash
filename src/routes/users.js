@@ -1,5 +1,4 @@
 const express = require('express');
-const db = require('../db');
 const { adminAuthMiddleware } = require('../middleware/authMiddleware');
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;

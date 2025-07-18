@@ -134,7 +134,7 @@ class UserManager {
                 throw new Error('用户不存在');
             }
             
-            return _formatUserInfo(user);
+            return this._formatUserInfo(user);
         } catch (error) {
             console.error('根据用户ID获取用户信息时出错:', error);
             throw error;
@@ -178,14 +178,41 @@ class UserManager {
     }
 
     // 按照格式化输出用户信息
-    async _formatUserInfo(user) {
+    _formatUserInfo(user) {
         return {
             id: user.id,
             username: user.username,
             isAdmin: user.is_admin === 1,
             createdAt: user.created_at,
-            updatedAt: user.updated_at
+            updatedAt: user.updated_at,
+            isFirstLogin: user.is_first_login === 1,
         };
+    }
+
+    // 获得userId 对应的hash密码
+    async getPasswordHashByUserId(userId) {
+        try {
+            const user = await get('SELECT password_hash FROM users WHERE id = ?', [userId]);
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+            return user.password_hash;
+        } catch (error) {
+            console.error('根据用户ID获取密码哈希时出错:', error);
+            throw error;
+        }
+    }
+    // 首次登录标志更新
+    async updateFirstLoginFlag(userId) {
+        try {
+            await run(
+                'UPDATE users SET is_first_login = 0 WHERE id = ?',
+                [userId]
+            );
+        } catch (error) {
+            console.error('更新首次登录标志时出错:', error);
+            throw error;
+        }
     }
 }
 
