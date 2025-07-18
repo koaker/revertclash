@@ -1,5 +1,4 @@
 const express = require('express');
-const db = require('../db');
 const { adminAuthMiddleware } = require('../middleware/authMiddleware');
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
@@ -19,6 +18,7 @@ router.get('/', async (req, res) => {
                 error: '没有找到用户'
             });
         }
+        console.log(`输出user：`, users);
         res.json(users);
     } catch (error) {
         console.error('获取用户列表失败:', error);

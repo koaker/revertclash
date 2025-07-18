@@ -179,36 +179,6 @@ function upgradeSubscriptionTokensTable() {
     });
 }
 
-// 检查是否需要设置初始管理员账号
-async function checkInitialAdmin() {
-    try {
-        await initDatabase(); // 确保表已创建
-        
-        return new Promise((resolve, reject) => {
-            db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
-                if (err) {
-                    console.error('检查用户数量失败:', err.message);
-                    reject(err);
-                    return;
-                }
-                
-                if (row.count === 0) {
-                    console.log('数据库中没有用户，需要进行初始设置');
-                    global.needInitialSetup = true;
-                } else {
-                    console.log(`数据库中已有${row.count}位用户`);
-                    global.needInitialSetup = false;
-                }
-                resolve(global.needInitialSetup);
-            });
-        });
-    } catch (err) {
-        console.error('初始管理员检查失败:', err);
-        global.needInitialSetup = true; // 出错时默认需要初始设置
-        return global.needInitialSetup;
-    }
-}
-
 // 运行SQL查询并返回Promise
 function run(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -300,7 +270,6 @@ function query(sql, params = []) {
 // 确保在导出前初始化数据库
 module.exports = {
     initDatabase,
-    checkInitialAdmin,
     run,
     get,
     all,

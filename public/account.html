@@ -274,7 +274,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    const users = data.users; // 根据API响应格式调整
+                    const users = data; // 根据API响应格式调整
                     const tableBody = document.getElementById('users-table-body');
                     
                     // 清空表格

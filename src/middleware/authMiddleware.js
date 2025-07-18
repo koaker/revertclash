@@ -1,5 +1,4 @@
-// 移除了旧的IP认证导入
-// const { isAuthorized } = require('../auth');
+const {hasInitialAdmin} = require('../services/userAuth');
 
 // 会话认证中间件
 const sessionAuthMiddleware = (req, res, next) => {
@@ -68,12 +67,6 @@ const adminAuthMiddleware = (req, res, next) => {
 
 // 初始设置重定向中间件
 const setupRedirectMiddleware = (req, res, next) => {
-    //console.log(`[设置重定向] 路径: ${req.path}, needInitialSetup: ${global.needInitialSetup}`);
-    
-    // 设置默认值，避免初始化问题
-    if (global.needInitialSetup === undefined) {
-        global.needInitialSetup = true;
-    }
     
     // 跳过订阅访问路径的重定向
     if (req.path.startsWith('/subscribe/')) {
@@ -83,7 +76,7 @@ const setupRedirectMiddleware = (req, res, next) => {
     
     // 如果系统需要初始设置且请求不是设置页面或API
     if (
-        global.needInitialSetup && 
+        !hasInitialAdmin() && 
         !req.path.startsWith('/setup') && 
         !req.path.startsWith('/auth/setup') &&
         !req.path.startsWith('/auth/register') &&
