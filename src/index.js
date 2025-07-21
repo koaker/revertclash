@@ -5,7 +5,29 @@ const app = require('./app');
 const { loadAuthConfig } = require('./auth');
 const { initDatabase, get } = require('./db');
 const userAuthService = require('./services/userAuth');
+async function getSslCredentials() {
+    const sslDir = path.join(__dirname, '..', 'ssl');
 
+    try {
+        const key = await fs.readFile(path.join(sslDir, 'privkey.pem'));
+        const cert = await fs.readFile(path.join(sslDir, 'fullchain.pem'));
+        return { key, cert };
+    } catch (error) {
+        console.log('未找到.pem格式的SSL证书文件，将使用.crt格式');
+
+        try {
+            const key = await fs.readFile(path.join(sslDir, 'private.key'));
+            const cert = await fs.readFile(path.join(sslDir, 'certificate.crt'));
+            // 如果有CA证书链，也读取它
+            const ca = await fs.readFile(path.join(sslDir, 'ca_bundle.crt'));
+            return { key, cert, ca };
+
+        } catch (error) {
+            console.error('读取SSL证书失败:', error);
+            throw new Error('未找到有效的SSL证书文件，请检查ssl目录');
+        }
+    }
+}
 async function startServer() {
     const PORT = process.env.PORT || 3000;
     const authConfig = await loadAuthConfig();
@@ -18,18 +40,10 @@ async function startServer() {
 
     try {
         // 读取SSL证书文件
-        const [key, cert, ca] = await Promise.all([
-            fs.readFile(path.join(__dirname, '..', 'ssl', 'private.key')),
-            fs.readFile(path.join(__dirname, '..', 'ssl', 'certificate.crt')),
-            fs.readFile(path.join(__dirname, '..', 'ssl', 'ca_bundle.crt'))
-        ]);
+        const sslCredentials = await getSslCredentials();
 
         // 创建HTTPS服务器
-        const httpsServer = https.createServer({
-            key: key,
-            cert: cert,
-            ca: ca    // 添加CA证书链
-        }, app);
+        const httpsServer = https.createServer(sslCredentials, app);
 
         // 启动HTTPS服务
         const HTTPS_PORT = process.env.HTTPS_PORT || 3001;
