@@ -1,0 +1,8 @@
+server:
+  http:
+    port: 3000
+  https:
+    port: 3001
+
+# 环境配置: 'development' 或 'production'
+environment: 'development'

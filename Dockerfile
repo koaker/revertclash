@@ -8,8 +8,7 @@ RUN git clone https://github.com/spocel/revertclash.git .
 
 RUN npm install
 
-RUN cp clash-urls.txt.example clash-urls.txt
-
 EXPOSE 3000
+EXPOSE 3001
 
 CMD ["npm", "run", "start"]

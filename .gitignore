@@ -1,24 +1,53 @@
-1731748106775-1.yaml
-1736662676780.yml
+# ===================================================================
+# 依赖和构建产物 (Dependencies & Build Artifacts)
+# ===================================================================
+/node_modules
 
-node_modules
-close-to-save.yaml
-processed-config.yaml
-Hellokugou.yaml
-revertclash-app/clash-urls.txt
-revertclash-app/merged-config.yaml
-clash-urls.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-merged-config.yaml
-*.yaml
-revertclash-app/*.yaml
-revertclash-app/config/*.yaml
-run.bat
-auth-config.json
-run.bat
-auth-config.json
-ssl/*
+# ===================================================================
+# 配置文件 (Configuration Files)
+# ===================================================================
+/configs/config.yaml
+
+# ===================================================================
+# 敏感数据和证书 (Sensitive Data & Certificates)
+# ===================================================================
+/ssl/
+/data/
+
+
+# ===================================================================
+# 操作系统和 IDE 特定文件 (OS & IDE Specific Files)
+# ===================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Aider (你已有的规则)
 .aider*
-data/*
-url-userinfo.json
-install.sh
+
+# ===================================================================
+# 本地脚本和日志 (Local Scripts & Logs)
+# ===================================================================
+run.bat
+
+*.log
+logs
+*.log.*
+
