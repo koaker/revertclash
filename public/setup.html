@@ -60,9 +60,6 @@
                     <div class="manual-reset rc-mt-3" id="manualResetDiv" style="display: none;">
                         <h6 class="rc-mb-2">遇到问题？</h6>
                         <p class="rc-mb-2">如果多次尝试注册后仍然无法成功，可能是系统状态出现问题。</p>
-                        <button type="button" class="rc-btn rc-btn-warning rc-w-100" onclick="resetSetupStatus()">
-                            重置设置状态
-                        </button>
                         <div class="rc-alert rc-alert-info rc-mt-2" id="resetMessage" style="display: none;"></div>
                     </div>
                 </form>
@@ -117,46 +114,6 @@
             document.getElementById(`step${currentStep - 1}-content`).classList.add('active');
             document.getElementById(`step${currentStep}-indicator`).classList.remove('active');
             document.getElementById(`step${currentStep - 1}-indicator`).classList.add('active');
-        }
-
-        // 重置设置状态
-        async function resetSetupStatus() {
-            const resetBtn = document.querySelector('#manualResetDiv .rc-btn-warning');
-            const resetMessage = document.getElementById('resetMessage');
-            
-            resetBtn.disabled = true;
-            resetBtn.innerHTML = '<span class="rc-spinner"></span>重置中...';
-            
-            try {
-                const response = await fetch('/auth/reset-setup', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    resetMessage.textContent = '设置状态已重置，请刷新页面或重新尝试注册。';
-                    resetMessage.style.display = 'block';
-                    
-                    // 3秒后刷新页面
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 3000);
-                } else {
-                    resetMessage.textContent = data.error || '重置失败，请稍后重试';
-                    resetMessage.style.display = 'block';
-                    resetBtn.disabled = false;
-                    resetBtn.textContent = '重置设置状态';
-                }
-            } catch (error) {
-                resetMessage.textContent = '请求失败，请稍后重试';
-                resetMessage.style.display = 'block';
-                resetBtn.disabled = false;
-                resetBtn.textContent = '重置设置状态';
-            }
         }
 
         // 页面加载时执行

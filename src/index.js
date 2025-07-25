@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs').promises;
 const https = require('https');
 const app = require('./app');
-const { loadAuthConfig } = require('./auth');
 const { initDatabase, get } = require('./db');
 const userAuthService = require('./services/userAuth');
 async function getSslCredentials() {
@@ -30,7 +29,6 @@ async function getSslCredentials() {
 }
 async function startServer() {
     const PORT = process.env.PORT || 3000;
-    const authConfig = await loadAuthConfig();
     
     console.log('启动HTTP服务器...');
     // 启动 HTTP 服务
