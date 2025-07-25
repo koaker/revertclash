@@ -4,7 +4,12 @@
   "description": "A tool to merge and serve clash configurations",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "nodemon src/index.js",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "postinstall": "npm install --prefix frontend"
   },
   "dependencies": {
     "axios": "^1.6.7",
@@ -20,5 +25,9 @@
     "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "yaml": "^2.4.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "nodemon": "^3.1.10"
   }
 }

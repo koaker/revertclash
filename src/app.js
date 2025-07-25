@@ -120,6 +120,16 @@ app.get('/subscription', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'subscription.html'));
 });
 
+if (process.env.NODE_ENV === 'production') {
+  // 设置静态文件目录
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
+  // 所有未匹配的GET请求都返回index.html，以支持Vue Router的history模式
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+  });
+}
+
 // 为所有API响应添加安全相关的HTTP头
 app.use((req, res, next) => {
     // 只为API响应和下载添加安全头
