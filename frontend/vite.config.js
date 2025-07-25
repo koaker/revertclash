@@ -21,6 +21,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000', // 你的后端服务地址
         changeOrigin: true,
+      },
+      '/auth': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        // 注意：这里我们不需要重写路径，因为前端请求的 /auth/login
+        // 正好对应后端的 /auth/login
       }
     }
   },
