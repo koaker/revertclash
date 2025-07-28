@@ -1,0 +1,17 @@
+server:
+  http:
+    port: 3000
+  https:
+    port: 3001
+  socks5:
+    enabled: true 
+    server: '127.0.0.1'
+    port: 9999
+    #username: 'user'
+    #password: 'pass'
+
+# 环境配置: 'development' 或 'production'
+environment: 'production'
+
+# 生产环境域名设置 (请修改为您的实际域名)
+domain: 'your-domain.com' 
