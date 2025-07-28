@@ -1,119 +1,113 @@
 # RevertClash
 
-RevertClash 是是用来将多个来源的clash配置文件的所有节点提取出来汇总到一个文件中，其中clash-config一个是clashverge脚本，用来为一个clash配置文件添加多个配置好的规则，它可以帮助你管理和优化 Clash 代理规则配置。
+<!-- 在这里可以添加徽章，例如: -->
+<!-- ![GitHub stars](https://img.shields.io/github/stars/spocel/revertclash) -->
+<!-- ![GitHub issues](https://img.shields.io/github/issues/spocel/revertclash) -->
 
-## 🌟 特性
+> 一款强大的 Clash 配置聚合与管理工具，旨在将多个来源的订阅链接和规则进行智能合并、优化和筛选，并提供 Web UI 和 API 服务。
 
-- 智能合并多个配置源
-- 自动优化代理规则bg
-- 支持高质量节点筛选
-- 内置大量预定义规则（包括流媒体、游戏等）
-- 提供 HTTP API 服务
-- 支持自定义规则配置
+RevertClash 是一个功能丰富的 Clash 配置处理工具。它能够自动拉取多个订阅源，提取并整合节点，应用预设或自定义的规则集（如去广告、流媒体解锁），最终生成一个优化后的、高质量的 Clash 配置文件。
 
-## 📦 安装
+## ✨ 核心特性
 
+-   **多源聚合**: 自动合并来自多个 URL 的 Clash 配置文件。
+-   **智能筛选**: 通过关键词筛选、排除节点，轻松获取高质量节点。
+-   **丰富规则集**: 内置大量预定义规则（流媒体、游戏、广告拦截等），开箱即用。
+-   **高度自定义**: 支持添加任意自定义规则，满足个性化需求。
+-   **Web 用户界面**: 提供直观的 Web UI 来管理订阅链接和用户。
+-   **API 服务**: 提供 HTTP API，方便与其他工具集成。
+-   **Docker 支持**: 提供 Dockerfile，轻松实现容器化部署。
 
+## 🚀 快速开始 (Getting Started)
 
-### 手动编译
+请按照以下步骤在你的本地环境中运行 RevertClash。
 
-##### 1. 克隆仓库：
+### 1. 环境准备
+
+-   [Node.js](https://nodejs.org/) (推荐 v18 或更高版本)
+-   [Git](https://git-scm.com/)
+
+### 2. 克隆项目
+
 ```bash
 git clone https://github.com/spocel/revertclash.git
 cd revertclash
 ```
 
-##### 2. 安装依赖：
+### 3. 安装依赖
+
 ```bash
 npm install
 ```
 
-##### 3. 配置：
-- 复制 `clash-urls.txt.example`去掉后缀,重命名为 `clash-urls.txt`
-- 根据需要修改配置文件
+### 4. 进行配置
 
-##### 4. 如果只需要规则文件，将config-setting.json的变量设为true,并且将auth-config.json.example去掉后缀，密码修改为你自己的密码
-如果想在clash中导入只有proxies的文件，设为false
+这是最关键的一步。项目通过 `config/config.yaml` 文件进行配置。
+
+1.  **创建你的配置文件**
+    我们提供了一个模板文件，请先复制它：
+    ```bash
+    cp config/config.example.yaml config/config.yaml
+    ```
+
+2.  **编辑配置文件**
+    打开 `config/config.yaml`，根据你的需求修改里面的内容。
+
+    > **重要**: `config/config.yaml` 文件已被 `.gitignore` 忽略，不会被提交到代码仓库，请放心在其中填写你的敏感信息。
+
+### 5. 启动服务
+
 ```bash
-npm run start #启动服务器
-```
-访问 `localhost:3000`，密码是文件中的密码
-
-##### 5. clash verge使用：
-- 将 `clash-config.js` 中除了 `module.exports = { main }; `的函数全部复制导入到clash verge中
-
-
-
-### Docker安装
-
-##### 克隆仓库
-```bash
-git clone https://github.com/spocel/revertclash.git && cd revertclash
+npm start
 ```
 
-##### 构建镜像
-```bash
-docker build -t revertclash .
-```
+服务启动后，你可以通过浏览器访问 `http://localhost:3000` (或你在配置中指定的端口) 来访问 Web 管理界面。
 
-##### 运行容器
-```bash
-docker run -d -p 3000:3000 --name revertclashKoaker revertclash
-```
+## 🐳 Docker 部署
 
+如果你更喜欢使用 Docker，我们也提供了便捷的部署方式。
 
+1.  **构建 Docker 镜像**
+    ```bash
+    docker build -t revertclash-app .
+    ```
 
-## 🚀 使用方法
-1. 启动 HTTP 服务器：
-```bash
-npm run start
-```
+2.  **运行 Docker 容器**
+    ```bash
+    docker run -d \
+      -p 3000:3000 \
+      -v $(pwd)/data:/app/data \
+      -v $(pwd)/config:/app/config \
+      --name revertclash-server \
+      revertclash-app
+    ```
+    > **说明**: 通过 `-v` 参数将本地的 `data` 和 `config` 目录挂载到容器中，可以实现数据的持久化和配置的外部管理。
 
-2. 启动脚本运行，查看对文件的效果：
-```bash
-node process-config.js
-```
+## 🔧 使用与配置
 
-### HTTP API 接口
+### API 接口
 
-- `GET /config`: 获取处理后的配置文件
+项目提供了一个核心 API 接口来获取最终生成的配置文件。
 
-默认订阅链接：http://localhost:3000/config
-新增管理接口，访问界面即可看到
-
-## ⚙️ 配置选项
-
-在 `clash-configs.js` 中，你可以自定义以下配置：
+-   `GET /subscribe/:token`: 默认的订阅链接，其中 `:token` 是你在 Web UI 中为特定用户生成的订阅令牌。
+    -   **示例**: `http://localhost:3000/subscribe/your-secret-token`
 
 ### 自定义规则
 
-你可以在 `USER_RULES` 数组中添加自定义规则：
+你可以在 `clash-configs.js` 的 `USER_RULES` 数组中添加你自己的 Clash 规则。
 
-## 🌐 预定义规则集
+## 🛠️ 技术栈
 
-项目内置了多个规则集，包括：
+-   **后端**: Node.js, Express.js
+-   **数据库**: SQLite3
+-   **配置**: js-yaml
+-   **部署**: Docker
 
-- 广告拦截
-- 流媒体服务（Netflix、Disney+、YouTube 等）
-- 游戏平台（Steam 等）
-- 支付服务（PayPal）
-- 和更多...
+## 🙏 致谢 (Acknowledgements)
 
-## 🔧 高级配置
+-   本项目的 DNS 和部分规则框架的设计灵感来源于 [Phantasia](https://github.com/MarchPhantasia) 的项目。
+-   感谢所有为本项目贡献过代码和想法的开发者。
 
-### 节点筛选
+## 📄 许可证 (License)
 
-可以通过关键词来筛选高质量节点：
-
-### DNS 配置 来源Phantasia
-
-提供了详细的 DNS 配置选项，包括：
-- 可信 DNS 服务器列表
-- 国内 DNS 服务器
-- Fake IP 过滤规则
-- 等等...
-
-## 🔗 相关链接
-
- * author : Phantasia https://github.com/MarchPhantasia clash-config.js 中的DNS、原有的规则框架
- * editer : spocel https://github.com/spocel other 
+本项目采用 [MIT License](LICENSE) 开源许可证。
