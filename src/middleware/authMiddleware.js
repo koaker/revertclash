@@ -10,8 +10,26 @@ const sessionAuthMiddleware = (req, res, next) => {
         '/setup', '/setup.html', 
         '/auth/login', '/auth/register', 
         '/auth/status', '/auth/setup-status',
-        '/status'  // 添加基础状态检查到跳过列表
+        '/status',  // 添加基础状态检查到跳过列表
+        '/favicon.ico'  // 跳过网站图标
     ];
+    
+    // 跳过静态资源文件（生产环境的Vue应用资源）
+    if (req.path.startsWith('/assets/') || 
+        req.path.endsWith('.js') || 
+        req.path.endsWith('.css') || 
+        req.path.endsWith('.ico') || 
+        req.path.endsWith('.png') || 
+        req.path.endsWith('.jpg') || 
+        req.path.endsWith('.jpeg') || 
+        req.path.endsWith('.gif') || 
+        req.path.endsWith('.svg') ||
+        req.path.endsWith('.woff') ||
+        req.path.endsWith('.woff2') ||
+        req.path.endsWith('.ttf') ||
+        req.path.endsWith('.eot')) {
+        return next();
+    }
     
     // 检查是否为订阅访问路径
     if (req.path.startsWith('/subscribe/')) {

@@ -27,14 +27,14 @@ const app = express();
 
 // 支持JSON请求体
 app.use(express.json());
-
+/*
 // 基础状态检查 - 放在最前面，避免被认证中间件阻止
 app.get('/status', (req, res) => {
     res.json({
         status: 'running',
         timestamp: new Date().toISOString()
     });
-});
+});*/
 
 // 设置会话中间件
 app.use(session({
@@ -80,7 +80,7 @@ app.use('/subscribe', rateLimiter.createLimiter({
     maxRequests: 10,          // 每IP每窗口最多10次请求
     message: '请求过于频繁，请稍后再试'
 }), subscribeRoutes);
-
+/*
 // 新增登录、设置页面路由 - 放在认证中间件前面
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
@@ -88,7 +88,7 @@ app.get('/login', (req, res) => {
 
 app.get('/setup', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'setup.html'));
-});
+});*/
 
 // 应用初始设置重定向中间件
 app.use(setupRedirectMiddleware);
@@ -96,8 +96,13 @@ app.use(setupRedirectMiddleware);
 // 使用基于会话的认证中间件
 app.use(sessionAuthMiddleware);
 
-// 注册路由
-app.use('/', pageRoutes);
+// 生产环境优先处理静态文件
+if (process.env.NODE_ENV === 'production') {
+  // 设置静态文件目录
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+}
+
+// 注册API路由  
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/urls', urlRoutes);
@@ -111,22 +116,24 @@ app.use('/api/subscription-tokens', rateLimiter.createLimiter({
 }), subscriptionTokenRoutes);
 
 // 账号管理页面 - 放在认证中间件后面，需要登录才能访问
-app.get('/account', (req, res) => {
+/*app.get('/account', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'account.html'));
 });
 
 // 订阅管理页面
 app.get('/subscription', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'subscription.html'));
-});
+});*/
 
+// 开发环境或非生产环境使用旧的HTML页面路由
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/', pageRoutes);
+}
+
+// 生产环境：所有未匹配的GET请求都返回Vue应用的index.html
 if (process.env.NODE_ENV === 'production') {
-  // 设置静态文件目录
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-
-  // 所有未匹配的GET请求都返回index.html，以支持Vue Router的history模式
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
 

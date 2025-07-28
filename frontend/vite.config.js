@@ -2,13 +2,11 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
   ],
   resolve: {
     alias: {
@@ -27,6 +25,11 @@ export default defineConfig({
         changeOrigin: true,
         // 注意：这里我们不需要重写路径，因为前端请求的 /auth/login
         // 正好对应后端的 /auth/login
+      },
+      // 添加订阅路由的代理
+      '/subscribe': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
       }
     }
   },

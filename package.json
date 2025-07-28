@@ -9,7 +9,9 @@
     "dev:backend": "nodemon src/index.js",
     "dev:frontend": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
-    "postinstall": "npm install --prefix frontend"
+    "build:prod": "npm run build --prefix frontend && npm run start:prod",
+    "start:prod": "NODE_ENV=production node src/index.js",
+    "deploy": "npm run build && NODE_ENV=production node src/index.js"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
