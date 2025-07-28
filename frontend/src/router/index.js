@@ -37,15 +37,34 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/Login.vue')
+    },
+    {
+      path: '/setup',
+      name: 'setup',
+      component: () => import('../views/Setup.vue')
     }
   ]
 })
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+
   // 确保在检查登录状态前，已经从 session storage 中恢复了状态
   if (!authStore.isInitialized) {
     await authStore.checkAuthStatus();
+  }
+
+  // 检查是否需要初始设置
+  if (authStore.needsSetup && to.name !== 'setup') {
+    // 如果需要初始设置且不是访问setup页面，则重定向到setup页面
+    next({ name: 'setup' });
+    return;
+  }
+
+  // 如果系统已设置完成，但用户试图访问setup页面，则重定向到登录页
+  if (!authStore.needsSetup && to.name === 'setup') {
+    next({ name: 'login' });
+    return;
   }
 
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);

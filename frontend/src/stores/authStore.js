@@ -11,6 +11,10 @@ export const useAuthStore = defineStore('auth', () => {
   const authError = ref(null);
   // 标记是否正在进行认证相关的 API 调用
   const isLoading = ref(false);
+  // 标记系统是否需要初始设置
+  const needsSetup = ref(false);
+  // 标记是否已经初始化（检查过认证状态和setup状态）
+  const isInitialized = ref(false);
 
   // ========== Getters (计算属性) ==========
   // 一个简单的布尔值，表示用户是否已登录
@@ -62,15 +66,42 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
+   * 检查系统是否需要初始设置
+   */
+  async function checkSetupStatus() {
+    try {
+      const data = await authService.checkSetupStatus();
+      needsSetup.value = data.needsSetup;
+      return data.needsSetup;
+    } catch (error) {
+      console.error('检查设置状态失败:', error);
+      // 发生错误时假设不需要设置，避免无限循环
+      needsSetup.value = false;
+      return false;
+    }
+  }
+
+  /**
    * 检查并恢复登录状态
    * 这个 action 应该在应用初始化时被调用
    */
   async function checkAuthStatus() {
-    // 如果已经有用户信息，就不再重复检查
-    if (user.value) return;
+    // 如果已经初始化过，就不再重复检查
+    if (isInitialized.value) return;
 
     isLoading.value = true;
     try {
+      // 首先检查是否需要初始设置
+      const setupNeeded = await checkSetupStatus();
+
+      if (setupNeeded) {
+        // 如果需要初始设置，清空用户信息并标记为已初始化
+        user.value = null;
+        isInitialized.value = true;
+        return;
+      }
+
+      // 如果不需要设置，则检查登录状态
       const data = await authService.checkAuthStatus();
       if (data.loggedIn) {
         user.value = data.user;
@@ -83,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('检查认证状态失败:', error);
     } finally {
       isLoading.value = false;
+      isInitialized.value = true;
     }
   }
 
@@ -111,6 +143,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     authError,
     isLoading,
+    needsSetup,
+    isInitialized,
     // Getters
     isLoggedIn,
     isAdmin,
@@ -118,6 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     checkAuthStatus,
+    checkSetupStatus,
     changePassword,
   };
 });

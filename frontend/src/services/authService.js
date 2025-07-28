@@ -77,3 +77,12 @@ export async function changePassword(passwordData) {
 
   return data;
 }
+
+/**
+ * 检查系统是否需要初始设置
+ * @returns {Promise<Object>} 返回 { needsSetup: boolean }
+ */
+export async function checkSetupStatus() {
+  const response = await fetch(`${API_BASE_URL}/setup-status`);
+  return response.json();
+}
