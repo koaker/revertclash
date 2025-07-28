@@ -192,6 +192,7 @@ const PROXY_RULES = [
         extraProxies: "REJECT", 
         payload : [
             "DOMAIN-SUFFIX,pincong.rocks",
+            "DOMAIN-REGEX,(.*\\.)?(appledaily|dafahao|minghui|dongtaiwang|epochtimes|ntdtv|falundafa|wujieliulan|zhengjian|soundofhope|boastr|bettertouchtool|elplural)\\.(org|com|net|tw|hk|rocks|ai)$"
         ],
     },
     {
