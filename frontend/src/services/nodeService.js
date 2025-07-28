@@ -79,3 +79,22 @@ export async function deselectAllNodes() {
 }
 
 // 未来我们可以在这里添加更多函数，例如获取节点详情、导出配置等。
+
+/**
+ * 导出选中节点的链接
+ * @param {string[]} nodeNames - 要导出的节点名称数组
+ * @returns {Promise<Object>}
+ */
+export async function exportNodeLinks(nodeNames) {
+  const response = await fetch(`${API_BASE_URL}/export-links`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodeNames })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || '导出链接失败');
+  }
+  return data;
+}
