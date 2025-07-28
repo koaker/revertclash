@@ -86,6 +86,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * 修改密码
+   * @param {object} passwordData - { currentPassword, newPassword }
+   * @returns {Promise<object>}
+   */
+  async function changePassword(passwordData) {
+    isLoading.value = true;
+    authError.value = null;
+    try {
+      const result = await authService.changePassword(passwordData);
+      return result;
+    } catch (error) {
+      authError.value = error.message;
+      console.error('修改密码失败:', error);
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   return {
     // State
     user,
@@ -98,5 +118,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     checkAuthStatus,
+    changePassword,
   };
 });

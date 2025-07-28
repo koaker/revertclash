@@ -54,3 +54,26 @@ export async function checkAuthStatus() {
   // 具体的逻辑留给 store 处理
   return response.json();
 }
+
+/**
+ * 修改当前用户的密码
+ * @param {object} passwordData - { currentPassword, newPassword }
+ * @returns {Promise<Object>}
+ */
+export async function changePassword(passwordData) {
+  const response = await fetch(`${API_BASE_URL}/password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(passwordData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}: 修改密码失败`);
+  }
+
+  return data;
+}

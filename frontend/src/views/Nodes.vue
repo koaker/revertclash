@@ -21,6 +21,9 @@
         />
       </div>
       <div class="actions">
+       <button data-bs-toggle="modal" data-bs-target="#sourceManagerModal">
+         管理数据源
+       </button>
         <button @click="nodeStore.exportSelectedLinks" :disabled="nodeStore.selectedCount === 0">
           导出链接
         </button>
@@ -102,11 +105,13 @@
       没有找到任何节点。
     </div>
   </div>
+  <SourceManager modal-id="sourceManagerModal" />
 </template>
 
 <script setup>
 import { onMounted, computed } from 'vue';
 import { useNodeStore } from '@/stores/nodeStore';
+import SourceManager from '@/components/SourceManager.vue';
 
 const nodeStore = useNodeStore();
 

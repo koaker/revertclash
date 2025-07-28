@@ -19,6 +19,8 @@ onMounted(() => {
         <template v-if="authStore.isLoggedIn">
           <RouterLink to="/nodes">节点管理</RouterLink>
           <RouterLink to="/subscriptions">订阅管理</RouterLink>
+          <RouterLink to="/account">账户管理</RouterLink>
+          <RouterLink to="/config-lab">配置实验室</RouterLink>
           <span>欢迎, {{ authStore.user.username }}</span>
           <a href="#" @click.prevent="authStore.logout()">退出登录</a>
         </template>
