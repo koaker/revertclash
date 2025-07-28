@@ -14,17 +14,23 @@ const CLASH_HEADERS = {
  * @returns {Promise<{content: string|null, headers: object|null, error: Error|null}>}
  *          返回包含原始内容、响应头和错误的 Promise 对象
  */
-async function fetchSubscription(url, timeout = 15000) {
+async function fetchSubscription(url, timeout = 15000, agent = null) {
     try {
-        const response = await axios.get(url, {
+
+        const axiosConfig = {
             headers: CLASH_HEADERS,
             timeout: timeout,
             responseType: 'text', // 确保获取原始文本
-            // 阻止 axios 自动抛出非 2xx 状态码的错误，以便我们能获取响应头
             validateStatus: function (status) {
                 return status >= 200 && status < 500; // 处理 2xx 和部分客户端/服务器错误
             },
-        });
+        };
+
+        if (agent) {
+            axiosConfig.httpsAgent = agent; // 如果提供了代理，则使用它
+            axiosConfig.httpAgent = agent; // 同样适用于 HTTP 请求
+        }
+        const response = await axios.get(url, axiosConfig);
 
         if (response.status >= 200 && response.status < 300) {
             return {

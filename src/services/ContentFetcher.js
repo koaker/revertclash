@@ -4,6 +4,10 @@ const { fetchSubscription } = require('../subscription/fetcher');
 const ConfigCacheService = require('./configCacheService');
 const { SourceType } = require('../models');
 
+// 引入Socks代理支持
+const { SocksProxyAgent } = require('socks-proxy-agent');
+const config = require('../config/config');
+
 /**
  * 内容获取服务
  * 负责从不同类型的配置源获取原始内容
@@ -14,6 +18,27 @@ class ContentFetcher {
         this.retryCount = 2;   // 重试次数
     }
     
+    /**
+     * 创建S5代理Agent
+     * @returns {SocksProxyAgent} - Socks代理Agent
+     * @private
+     */
+    _createSocksProxyAgent() {
+        const { socks5 } = config.server;
+
+        if (socks5.enabled) {
+            // 如果没有账号密码
+            if (!socks5.username || !socks5.password) {
+                const proxyUrl = `socks5://${socks5.server}:${socks5.port}`;
+                return new SocksProxyAgent(proxyUrl);
+            }
+            const proxyUrl = `socks5://${socks5.username}:${socks5.password}@${socks5.server}:${socks5.port}`;
+            return new SocksProxyAgent(proxyUrl);
+        }
+
+        return null;
+    }
+
     /**
      * 根据配置源类型获取内容
      * @param {ConfigSource} source - 配置源对象
@@ -51,10 +76,12 @@ class ContentFetcher {
         
         let lastError = null;
         
+        // 在 for 循环开始前，创建 agent
+        const agent = this._createSocksProxyAgent();
         // 尝试获取新内容（带重试）
         for (let attempt = 1; attempt <= this.retryCount; attempt++) {
             try {
-                const result = await fetchSubscription(url, this.timeout);
+                const result = await fetchSubscription(url, this.timeout, agent);
                 
                 if (result.error) {
                     lastError = result.error;

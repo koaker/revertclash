@@ -15,6 +15,8 @@
     "express-session": "^1.18.1",
     "js-yaml": "^4.1.0",
     "luxon": "^3.6.1",
+    "socks-proxy-agent": "^8.0.5",
+    "socksv5": "^0.0.6",
     "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "yaml": "^2.4.1"

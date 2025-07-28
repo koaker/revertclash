@@ -3,6 +3,12 @@ server:
     port: 3000
   https:
     port: 3001
-
+  socks5:
+    enabled: true 
+    server: '127.0.0.1'
+    port: 9999
+    #username: 'user'
+    #password: 'pass'
+  
 # 环境配置: 'development' 或 'production'
 environment: 'development'
