@@ -24,6 +24,7 @@ class ContentFetcher {
      * @private
      */
     _createSocksProxyAgent() {
+        console.log('创建Socks代理Agent');
         const { socks5 } = config.server;
 
         if (socks5.enabled) {
@@ -33,9 +34,10 @@ class ContentFetcher {
                 return new SocksProxyAgent(proxyUrl);
             }
             const proxyUrl = `socks5://${socks5.username}:${socks5.password}@${socks5.server}:${socks5.port}`;
+
             return new SocksProxyAgent(proxyUrl);
         }
-
+        console.warn('Socks代理未启用或配置不完整，返回null');
         return null;
     }
 
@@ -77,6 +79,7 @@ class ContentFetcher {
         let lastError = null;
         
         // 在 for 循环开始前，创建 agent
+        console.log('创建Socks代理Agent');
         const agent = this._createSocksProxyAgent();
         // 尝试获取新内容（带重试）
         for (let attempt = 1; attempt <= this.retryCount; attempt++) {

@@ -145,7 +145,7 @@ async function hasInitialAdmin() {
         
         // 查询用户数量
         const isAdminExists = await UserManager.adminExists();
-        console.log(`[userAuth] 系统中是否有管理员存在: ${isAdminExists ? '有管理员' : '没有管理员'} 存在`);
+        //console.log(`[userAuth] 系统中是否有管理员存在: ${isAdminExists ? '有管理员' : '没有管理员'} 存在`);
         return isAdminExists;
     } catch (error) {
         console.error(`[userAuth] 检查初始管理员失败:`, error);

@@ -49,7 +49,7 @@ class ConfigSource {
         this.id = id;
         this.type = type;
         this.config = config;
-        console.log(`创建配置源: ${this.id}, 类型: ${this.type} 配置:`, this.config);
+        //console.log(`创建配置源: ${this.id}, 类型: ${this.type} 配置:`, this.config);
         
         // 版本和状态管理
         this.version = null;

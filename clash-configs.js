@@ -185,6 +185,15 @@ const PROXY_RULES = [
         extraProxies: "REJECT", 
         urls: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite_Classical.yaml" 
     },
+    { 
+        name: "禁止网站", 
+        gfw : false,
+        blocked : true,
+        extraProxies: "REJECT", 
+        payload : [
+            "DOMAIN-SUFFIX,pincong.rocks",
+        ],
+    },
     {
         name: "建议走低质量节点：IDM 、 ytdlp、包括各种游戏下载， 下载服务器列表",
         gfw : false,
@@ -372,7 +381,6 @@ const PROXY_RULES = [
             "DOMAIN,d1k2us671qcoau.cloudfront.net",
             "DOMAIN,d2anahhhmp1ffz.cloudfront.net",
             "DOMAIN,dfp6rglgjqszk.cloudfront.net",
-            "DOMAIN,pincong.rocks",
         ],
         urls: [
             "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@release/rule/Clash/Netflix/Netflix.yaml",
@@ -787,12 +795,23 @@ function createPayloadRules(payload, name) {
  * @param {string} testUrl "测试链接
  * @returns {Object} 代理组配置
  */
-function createProxyGroup(name, addProxies, testUrl, gfw, baseProxyGroups) {
+function createProxyGroup(name, addProxies, testUrl, gfw, baseProxyGroups, blocked) {
+    if (blocked) {
+        const proxy = ["REJECT"];
+        return {
+            name: name,
+            type: "select",
+            proxies: proxy.filter(Boolean), // 过滤undefined/null值
+            url: testUrl
+        };
+    }
+
     // 确保addProxies是数组，如果为空则使用空数组
     const proxyList = addProxies ? (Array.isArray(addProxies) ? addProxies : [addProxies]) : [];
     
     // 收集代理组名称
     const groupNames = baseProxyGroups.map(group => group.name);
+    
     
     
     // 根据gfw标志构建不同顺序的代理列表
@@ -1258,9 +1277,9 @@ function main(config) {
 
     const configLen = PROXY_RULES.length;
     for (let i = 0; i < configLen; i++) {
-        const {name, gfw, urls, payload, extraProxies} = PROXY_RULES[i];
+        const {name, gfw, urls, payload, extraProxies, blocked} = PROXY_RULES[i];
 
-        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups));
+        proxyGroups.push(createProxyGroup(name, extraProxies, testUrl, gfw, baseProxyGroups, blocked));
 
         // 处理规则
         if (payload) {
