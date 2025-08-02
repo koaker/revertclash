@@ -1,9 +1,9 @@
 <template>
   <div class="subscriptions-view">
-    <div class="subscriptions-container">
-      <!-- 页面标题 -->
-      <div class="page-header">
-        <div class="header-content">
+    <!-- 页面头部区域 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-main">
           <div class="header-icon">
             <i class="bi bi-link-45deg"></i>
           </div>
@@ -11,136 +11,238 @@
             <h1 class="page-title">订阅管理</h1>
             <p class="page-subtitle">创建和管理您的订阅链接，供各种客户端使用</p>
           </div>
-          <div class="header-actions">
-            <button @click="openCreateModal" class="create-btn">
-              <i class="bi bi-plus-circle"></i>
-              <span>创建订阅链接</span>
-            </button>
-          </div>
+        </div>
+        <div class="header-actions">
+          <button
+            class="premium-btn premium-btn-secondary premium-btn-md"
+            @click="store.fetchTokens"
+            :disabled="store.isLoading"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+            <span>{{ store.isLoading ? '刷新中...' : '刷新数据' }}</span>
+          </button>
+          <button
+            class="premium-btn premium-btn-primary premium-btn-md"
+            @click="openCreateModal"
+          >
+            <i class="bi bi-plus-circle"></i>
+            <span>创建订阅链接</span>
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- 说明卡片 -->
-      <div class="info-card">
-        <div class="info-icon">
-          <i class="bi bi-info-circle"></i>
-        </div>
-        <div class="info-content">
-          <h3>关于订阅链接</h3>
-          <p>您可以创建订阅链接，供 Clash、Shadowrocket 等客户端直接使用，无需登录即可获取节点配置。</p>
-          <div class="info-features">
-            <div class="feature">
-              <i class="bi bi-shield-check"></i>
-              <span>安全访问</span>
-            </div>
-            <div class="feature">
-              <i class="bi bi-arrow-clockwise"></i>
-              <span>自动更新</span>
-            </div>
-            <div class="feature">
-              <i class="bi bi-devices"></i>
-              <span>多端支持</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 主要内容区域 -->
-      <div class="content-area">
-        <!-- 加载状态 -->
-        <div v-if="store.isLoading" class="loading-state">
-          <div class="loading-card">
-            <div class="loading-spinner">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">正在加载...</span>
+    <!-- 功能介绍卡片 -->
+    <div class="info-banner">
+      <div class="premium-card premium-card-glass">
+        <div class="premium-card-body">
+          <div class="info-content">
+            <div class="info-main">
+              <div class="info-icon">
+                <i class="bi bi-info-circle"></i>
+              </div>
+              <div class="info-text">
+                <h3 class="info-title">关于订阅链接</h3>
+                <p class="info-description">
+                  您可以创建订阅链接，供 Clash、Shadowrocket 等客户端直接使用，无需登录即可获取节点配置。
+                </p>
               </div>
             </div>
-            <h5>正在加载订阅链接...</h5>
-            <p class="text-muted">请稍候，正在获取最新数据</p>
+            <div class="info-features">
+              <div class="feature-item">
+                <div class="feature-icon">
+                  <i class="bi bi-shield-check"></i>
+                </div>
+                <span class="feature-text">安全访问</span>
+              </div>
+              <div class="feature-item">
+                <div class="feature-icon">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </div>
+                <span class="feature-text">自动更新</span>
+              </div>
+              <div class="feature-item">
+                <div class="feature-icon">
+                  <i class="bi bi-devices"></i>
+                </div>
+                <span class="feature-text">多端支持</span>
+              </div>
+              <div class="feature-item">
+                <div class="feature-icon">
+                  <i class="bi bi-graph-up"></i>
+                </div>
+                <span class="feature-text">实时监控</span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- 错误状态 -->
-        <div v-else-if="store.error" class="error-state">
-          <div class="error-card">
+    <!-- 主要内容区域 -->
+    <div class="content-area">
+      <!-- 加载状态 -->
+      <div v-if="store.isLoading" class="loading-state">
+        <div class="premium-card premium-card-glass">
+          <div class="premium-card-body ds-text-center">
+            <div class="premium-spinner premium-spinner-lg ds-text-primary mb-4"></div>
+            <h3 class="ds-text-xl ds-font-semibold ds-text-primary mb-2">正在加载订阅链接</h3>
+            <p class="ds-text-secondary">请稍候，正在获取最新数据...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 错误状态 -->
+      <div v-else-if="store.error" class="error-state">
+        <div class="premium-card premium-card-elevated">
+          <div class="premium-card-body ds-text-center">
             <div class="error-icon">
               <i class="bi bi-exclamation-triangle"></i>
             </div>
-            <h5>加载失败</h5>
-            <p class="error-message">{{ store.error }}</p>
-            <button class="rc-btn rc-btn-primary" @click="store.fetchTokens">
+            <h3 class="ds-text-xl ds-font-semibold ds-text-primary mb-2">加载失败</h3>
+            <p class="ds-text-secondary mb-4">{{ store.error }}</p>
+            <button class="premium-btn premium-btn-primary" @click="store.fetchTokens">
               <i class="bi bi-arrow-clockwise"></i>
               重新加载
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- 空状态 -->
-        <div v-else-if="!store.isLoading && store.tokens.length === 0" class="empty-state">
-          <div class="empty-card">
+      <!-- 空状态 -->
+      <div v-else-if="!store.isLoading && store.tokens.length === 0" class="empty-state">
+        <div class="premium-card premium-card-elevated">
+          <div class="premium-card-body ds-text-center">
             <div class="empty-icon">
               <i class="bi bi-link-45deg"></i>
             </div>
-            <h5>暂无订阅链接</h5>
-            <p class="text-muted">您还没有创建任何订阅链接，点击上方按钮创建第一个</p>
-            <button class="rc-btn rc-btn-primary" @click="openCreateModal">
-              <i class="bi bi-plus-circle"></i>
-              创建第一个订阅链接
-            </button>
+            <h3 class="ds-text-2xl ds-font-bold ds-text-primary mb-2">开始创建您的第一个订阅链接</h3>
+            <p class="ds-text-secondary mb-6">订阅链接可以让您的设备自动同步最新的节点配置</p>
+            <div class="empty-actions">
+              <button class="premium-btn premium-btn-primary premium-btn-lg" @click="openCreateModal">
+                <i class="bi bi-plus-circle"></i>
+                创建第一个订阅链接
+              </button>
+              <button class="premium-btn premium-btn-outline premium-btn-lg">
+                <i class="bi bi-question-circle"></i>
+                了解更多
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 订阅链接网格 -->
+      <div v-else class="subscriptions-section">
+        <!-- 订阅统计 -->
+        <div class="subscription-stats">
+          <div class="stats-item">
+            <div class="stats-number">{{ store.tokens.length }}</div>
+            <div class="stats-label">总订阅数</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-number">{{ getActiveSubscriptionsCount() }}</div>
+            <div class="stats-label">活跃订阅</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-number">{{ getTotalAccessCount() }}</div>
+            <div class="stats-label">总访问次数</div>
           </div>
         </div>
 
         <!-- 订阅链接列表 -->
-        <div v-else class="subscriptions-grid">
+        <div class="subscriptions-grid">
           <div
             v-for="token in store.tokens"
             :key="token.id"
             class="subscription-card"
           >
+            <!-- 卡片头部 -->
             <div class="card-header">
-              <div class="card-title">
-                <i class="bi bi-link-45deg card-icon"></i>
-                <h4>{{ token.name }}</h4>
+              <div class="card-title-section">
+                <div class="card-icon">
+                  <i class="bi bi-link-45deg"></i>
+                </div>
+                <div class="card-title-text">
+                  <h4 class="card-title">{{ token.name }}</h4>
+                  <div class="card-meta">
+                    <span class="meta-item">
+                      <i class="bi bi-calendar"></i>
+                      {{ formatDate(token.created_at) }}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div class="card-actions">
-                <button
-                  class="action-btn copy-btn"
-                  @click="copySubscriptionUrl(token)"
-                  title="复制链接"
-                >
-                  <i class="bi bi-clipboard"></i>
-                </button>
-                <button
-                  class="action-btn delete-btn"
-                  @click="deleteToken(token)"
-                  title="删除订阅"
-                >
-                  <i class="bi bi-trash"></i>
-                </button>
+                <div class="action-dropdown">
+                  <button class="action-btn dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-three-dots"></i>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li>
+                      <button class="dropdown-item" @click="copySubscriptionUrl(token)">
+                        <i class="bi bi-clipboard"></i>
+                        复制链接
+                      </button>
+                    </li>
+                    <li>
+                      <button class="dropdown-item" @click="viewSubscriptionDetails(token)">
+                        <i class="bi bi-eye"></i>
+                        查看详情
+                      </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <button class="dropdown-item text-danger" @click="deleteToken(token)">
+                        <i class="bi bi-trash"></i>
+                        删除订阅
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
+            <!-- 卡片内容 -->
             <div class="card-body">
-              <div class="subscription-info">
-                <div class="info-item">
-                  <span class="info-label">创建时间</span>
-                  <span class="info-value">{{ formatDate(token.created_at) }}</span>
+              <!-- 状态指示器 -->
+              <div class="status-section">
+                <div class="status-indicator active">
+                  <div class="status-dot"></div>
+                  <span class="status-text">活跃</span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">访问次数</span>
-                  <span class="info-value">{{ token.access_count || 0 }} 次</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">状态</span>
-                  <span class="status-badge active">
-                    <i class="bi bi-check-circle"></i>
-                    活跃
-                  </span>
+                <div class="status-badge">
+                  <i class="bi bi-shield-check"></i>
+                  <span>安全链接</span>
                 </div>
               </div>
 
-              <div class="subscription-url">
-                <div class="url-display">
+              <!-- 统计信息 -->
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-icon">
+                    <i class="bi bi-eye"></i>
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-number">{{ token.access_count || 0 }}</div>
+                    <div class="stat-label">访问次数</div>
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-icon">
+                    <i class="bi bi-clock"></i>
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-number">{{ token.last_accessed ? formatRelativeTime(token.last_accessed) : '从未' }}</div>
+                    <div class="stat-label">最后访问</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 订阅链接 -->
+              <div class="subscription-url-section">
+                <label class="url-label">订阅链接</label>
+                <div class="url-input-group">
                   <input
                     type="text"
                     :value="getSubscriptionUrl(token)"
@@ -151,19 +253,64 @@
                   <button
                     class="url-copy-btn"
                     @click="copySubscriptionUrl(token)"
+                    title="复制链接"
                   >
                     <i class="bi bi-clipboard"></i>
                   </button>
                 </div>
               </div>
+
+              <!-- 支持的客户端 -->
+              <div class="clients-section">
+                <div class="clients-label">支持的客户端</div>
+                <div class="clients-list">
+                  <div class="client-item">
+                    <i class="bi bi-phone"></i>
+                    <span>Clash</span>
+                  </div>
+                  <div class="client-item">
+                    <i class="bi bi-rocket"></i>
+                    <span>Shadowrocket</span>
+                  </div>
+                  <div class="client-item">
+                    <i class="bi bi-wifi"></i>
+                    <span>Surge</span>
+                  </div>
+                  <div class="client-item">
+                    <i class="bi bi-plus"></i>
+                    <span>更多</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            <!-- 卡片底部 -->
             <div class="card-footer">
-              <div class="usage-stats">
-                <div class="stats-item">
-                  <i class="bi bi-eye"></i>
-                  <span>最后访问：{{ token.last_accessed ? formatRelativeTime(token.last_accessed) : '从未' }}</span>
-                </div>
+              <div class="quick-actions">
+                <button
+                  class="quick-action-btn"
+                  @click="copySubscriptionUrl(token)"
+                  title="复制链接"
+                >
+                  <i class="bi bi-clipboard"></i>
+                  <span>复制</span>
+                </button>
+                <button
+                  class="quick-action-btn"
+                  @click="openQRCodeModal(token)"
+                  title="显示二维码"
+                >
+                  <i class="bi bi-qr-code"></i>
+                  <span>二维码</span>
+                </button>
+                <button
+                  class="quick-action-btn"
+                  @click="testSubscription(token)"
+                  title="测试连接"
+                >
+                  <i class="bi bi-speedometer2"></i>
+                  <span>测试</span>
+                </button>
               </div>
             </div>
           </div>
@@ -173,8 +320,8 @@
 
     <!-- 创建订阅模态框 -->
     <div class="modal fade" id="createTokenModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content modern-modal">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content premium-modal">
           <div class="modal-header">
             <h5 class="modal-title">
               <i class="bi bi-plus-circle"></i>
@@ -184,39 +331,66 @@
           </div>
           <div class="modal-body">
             <form @submit.prevent="createToken">
-              <div class="form-group">
-                <label class="form-label">
+              <div class="premium-form-group">
+                <label class="premium-form-label">
                   <i class="bi bi-tag"></i>
                   订阅名称
                 </label>
-                <input
-                  type="text"
-                  class="form-control modern-input"
-                  v-model="newTokenName"
-                  placeholder="输入订阅链接的名称，例如：我的主力订阅"
-                  required
-                >
-                <div class="form-help">
-                  <i class="bi bi-info-circle"></i>
+                <div class="premium-input-wrapper">
+                  <input
+                    type="text"
+                    class="premium-input"
+                    v-model="newTokenName"
+                    placeholder="输入订阅链接的名称，例如：我的主力订阅"
+                    required
+                  >
+                </div>
+                <div class="ds-text-xs ds-text-tertiary mt-2">
+                  <i class="bi bi-info-circle me-1"></i>
                   给订阅链接起一个便于识别的名称
+                </div>
+              </div>
+
+              <div class="premium-form-group">
+                <label class="premium-form-label">
+                  <i class="bi bi-gear"></i>
+                  高级选项
+                </label>
+                <div class="advanced-options">
+                  <div class="option-item">
+                    <input type="checkbox" id="autoUpdate" class="option-checkbox">
+                    <label for="autoUpdate" class="option-label">
+                      <div class="option-text">
+                        <div class="option-title">自动更新</div>
+                        <div class="option-desc">启用后将自动同步最新节点配置</div>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="option-item">
+                    <input type="checkbox" id="enableStats" class="option-checkbox" checked>
+                    <label for="enableStats" class="option-label">
+                      <div class="option-text">
+                        <div class="option-title">访问统计</div>
+                        <div class="option-desc">记录订阅链接的访问次数和时间</div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
             </form>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <button type="button" class="premium-btn premium-btn-secondary" data-bs-dismiss="modal">
               取消
             </button>
             <button
               type="button"
-              class="btn btn-primary"
+              class="premium-btn premium-btn-primary"
               @click="createToken"
               :disabled="store.isLoading || !newTokenName.trim()"
             >
               <div class="btn-content">
-                <div v-if="store.isLoading" class="btn-spinner">
-                  <div class="spinner"></div>
-                </div>
+                <div v-if="store.isLoading" class="premium-spinner"></div>
                 <i v-else class="bi bi-plus-circle"></i>
                 <span>{{ store.isLoading ? '创建中...' : '创建订阅' }}</span>
               </div>
@@ -229,8 +403,11 @@
     <!-- 全局消息提示 -->
     <div v-if="showMessage" class="global-message" :class="messageType">
       <div class="message-content">
-        <i class="bi" :class="messageType === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
-        <span>{{ messageText }}</span>
+        <i class="message-icon" :class="messageType === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
+        <span class="message-text">{{ messageText }}</span>
+        <button class="message-close" @click="showMessage = false">
+          <i class="bi bi-x"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -268,8 +445,8 @@ const createToken = async () => {
     Modal.getInstance(document.getElementById('createTokenModal')).hide();
     showGlobalMessage('订阅链接创建成功！', 'success');
     newTokenName.value = '';
-  } catch (error) {
-    showGlobalMessage('创建失败: ' + error.message, 'error');
+  } catch {
+    showGlobalMessage('创建失败，请稍后重试', 'error');
   }
 };
 
@@ -279,28 +456,22 @@ const deleteToken = async (token) => {
   try {
     await store.deleteToken(token.id);
     showGlobalMessage('订阅链接已删除', 'success');
-  } catch (error) {
-    showGlobalMessage('删除失败: ' + error.message, 'error');
+  } catch {
+    showGlobalMessage('删除失败，请稍后重试', 'error');
   }
 };
 
 const getSubscriptionUrl = (token) => {
-  // 优先使用后端提供的订阅链接，如果没有则生成默认链接
   if (token.subscribeUrls && token.subscribeUrls.length > 0) {
-    // 优先使用 processed-config 类型的链接
     const processedConfigUrl = token.subscribeUrls.find(url => url.type === 'processed-config');
     if (processedConfigUrl) {
       return processedConfigUrl.url;
     }
-    // 如果没有 processed-config，使用第一个可用的链接
     return token.subscribeUrls[0].url;
   }
 
-  // 回退方案：如果后端没有提供链接，则自行生成
-  // 在生产环境中，前后端运行在同一域名和端口下
   const baseUrl = window.location.origin;
-  const configType = 'processed-config'; // 默认配置类型
-
+  const configType = 'processed-config';
   return `${baseUrl}/subscribe/${token.token}/${configType}`;
 };
 
@@ -309,8 +480,7 @@ const copySubscriptionUrl = async (token) => {
   try {
     await navigator.clipboard.writeText(url);
     showGlobalMessage('链接已复制到剪贴板', 'success');
-  } catch (error) {
-    // 降级方案
+  } catch {
     const textArea = document.createElement('textarea');
     textArea.value = url;
     document.body.appendChild(textArea);
@@ -342,6 +512,29 @@ const formatRelativeTime = (dateString) => {
   return formatDate(dateString);
 };
 
+const getActiveSubscriptionsCount = () => {
+  return store.tokens.length; // 所有订阅都被认为是活跃的
+};
+
+const getTotalAccessCount = () => {
+  return store.tokens.reduce((total, token) => total + (token.access_count || 0), 0);
+};
+
+const viewSubscriptionDetails = (token) => {
+  // TODO: 实现订阅详情查看
+  console.log('查看订阅详情:', token);
+};
+
+const openQRCodeModal = (token) => {
+  // TODO: 实现二维码显示
+  console.log('显示二维码:', token);
+};
+
+const testSubscription = (token) => {
+  // TODO: 实现订阅测试
+  console.log('测试订阅:', token);
+};
+
 const showGlobalMessage = (text, type = 'success') => {
   messageText.value = text;
   messageType.value = type;
@@ -356,634 +549,704 @@ const showGlobalMessage = (text, type = 'success') => {
 <style scoped>
 .subscriptions-view {
   min-height: 100vh;
-  position: relative;
-  padding: 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: var(--spacing-8);
 }
 
-.subscriptions-container {
-  width: 100%;
-  padding: 0;
-}
-
-/* 页面标题 */
+/* 页面头部 */
 .page-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 0 0 20px 20px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  margin-bottom: 0;
+  margin-bottom: var(--spacing-8);
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  width: 100%;
-  padding: 0 2rem;
+  justify-content: space-between;
+  gap: var(--spacing-6);
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
 }
 
 .header-icon {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 20px;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-2xl);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 2.5rem;
-  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
-  flex-shrink: 0;
-}
-
-.header-text {
-  flex: 1;
+  color: var(--text-inverse);
+  font-size: var(--text-2xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .page-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.2;
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+  line-height: var(--leading-tight);
 }
 
 .page-subtitle {
-  font-size: 1.1rem;
-  color: #7f8c8d;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
   margin: 0;
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 .header-actions {
-  flex-shrink: 0;
+  display: flex;
+  gap: var(--spacing-3);
 }
 
-.create-btn {
+/* 功能介绍横幅 */
+.info-banner {
+  margin-bottom: var(--spacing-8);
+}
+
+.info-content {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  justify-content: space-between;
+  gap: var(--spacing-6);
 }
 
-.create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-/* 主要内容区域 */
-.content-area {
-  padding: 2rem;
-}
-
-/* 信息卡片 */
-.info-card {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-  border-radius: 20px;
-  padding: 2rem;
-  margin-bottom: 2rem;
+.info-main {
   display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-  border: 1px solid rgba(102, 126, 234, 0.2);
+  align-items: center;
+  gap: var(--spacing-4);
 }
 
 .info-icon {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 15px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 1.5rem;
-  flex-shrink: 0;
+  color: var(--text-inverse);
+  font-size: var(--text-xl);
 }
 
-.info-content h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0 0 0.5rem 0;
+.info-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-1) 0;
 }
 
-.info-content p {
-  color: #7f8c8d;
-  margin: 0 0 1rem 0;
-  line-height: 1.5;
+.info-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: var(--leading-relaxed);
 }
 
 .info-features {
   display: flex;
-  gap: 2rem;
+  gap: var(--spacing-6);
 }
 
-.feature {
+.feature-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #667eea;
-  font-size: 0.9rem;
-  font-weight: 500;
+  gap: var(--spacing-2);
 }
 
-/* 状态卡片 */
+.feature-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-600);
+  font-size: var(--text-sm);
+}
+
+.feature-text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+/* 内容区域 */
+.content-area {
+  position: relative;
+}
+
 .loading-state,
 .error-state,
 .empty-state {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
-}
-
-.loading-card,
-.error-card,
-.empty-card {
-  background: white;
-  padding: 3rem;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  max-width: 400px;
-}
-
-.loading-spinner {
-  margin-bottom: 1.5rem;
+  min-height: 400px;
 }
 
 .error-icon,
 .empty-icon {
-  font-size: 4rem;
-  color: #e74c3c;
-  margin-bottom: 1.5rem;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-4xl);
+  color: var(--text-tertiary);
+  margin: 0 auto var(--spacing-4);
 }
 
-.empty-icon {
-  color: #95a5a6;
+.empty-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: center;
 }
 
-.error-message {
-  color: #e74c3c;
-  margin-bottom: 1.5rem;
+/* 订阅统计 */
+.subscription-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-8);
+  margin-bottom: var(--spacing-8);
+  padding: var(--spacing-6);
+  background: var(--surface-elevated);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.stats-item {
+  text-align: center;
+}
+
+.stats-number {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  line-height: var(--leading-none);
+}
+
+.stats-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-1);
 }
 
 /* 订阅网格 */
 .subscriptions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: var(--spacing-6);
 }
 
 /* 订阅卡片 */
 .subscription-card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: var(--surface-elevated);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition: all 0.3s ease;
-  border: 1px solid #f0f0f0;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.subscription-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
 }
 
 .subscription-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--border-medium);
 }
 
+/* 卡片头部 */
 .card-header {
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-bottom: 1px solid #e9ecef;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: var(--spacing-6);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--gradient-surface);
 }
 
-.card-title {
+.card-title-section {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--spacing-3);
 }
 
 .card-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 1.25rem;
+  color: var(--text-inverse);
+  font-size: var(--text-base);
 }
 
-.card-title h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
+.card-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-1) 0;
 }
 
-.card-actions {
+.card-meta {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--spacing-3);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.action-dropdown {
+  position: relative;
 }
 
 .action-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: all var(--transition-normal);
 }
 
-.copy-btn {
-  background: rgba(52, 152, 219, 0.1);
-  color: #3498db;
+.action-btn:hover {
+  background: var(--surface-tertiary);
+  color: var(--text-primary);
 }
 
-.copy-btn:hover {
-  background: #3498db;
-  color: white;
-  transform: scale(1.05);
-}
-
-.delete-btn {
-  background: rgba(231, 76, 60, 0.1);
-  color: #e74c3c;
-}
-
-.delete-btn:hover {
-  background: #e74c3c;
-  color: white;
-  transform: scale(1.05);
-}
-
+/* 卡片内容 */
 .card-body {
-  padding: 1.5rem;
-}
-
-.subscription-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.info-item {
+  padding: var(--spacing-6);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--spacing-4);
 }
 
-.info-label {
-  font-size: 0.8rem;
-  color: #7f8c8d;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 0.95rem;
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.status-badge.active {
-  color: #27ae60;
-}
-
-.subscription-url {
-  margin-top: 1rem;
-}
-
-.url-display {
-  display: flex;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.url-display:focus-within {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-}
-
-.url-input {
-  flex: 1;
-  padding: 0.875rem 1rem;
-  border: none;
-  background: transparent;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  font-size: 0.85rem;
-  color: #495057;
-  outline: none;
-}
-
-.url-copy-btn {
-  padding: 0.875rem 1rem;
-  border: none;
-  background: #667eea;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.url-copy-btn:hover {
-  background: #5a6fd8;
-}
-
-.card-footer {
-  padding: 1rem 1.5rem;
-  background: #f8f9fa;
-  border-top: 1px solid #e9ecef;
-}
-
-.usage-stats {
+.status-section {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.stats-item {
+.status-indicator {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #7f8c8d;
+  gap: var(--spacing-2);
 }
 
-.stats-item i {
-  font-size: 0.9rem;
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--success-500);
 }
 
-/* 模态框 */
-.modern-modal .modal-content {
+.status-text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--success-600);
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--success-100);
+  color: var(--success-700);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-600);
+  font-size: var(--text-sm);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-0-5);
+}
+
+.subscription-url-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.url-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.url-input-group {
+  display: flex;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.url-input-group:focus-within {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.url-input {
+  flex: 1;
+  padding: var(--spacing-3);
   border: none;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modern-modal .modal-header {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  border-radius: 20px 20px 0 0;
-  padding: 1.5rem;
-}
-
-.modern-modal .modal-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 600;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-  color: #2c3e50;
-  margin-bottom: 0.5rem;
-}
-
-.modern-input {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e9ecef;
-  border-radius: 12px;
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  background: transparent;
+  font-family: var(--font-family-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
   outline: none;
 }
 
-.modern-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-}
-
-.form-help {
+.url-copy-btn {
+  padding: var(--spacing-3);
+  border: none;
+  background: var(--primary-500);
+  color: var(--text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-normal);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #7f8c8d;
-  margin-top: 0.5rem;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.url-copy-btn:hover {
+  background: var(--primary-600);
+}
+
+.clients-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.clients-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.clients-list {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.client-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* 卡片底部 */
+.card-footer {
+  padding: var(--spacing-4) var(--spacing-6);
+  background: var(--surface-secondary);
+  border-top: 1px solid var(--border-light);
+}
+
+.quick-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.quick-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.quick-action-btn:hover {
+  background: var(--surface-tertiary);
+  color: var(--text-primary);
+}
+
+/* 模态框 */
+.premium-modal .modal-content {
+  border: none;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+}
+
+.premium-modal .modal-header {
+  background: var(--gradient-surface);
+  border-bottom: 1px solid var(--border-light);
+  padding: var(--spacing-6);
+}
+
+.premium-modal .modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.advanced-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+}
+
+.option-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  margin-top: var(--spacing-0-5);
+}
+
+.option-label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.option-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-0-5);
+}
+
+.option-desc {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
 }
 
 .btn-content {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.btn-spinner {
-  display: flex;
-  align-items: center;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  gap: var(--spacing-2);
 }
 
 /* 全局消息 */
 .global-message {
   position: fixed;
-  top: 100px;
-  right: 2rem;
-  z-index: 9999;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  animation: slideIn 0.3s ease-out;
+  top: var(--spacing-8);
+  right: var(--spacing-8);
+  z-index: var(--z-toast);
+  padding: var(--spacing-4) var(--spacing-6);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-floating);
+  animation: slideInDown var(--transition-normal);
+  min-width: 300px;
 }
 
 .global-message.success {
-  background: linear-gradient(135deg, #27ae60, #2ecc71);
-  color: white;
+  background: var(--gradient-success);
+  color: var(--text-inverse);
 }
 
 .global-message.error {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
-  color: white;
+  background: var(--gradient-error);
+  color: var(--text-inverse);
 }
 
 .message-content {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-weight: 500;
+  gap: var(--spacing-3);
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.message-icon {
+  font-size: var(--text-base);
+}
+
+.message-text {
+  flex: 1;
+  font-weight: var(--font-medium);
+}
+
+.message-close {
+  background: none;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+  opacity: 0.7;
+}
+
+.message-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .header-content {
-    padding: 0 1.5rem;
-  }
-
-  .content-area {
-    padding: 1.5rem;
+  .subscriptions-view {
+    padding: var(--spacing-6);
   }
 
   .subscriptions-grid {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   }
+
+  .info-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
+  }
+
+  .info-features {
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+  }
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    padding: 1.5rem;
-    border-radius: 0 0 15px 15px;
+  .subscriptions-view {
+    padding: var(--spacing-4);
   }
 
   .header-content {
-    padding: 0 1rem;
     flex-direction: column;
-    text-align: center;
-    gap: 1.5rem;
-  }
-
-  .content-area {
-    padding: 1rem;
-  }
-
-  .header-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 2rem;
-  }
-
-  .page-title {
-    font-size: 2rem;
+    align-items: flex-start;
+    gap: var(--spacing-4);
   }
 
   .header-actions {
     width: 100%;
+    justify-content: flex-start;
   }
 
-  .create-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .info-card {
+  .subscription-stats {
     flex-direction: column;
-    text-align: center;
-    padding: 1.5rem;
-  }
-
-  .info-features {
-    justify-content: center;
-    gap: 1rem;
+    gap: var(--spacing-4);
   }
 
   .subscriptions-grid {
     grid-template-columns: 1fr;
   }
 
-  .subscription-info {
-    grid-template-columns: 1fr;
+  .info-features {
+    grid-template-columns: repeat(2, 1fr);
+    display: grid;
+    width: 100%;
   }
 
   .global-message {
-    right: 1rem;
-    left: 1rem;
-    top: 90px;
+    left: var(--spacing-4);
+    right: var(--spacing-4);
+    min-width: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .page-header {
-    padding: 1rem;
-  }
-
-  .header-content {
-    padding: 0 0.75rem;
-  }
-
-  .content-area {
-    padding: 0.75rem;
-  }
-
   .page-title {
-    font-size: 1.75rem;
+    font-size: var(--text-2xl);
   }
 
-  .info-card {
-    padding: 1rem;
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions {
+    flex-direction: column;
   }
 
   .info-features {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .card-header {
-    padding: 1rem;
-  }
-
-  .card-body {
-    padding: 1rem;
-  }
-
-  .card-footer {
-    padding: 0.75rem 1rem;
+    grid-template-columns: 1fr;
   }
 }
 </style>

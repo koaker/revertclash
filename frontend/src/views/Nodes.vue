@@ -1,344 +1,449 @@
 <template>
   <div class="nodes-view">
-    <div class="rc-container">
-      <!-- 页面标题 -->
-      <div class="page-header mb-4">
-        <h1 class="page-title">
-          <i class="bi bi-hdd-network"></i>
-          节点管理
-        </h1>
-        <p class="page-subtitle">管理和筛选您的代理节点</p>
+    <!-- 页面头部区域 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-main">
+          <div class="header-icon">
+            <i class="bi bi-hdd-network"></i>
+          </div>
+          <div class="header-text">
+            <h1 class="page-title">节点管理</h1>
+            <p class="page-subtitle">管理和筛选您的代理节点，实时监控节点状态</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button
+            class="premium-btn premium-btn-secondary premium-btn-md"
+            @click="nodeStore.fetchNodes"
+            :disabled="nodeStore.isLoading"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+            <span>{{ nodeStore.isLoading ? '刷新中...' : '刷新数据' }}</span>
+          </button>
+          <button
+            class="premium-btn premium-btn-primary premium-btn-md"
+            data-bs-toggle="modal"
+            data-bs-target="#sourceManagerModal"
+          >
+            <i class="bi bi-database-gear"></i>
+            <span>管理数据源</span>
+          </button>
+        </div>
       </div>
+    </div>
 
-      <!-- 统计卡片 -->
-      <div class="stats-cards mb-4">
-        <div class="stat-card">
-          <div class="stat-icon">
+    <!-- 统计概览卡片 -->
+    <div class="premium-stats-grid">
+      <div class="premium-stat-card">
+        <div class="premium-stat-header">
+          <div class="premium-stat-icon" style="background: var(--gradient-success);">
             <i class="bi bi-check-circle"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ selectedInFilterCount }}</div>
-            <div class="stat-label">已选节点</div>
+          <div class="premium-stat-trend">
+            <i class="bi bi-arrow-up"></i>
+            <span>+{{ Math.round((selectedInFilterCount / nodeStore.totalCount) * 100) || 0 }}%</span>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">
+        <div class="premium-stat-content">
+          <div class="premium-stat-number">{{ selectedInFilterCount }}</div>
+          <div class="premium-stat-label">已选择节点</div>
+          <div class="premium-stat-description">当前筛选条件下已选择的节点数量</div>
+        </div>
+      </div>
+
+      <div class="premium-stat-card">
+        <div class="premium-stat-header">
+          <div class="premium-stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
             <i class="bi bi-funnel"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ nodeStore.filteredNodes.length }}</div>
-            <div class="stat-label">筛选结果</div>
+          <div class="premium-stat-trend">
+            <i class="bi bi-filter"></i>
+            <span>筛选中</span>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">
+        <div class="premium-stat-content">
+          <div class="premium-stat-number">{{ nodeStore.filteredNodes.length }}</div>
+          <div class="premium-stat-label">筛选结果</div>
+          <div class="premium-stat-description">符合当前筛选条件的节点数量</div>
+        </div>
+      </div>
+
+      <div class="premium-stat-card">
+        <div class="premium-stat-header">
+          <div class="premium-stat-icon" style="background: var(--gradient-secondary);">
             <i class="bi bi-hdd-stack"></i>
           </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ nodeStore.totalCount }}</div>
-            <div class="stat-label">总节点数</div>
+          <div class="premium-stat-trend">
+            <i class="bi bi-database"></i>
+            <span>总计</span>
           </div>
+        </div>
+        <div class="premium-stat-content">
+          <div class="premium-stat-number">{{ nodeStore.totalCount }}</div>
+          <div class="premium-stat-label">总节点数</div>
+          <div class="premium-stat-description">所有数据源中的节点总数</div>
         </div>
       </div>
 
-      <!-- 控制面板 -->
-      <div class="control-panel mb-4">
-        <div class="rc-card modern-card">
-          <div class="rc-card-body">
-            <div class="control-grid">
-              <!-- 筛选器区域 -->
-              <div class="filter-section">
-                <h6 class="section-title">
-                  <i class="bi bi-funnel me-2"></i>
-                  筛选器
-                </h6>
-                <div class="filter-controls">
-                  <div class="filter-group">
-                    <label class="filter-label">节点类型</label>
-                    <select class="form-select modern-select" v-model="nodeStore.selectedType">
-                      <option v-for="type in nodeStore.nodeTypes" :key="type" :value="type">
-                        {{ type === 'all' ? '所有类型' : type }}
-                      </option>
-                    </select>
-                  </div>
-                  <div class="filter-group">
-                    <label class="filter-label">搜索节点</label>
-                    <div class="search-input-wrapper">
-                      <i class="bi bi-search search-icon"></i>
-                      <input
-                        type="text"
-                        class="form-control modern-input"
-                        v-model="nodeStore.searchKeyword"
-                        placeholder="搜索节点名称或服务器..."
-                      />
-                      <button
-                        v-if="nodeStore.searchKeyword"
-                        class="clear-search-btn"
-                        @click="nodeStore.searchKeyword = ''"
-                      >
-                        <i class="bi bi-x"></i>
-                      </button>
-                    </div>
-                  </div>
+      <div class="premium-stat-card">
+        <div class="premium-stat-header">
+          <div class="premium-stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+            <i class="bi bi-activity"></i>
+          </div>
+          <div class="premium-stat-trend">
+            <i class="bi bi-graph-up"></i>
+            <span>活跃</span>
+          </div>
+        </div>
+        <div class="premium-stat-content">
+          <div class="premium-stat-number">{{ getActiveNodesCount() }}</div>
+          <div class="premium-stat-label">活跃节点</div>
+          <div class="premium-stat-description">当前可用的活跃节点数量</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选和操作面板 -->
+    <div class="premium-card premium-card-elevated">
+      <div class="premium-card-header">
+        <h3 class="ds-text-lg ds-font-semibold ds-text-primary">
+          <i class="bi bi-sliders2 me-2"></i>
+          筛选与操作
+        </h3>
+      </div>
+      <div class="premium-card-body">
+        <div class="filters-container">
+          <!-- 筛选区域 -->
+          <div class="filters-section">
+            <div class="filter-row">
+              <div class="premium-form-group">
+                <label class="premium-form-label">
+                  <i class="bi bi-diagram-3"></i>
+                  节点类型
+                </label>
+                <div class="premium-input-wrapper">
+                  <select class="premium-input" v-model="nodeStore.selectedType">
+                    <option v-for="type in nodeStore.nodeTypes" :key="type" :value="type">
+                      {{ type === 'all' ? '全部类型' : type.toUpperCase() }}
+                    </option>
+                  </select>
                 </div>
               </div>
 
-              <!-- 操作区域 -->
-              <div class="actions-section">
-                <h6 class="section-title">
-                  <i class="bi bi-gear me-2"></i>
-                  操作
-                </h6>
-                <div class="action-buttons">
+              <div class="premium-form-group">
+                <label class="premium-form-label">
+                  <i class="bi bi-search"></i>
+                  搜索节点
+                </label>
+                <div class="premium-input-wrapper search-wrapper">
+                  <i class="premium-input-icon bi bi-search"></i>
+                  <input
+                    type="text"
+                    class="premium-input has-icon"
+                    v-model="nodeStore.searchKeyword"
+                    placeholder="搜索节点名称、服务器地址..."
+                  />
                   <button
-                    class="rc-btn rc-btn-outline-primary btn-modern"
-                    data-bs-toggle="modal"
-                    data-bs-target="#sourceManagerModal"
+                    v-if="nodeStore.searchKeyword"
+                    class="search-clear-btn"
+                    @click="nodeStore.searchKeyword = ''"
                   >
-                    <i class="bi bi-database-gear"></i>
-                    <span>管理数据源</span>
-                  </button>
-                  <button
-                    class="rc-btn rc-btn-info btn-modern"
-                    @click="nodeStore.exportSelectedLinks"
-                    :disabled="nodeStore.selectedCount === 0"
-                  >
-                    <i class="bi bi-link-45deg"></i>
-                    <span>导出链接</span>
-                  </button>
-                  <button
-                    class="rc-btn rc-btn-success btn-modern"
-                    @click="downloadSelectedConfig"
-                    :disabled="nodeStore.selectedCount === 0"
-                  >
-                    <i class="bi bi-download"></i>
-                    <span>下载配置</span>
-                  </button>
-                  <button
-                    class="rc-btn rc-btn-warning btn-modern"
-                    @click="downloadProcessedConfig"
-                    :disabled="nodeStore.selectedCount === 0"
-                  >
-                    <i class="bi bi-gear-wide-connected"></i>
-                    <span>处理后配置</span>
+                    <i class="bi bi-x"></i>
                   </button>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- 操作区域 -->
+          <div class="actions-section">
+            <div class="action-group">
+              <h4 class="ds-text-sm ds-font-semibold ds-text-secondary mb-3">
+                <i class="bi bi-gear me-2"></i>
+                批量操作
+              </h4>
+              <div class="action-buttons">
+                <button
+                  class="premium-btn premium-btn-outline premium-btn-sm"
+                  @click="nodeStore.exportSelectedLinks"
+                  :disabled="nodeStore.selectedCount === 0"
+                >
+                  <i class="bi bi-link-45deg"></i>
+                  <span>导出链接 ({{ nodeStore.selectedCount }})</span>
+                </button>
+                <button
+                  class="premium-btn premium-btn-success premium-btn-sm"
+                  @click="downloadSelectedConfig"
+                  :disabled="nodeStore.selectedCount === 0"
+                >
+                  <i class="bi bi-download"></i>
+                  <span>下载配置</span>
+                </button>
+                <button
+                  class="premium-btn premium-btn-warning premium-btn-sm"
+                  @click="downloadProcessedConfig"
+                  :disabled="nodeStore.selectedCount === 0"
+                >
+                  <i class="bi bi-gear-wide-connected"></i>
+                  <span>处理后配置</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
 
+    <!-- 主要内容区域 -->
+    <div class="content-area">
       <!-- 加载状态 -->
       <div v-if="nodeStore.isLoading" class="loading-state">
-        <div class="loading-card">
-          <div class="loading-spinner">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">正在加载...</span>
-            </div>
+        <div class="premium-card premium-card-glass">
+          <div class="premium-card-body ds-text-center">
+            <div class="premium-spinner premium-spinner-lg ds-text-primary mb-4"></div>
+            <h3 class="ds-text-xl ds-font-semibold ds-text-primary mb-2">正在加载节点数据</h3>
+            <p class="ds-text-secondary">请稍候，正在从数据源获取最新节点信息...</p>
           </div>
-          <h5>正在加载节点数据...</h5>
-          <p class="text-muted">请稍候，正在从数据源获取最新节点信息</p>
         </div>
       </div>
 
       <!-- 错误状态 -->
       <div v-else-if="nodeStore.error" class="error-state">
-        <div class="error-card">
-          <div class="error-icon">
-            <i class="bi bi-exclamation-triangle"></i>
+        <div class="premium-card premium-card-elevated">
+          <div class="premium-card-body ds-text-center">
+            <div class="error-icon">
+              <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <h3 class="ds-text-xl ds-font-semibold ds-text-primary mb-2">加载失败</h3>
+            <p class="ds-text-secondary mb-4">{{ nodeStore.error }}</p>
+            <button class="premium-btn premium-btn-primary" @click="nodeStore.fetchNodes">
+              <i class="bi bi-arrow-clockwise"></i>
+              重新加载
+            </button>
           </div>
-          <h5>加载失败</h5>
-          <p class="error-message">{{ nodeStore.error }}</p>
-          <button class="rc-btn rc-btn-primary" @click="nodeStore.fetchNodes">
-            <i class="bi bi-arrow-clockwise"></i>
-            重新加载
-          </button>
         </div>
       </div>
 
-      <!-- 节点表格 -->
-      <div v-else-if="nodeStore.totalCount > 0" class="nodes-table-container">
-        <div class="rc-card modern-card">
-          <div class="rc-card-header">
-            <h5 class="card-title mb-0">
+      <!-- 节点数据表格 -->
+      <div v-else-if="nodeStore.totalCount > 0" class="nodes-data-section">
+        <!-- 表格头部信息 -->
+        <div class="table-header">
+          <div class="table-info">
+            <h3 class="ds-text-lg ds-font-semibold ds-text-primary">
               <i class="bi bi-list-ul me-2"></i>
               节点列表
-            </h5>
-            <div class="table-controls">
-              <div class="bulk-actions" v-if="nodeStore.selectedCount > 0">
-                <span class="selected-count">已选择 {{ nodeStore.selectedCount }} 个节点</span>
-                <button class="rc-btn rc-btn-sm rc-btn-outline-danger" @click="nodeStore.clearSelection">
-                  <i class="bi bi-x-circle"></i>
-                  清除选择
-                </button>
-              </div>
-            </div>
+            </h3>
+            <p class="ds-text-sm ds-text-secondary">
+              显示 {{ (nodeStore.currentPage - 1) * nodeStore.pageSize + 1 }} -
+              {{ Math.min(nodeStore.currentPage * nodeStore.pageSize, nodeStore.filteredNodes.length) }} 项，
+              共 {{ nodeStore.filteredNodes.length }} 个节点
+            </p>
           </div>
-          <div class="rc-card-body p-0">
-            <div class="table-responsive">
-              <table class="table modern-table">
-                <thead>
-                  <tr>
-                    <th class="checkbox-column">
-                      <div class="checkbox-wrapper">
-                        <input
-                          type="checkbox"
-                          class="form-check-input"
-                          :checked="isAllFilteredSelected"
-                          :indeterminate="isFilteredIndeterminate"
-                          @change="handleSelectAllFilteredChange"
-                        />
-                        <label class="checkbox-label">全选</label>
-                      </div>
-                    </th>
-                    <th class="name-column">
-                      <i class="bi bi-tag me-1"></i>
-                      节点名称
-                    </th>
-                    <th class="type-column">
-                      <i class="bi bi-diagram-3 me-1"></i>
-                      类型
-                    </th>
-                    <th class="server-column">
-                      <i class="bi bi-server me-1"></i>
-                      服务器
-                    </th>
-                    <th class="port-column">
-                      <i class="bi bi-ethernet me-1"></i>
-                      端口
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="node in nodeStore.paginatedNodes"
-                    :key="node.name"
-                    class="node-row"
-                    :class="{ 'selected': nodeStore.selectedNodeNames.has(node.name) }"
-                  >
-                    <td class="checkbox-column">
-                      <input
-                        type="checkbox"
-                        class="form-check-input"
-                        :checked="nodeStore.selectedNodeNames.has(node.name)"
-                        @change="nodeStore.toggleNodeSelection(node.name)"
-                      />
-                    </td>
-                    <td class="name-column">
-                      <div class="node-name">
-                        <i class="bi bi-circle-fill node-status" :class="getNodeStatusClass(node)"></i>
-                        <span class="name-text">{{ node.name }}</span>
-                      </div>
-                    </td>
-                    <td class="type-column">
-                      <span class="node-type-badge" :class="getTypeClass(node.type)">
-                        {{ node.type || '未知' }}
-                      </span>
-                    </td>
-                    <td class="server-column">
-                      <div class="server-info">
-                        <span class="server-text">{{ node.server || '未知' }}</span>
-                        <button
-                          v-if="node.server"
-                          class="copy-btn"
-                          @click="copyToClipboard(node.server)"
-                          title="复制服务器地址"
-                        >
-                          <i class="bi bi-clipboard"></i>
-                        </button>
-                      </div>
-                    </td>
-                    <td class="port-column">
-                      <span class="port-text">{{ node.port || '未知' }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- 空状态 -->
-            <div v-if="nodeStore.filteredNodes.length === 0" class="empty-state">
-              <div class="empty-icon">
-                <i class="bi bi-search"></i>
-              </div>
-              <h5>没有找到匹配的节点</h5>
-              <p class="text-muted">尝试调整筛选条件或搜索关键词</p>
-              <button class="rc-btn rc-btn-outline-primary" @click="resetFilters">
-                <i class="bi bi-arrow-clockwise"></i>
-                重置筛选
+          <div class="table-actions" v-if="nodeStore.selectedCount > 0">
+            <div class="selection-info">
+              <span class="premium-badge premium-badge-primary">
+                已选择 {{ nodeStore.selectedCount }} 个节点
+              </span>
+              <button
+                class="premium-btn premium-btn-ghost premium-btn-sm"
+                @click="nodeStore.clearSelection"
+              >
+                <i class="bi bi-x-circle"></i>
+                清除选择
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- 分页 -->
-          <div v-if="nodeStore.totalPages > 1" class="rc-card-footer">
-            <div class="pagination-wrapper">
-              <div class="pagination-info">
-                显示第 {{ (nodeStore.currentPage - 1) * nodeStore.pageSize + 1 }} -
-                {{ Math.min(nodeStore.currentPage * nodeStore.pageSize, nodeStore.filteredNodes.length) }} 条，
-                共 {{ nodeStore.filteredNodes.length }} 条记录
+        <!-- 现代化表格 -->
+        <div class="premium-table-container">
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th class="checkbox-column">
+                  <div class="table-checkbox">
+                    <input
+                      type="checkbox"
+                      class="checkbox-input"
+                      :checked="isAllFilteredSelected"
+                      :indeterminate="isFilteredIndeterminate"
+                      @change="handleSelectAllFilteredChange"
+                    />
+                    <span class="ds-text-xs ds-text-tertiary">全选</span>
+                  </div>
+                </th>
+                <th class="name-column">
+                  <div class="table-header-content">
+                    <i class="bi bi-tag me-2"></i>
+                    节点名称
+                  </div>
+                </th>
+                <th class="type-column">
+                  <div class="table-header-content">
+                    <i class="bi bi-diagram-3 me-2"></i>
+                    协议类型
+                  </div>
+                </th>
+                <th class="server-column">
+                  <div class="table-header-content">
+                    <i class="bi bi-server me-2"></i>
+                    服务器地址
+                  </div>
+                </th>
+                <th class="port-column">
+                  <div class="table-header-content">
+                    <i class="bi bi-ethernet me-2"></i>
+                    端口
+                  </div>
+                </th>
+                <th class="status-column">
+                  <div class="table-header-content">
+                    <i class="bi bi-activity me-2"></i>
+                    状态
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="node in nodeStore.paginatedNodes"
+                :key="node.name"
+                class="node-row"
+                :class="{ 'selected': nodeStore.selectedNodeNames.has(node.name) }"
+              >
+                <td class="checkbox-column">
+                  <input
+                    type="checkbox"
+                    class="checkbox-input"
+                    :checked="nodeStore.selectedNodeNames.has(node.name)"
+                    @change="nodeStore.toggleNodeSelection(node.name)"
+                  />
+                </td>
+                <td class="name-column">
+                  <div class="node-name-container">
+                    <div class="node-avatar">
+                      <i class="bi bi-hdd-network"></i>
+                    </div>
+                    <div class="node-info">
+                      <div class="node-name">{{ node.name }}</div>
+                      <div class="node-meta">ID: {{ node.name.slice(0, 8) }}...</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="type-column">
+                  <span class="protocol-badge" :class="getProtocolBadgeClass(node.type)">
+                    {{ (node.type || 'unknown').toUpperCase() }}
+                  </span>
+                </td>
+                <td class="server-column">
+                  <div class="server-info">
+                    <div class="server-text">{{ node.server || '未知' }}</div>
+                    <button
+                      v-if="node.server"
+                      class="copy-server-btn"
+                      @click="copyToClipboard(node.server)"
+                      title="复制服务器地址"
+                    >
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                </td>
+                <td class="port-column">
+                  <span class="port-text">{{ node.port || '-' }}</span>
+                </td>
+                <td class="status-column">
+                  <div class="status-indicator" :class="getNodeStatusClass(node)">
+                    <div class="status-dot"></div>
+                    <span class="status-text">{{ getNodeStatusText(node) }}</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- 空状态 -->
+          <div v-if="nodeStore.filteredNodes.length === 0" class="empty-state">
+            <div class="empty-content">
+              <div class="empty-icon">
+                <i class="bi bi-search"></i>
               </div>
-              <nav class="pagination-nav">
-                <ul class="pagination modern-pagination">
-                  <li class="page-item" :class="{ disabled: nodeStore.currentPage === 1 }">
-                    <button
-                      class="page-link"
-                      @click="nodeStore.changePage(nodeStore.currentPage - 1)"
-                      :disabled="nodeStore.currentPage === 1"
-                    >
-                      <i class="bi bi-chevron-left"></i>
-                    </button>
-                  </li>
-
-                  <li
-                    v-for="page in visiblePages"
-                    :key="page"
-                    class="page-item"
-                    :class="{ active: page === nodeStore.currentPage }"
-                  >
-                    <button class="page-link" @click="nodeStore.changePage(page)">
-                      {{ page }}
-                    </button>
-                  </li>
-
-                  <li class="page-item" :class="{ disabled: nodeStore.currentPage === nodeStore.totalPages }">
-                    <button
-                      class="page-link"
-                      @click="nodeStore.changePage(nodeStore.currentPage + 1)"
-                      :disabled="nodeStore.currentPage === nodeStore.totalPages"
-                    >
-                      <i class="bi bi-chevron-right"></i>
-                    </button>
-                  </li>
-                </ul>
-              </nav>
+              <h3 class="ds-text-lg ds-font-semibold ds-text-primary mb-2">没有找到匹配的节点</h3>
+              <p class="ds-text-secondary mb-4">尝试调整筛选条件或搜索关键词</p>
+              <button class="premium-btn premium-btn-outline premium-btn-sm" @click="resetFilters">
+                <i class="bi bi-arrow-clockwise"></i>
+                重置筛选条件
+              </button>
             </div>
+          </div>
+        </div>
+
+        <!-- 分页组件 -->
+        <div v-if="nodeStore.totalPages > 1" class="pagination-container">
+          <div class="pagination-info">
+            <span class="ds-text-sm ds-text-secondary">
+              显示第 {{ (nodeStore.currentPage - 1) * nodeStore.pageSize + 1 }} -
+              {{ Math.min(nodeStore.currentPage * nodeStore.pageSize, nodeStore.filteredNodes.length) }} 条，
+              共 {{ nodeStore.filteredNodes.length }} 条记录
+            </span>
+          </div>
+          <div class="pagination-controls">
+            <button
+              class="premium-btn premium-btn-ghost premium-btn-sm"
+              @click="nodeStore.changePage(nodeStore.currentPage - 1)"
+              :disabled="nodeStore.currentPage === 1"
+            >
+              <i class="bi bi-chevron-left"></i>
+              上一页
+            </button>
+
+            <div class="page-numbers">
+              <button
+                v-for="page in visiblePages"
+                :key="page"
+                class="page-btn"
+                :class="{ 'active': page === nodeStore.currentPage }"
+                @click="nodeStore.changePage(page)"
+              >
+                {{ page }}
+              </button>
+            </div>
+
+            <button
+              class="premium-btn premium-btn-ghost premium-btn-sm"
+              @click="nodeStore.changePage(nodeStore.currentPage + 1)"
+              :disabled="nodeStore.currentPage === nodeStore.totalPages"
+            >
+              下一页
+              <i class="bi bi-chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
 
       <!-- 无数据状态 -->
       <div v-else class="no-data-state">
-        <div class="no-data-card">
-          <div class="no-data-icon">
-            <i class="bi bi-hdd-network"></i>
-          </div>
-          <h5>暂无节点数据</h5>
-          <p class="text-muted">请先添加数据源或检查网络连接</p>
-          <div class="no-data-actions">
-            <button
-              class="rc-btn rc-btn-primary"
-              data-bs-toggle="modal"
-              data-bs-target="#sourceManagerModal"
-            >
-              <i class="bi bi-plus-circle"></i>
-              添加数据源
-            </button>
-            <button class="rc-btn rc-btn-outline-primary ms-2" @click="nodeStore.fetchNodes">
-              <i class="bi bi-arrow-clockwise"></i>
-              刷新数据
-            </button>
+        <div class="premium-card premium-card-elevated">
+          <div class="premium-card-body ds-text-center">
+            <div class="no-data-icon">
+              <i class="bi bi-hdd-network"></i>
+            </div>
+            <h3 class="ds-text-xl ds-font-semibold ds-text-primary mb-2">暂无节点数据</h3>
+            <p class="ds-text-secondary mb-6">请先添加数据源或检查网络连接</p>
+            <div class="no-data-actions">
+              <button
+                class="premium-btn premium-btn-primary premium-btn-lg"
+                data-bs-toggle="modal"
+                data-bs-target="#sourceManagerModal"
+              >
+                <i class="bi bi-plus-circle"></i>
+                添加数据源
+              </button>
+              <button class="premium-btn premium-btn-secondary premium-btn-lg" @click="nodeStore.fetchNodes">
+                <i class="bi bi-arrow-clockwise"></i>
+                刷新数据
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -390,6 +495,10 @@ const visiblePages = computed(() => {
 });
 
 // 方法
+const getActiveNodesCount = () => {
+  return nodeStore.filteredNodes.filter(node => node.server && node.port).length;
+};
+
 const handleSelectAllFilteredChange = (e) => {
   if (e.target.checked) {
     nodeStore.filteredNodes.forEach(node => {
@@ -413,8 +522,6 @@ const downloadSelectedConfig = async () => {
       return;
     }
 
-    // 这里调用下载配置的API
-    // 实际实现需要根据后端API调整
     console.log('下载选中的配置:', selectedNodes);
   } catch (error) {
     console.error('下载配置失败:', error);
@@ -433,7 +540,6 @@ const downloadProcessedConfig = async () => {
       return;
     }
 
-    // 这里调用下载处理后配置的API
     console.log('下载处理后的配置:', selectedNodes);
   } catch (error) {
     console.error('下载处理后配置失败:', error);
@@ -442,30 +548,30 @@ const downloadProcessedConfig = async () => {
 };
 
 const getNodeStatusClass = (node) => {
-  // 根据节点状态返回不同的类名
-  if (node.server && node.port) {
-    return 'status-active';
-  }
-  return 'status-inactive';
+  return node.server && node.port ? 'status-active' : 'status-inactive';
 };
 
-const getTypeClass = (type) => {
+const getNodeStatusText = (node) => {
+  return node.server && node.port ? '在线' : '离线';
+};
+
+const getProtocolBadgeClass = (type) => {
   const typeMap = {
-    'ss': 'type-ss',
-    'ssr': 'type-ssr',
-    'vmess': 'type-vmess',
-    'vless': 'type-vless',
-    'trojan': 'type-trojan',
-    'hysteria': 'type-hysteria',
-    'hysteria2': 'type-hysteria2'
+    'ss': 'protocol-ss',
+    'ssr': 'protocol-ssr',
+    'vmess': 'protocol-vmess',
+    'vless': 'protocol-vless',
+    'trojan': 'protocol-trojan',
+    'hysteria': 'protocol-hysteria',
+    'hysteria2': 'protocol-hysteria2'
   };
-  return typeMap[type?.toLowerCase()] || 'type-unknown';
+  return typeMap[type?.toLowerCase()] || 'protocol-unknown';
 };
 
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text);
-    // 这里可以添加一个简单的提示
+    // TODO: 添加成功提示
     console.log('已复制到剪贴板:', text);
   } catch (error) {
     console.error('复制失败:', error);
@@ -484,231 +590,115 @@ nodeStore.fetchNodes();
 <style scoped>
 .nodes-view {
   min-height: 100vh;
-  position: relative;
-  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: var(--spacing-8);
 }
 
+/* 页面头部 */
 .page-header {
-  text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--spacing-8);
 }
 
-.page-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 0.5rem;
-}
-
-.page-title i {
-  color: #3498db;
-  margin-right: 0.5rem;
-}
-
-.page-subtitle {
-  color: #7f8c8d;
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-/* 统计卡片 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+.header-content {
   display: flex;
   align-items: center;
-  transition: all 0.3s ease;
+  justify-content: space-between;
+  gap: var(--spacing-6);
 }
 
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
 }
 
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
+.header-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-2xl);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 1rem;
-  font-size: 1.5rem;
+  color: var(--text-inverse);
+  font-size: var(--text-2xl);
+  box-shadow: var(--shadow-lg);
 }
 
-.stat-card:nth-child(1) .stat-icon {
-  background: linear-gradient(135deg, #27ae60, #2ecc71);
-  color: white;
+.page-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+  line-height: var(--leading-tight);
 }
 
-.stat-card:nth-child(2) .stat-icon {
-  background: linear-gradient(135deg, #3498db, #74b9ff);
-  color: white;
-}
-
-.stat-card:nth-child(3) .stat-icon {
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
-  color: white;
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2c3e50;
-  line-height: 1;
-}
-
-.stat-label {
-  color: #7f8c8d;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-}
-
-/* 现代化卡片 */
-.modern-card {
-  border: none;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  background: white;
-  overflow: hidden;
-}
-
-.modern-card .rc-card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1.5rem;
-  border: none;
-  display: flex;
-  justify-content: between;
-  align-items: center;
-}
-
-.card-title {
-  font-weight: 600;
+.page-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
   margin: 0;
+  line-height: var(--leading-normal);
 }
 
-/* 控制面板 */
-.control-grid {
+.header-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+/* 筛选和操作面板 */
+.filters-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-8);
+  align-items: start;
+}
+
+.filter-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: var(--spacing-4);
 }
 
-.section-title {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-}
-
-.filter-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.filter-label {
-  font-weight: 500;
-  color: #555;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.modern-select,
-.modern-input {
-  border: 2px solid #ecf0f1;
-  border-radius: 10px;
-  padding: 0.75rem;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-}
-
-.modern-select:focus,
-.modern-input:focus {
-  border-color: #3498db;
-  box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
-}
-
-.search-input-wrapper {
+.search-wrapper {
   position: relative;
-  display: flex;
-  align-items: center;
 }
 
-.search-icon {
+.search-clear-btn {
   position: absolute;
-  left: 1rem;
-  color: #95a5a6;
-  z-index: 2;
-}
-
-.search-input-wrapper .modern-input {
-  padding-left: 2.5rem;
-  padding-right: 2.5rem;
-}
-
-.clear-search-btn {
-  position: absolute;
-  right: 0.75rem;
+  right: var(--spacing-3);
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
-  color: #95a5a6;
+  color: var(--text-tertiary);
   cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 50%;
-  transition: all 0.2s ease;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
 }
 
-.clear-search-btn:hover {
-  background: #ecf0f1;
-  color: #e74c3c;
+.search-clear-btn:hover {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+
+.action-group {
+  background: var(--surface-secondary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-4);
 }
 
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--spacing-2);
 }
 
-.btn-modern {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  text-align: left;
+/* 内容区域 */
+.content-area {
+  margin-top: var(--spacing-6);
 }
 
-.btn-modern:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.btn-modern:disabled {
-  opacity: 0.5;
-  transform: none;
-  box-shadow: none;
-}
-
-/* 状态卡片 */
 .loading-state,
 .error-state,
 .no-data-state {
@@ -718,335 +708,374 @@ nodeStore.fetchNodes();
   min-height: 400px;
 }
 
-.loading-card,
-.error-card,
-.no-data-card {
-  background: white;
-  padding: 3rem;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  max-width: 400px;
-}
-
-.loading-spinner {
-  margin-bottom: 1.5rem;
-}
-
 .error-icon,
 .no-data-icon {
-  font-size: 4rem;
-  color: #e74c3c;
-  margin-bottom: 1.5rem;
-}
-
-.no-data-icon {
-  color: #95a5a6;
-}
-
-.error-message {
-  color: #e74c3c;
-  margin-bottom: 1.5rem;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-4xl);
+  color: var(--text-tertiary);
+  margin: 0 auto var(--spacing-4);
 }
 
 .no-data-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--spacing-3);
   justify-content: center;
-  margin-top: 1.5rem;
 }
 
-/* 表格样式 */
-.nodes-table-container {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+/* 表格区域 */
+.nodes-data-section {
+  background: var(--surface-elevated);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
-.table-controls {
+.table-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  padding: var(--spacing-6);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--gradient-surface);
 }
 
-.bulk-actions {
+.table-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-3);
 }
 
-.selected-count {
-  color: #3498db;
-  font-weight: 500;
-  font-size: 0.9rem;
+.selection-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
 }
 
-.modern-table {
-  margin: 0;
-  border: none;
+/* 表格样式 */
+.premium-table th {
+  background: var(--surface-secondary);
+  padding: var(--spacing-4) var(--spacing-6);
+  border-bottom: 2px solid var(--border-light);
 }
 
-.modern-table th {
-  background: #f8f9fa;
-  border: none;
-  padding: 1rem;
-  font-weight: 600;
-  color: #2c3e50;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.premium-table td {
+  padding: var(--spacing-4) var(--spacing-6);
 }
 
-.modern-table td {
-  border: none;
-  padding: 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid #ecf0f1;
+.table-header-content {
+  display: flex;
+  align-items: center;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.table-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-medium);
+  cursor: pointer;
 }
 
 .node-row {
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
 }
 
 .node-row:hover {
-  background: #f8f9fa;
+  background: var(--surface-secondary);
 }
 
 .node-row.selected {
-  background: rgba(52, 152, 219, 0.05);
-  border-left: 4px solid #3498db;
+  background: var(--primary-50);
+  border-left: 4px solid var(--primary-500);
 }
 
-.checkbox-column {
-  width: 60px;
-  text-align: center;
+.node-name-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
 }
 
-.checkbox-wrapper {
+.node-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  color: var(--text-inverse);
+  font-size: var(--text-base);
 }
 
-.checkbox-label {
-  font-size: 0.8rem;
-  color: #7f8c8d;
-  margin: 0;
-}
-
-.name-column {
-  min-width: 250px;
+.node-info {
+  flex: 1;
 }
 
 .node-name {
-  display: flex;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.node-meta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-0-5);
+}
+
+.protocol-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.node-status {
-  font-size: 0.6rem;
-}
-
-.node-status.status-active {
-  color: #27ae60;
-}
-
-.node-status.status-inactive {
-  color: #e74c3c;
-}
-
-.name-text {
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.type-column {
-  width: 120px;
-}
-
-.node-type-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 
-.type-ss { background: #3498db; color: white; }
-.type-ssr { background: #9b59b6; color: white; }
-.type-vmess { background: #e74c3c; color: white; }
-.type-vless { background: #27ae60; color: white; }
-.type-trojan { background: #f39c12; color: white; }
-.type-hysteria { background: #1abc9c; color: white; }
-.type-hysteria2 { background: #34495e; color: white; }
-.type-unknown { background: #95a5a6; color: white; }
-
-.server-column {
-  min-width: 200px;
-}
+.protocol-ss { background: var(--primary-100); color: var(--primary-800); }
+.protocol-ssr { background: var(--secondary-100); color: var(--secondary-800); }
+.protocol-vmess { background: var(--error-100); color: var(--error-800); }
+.protocol-vless { background: var(--success-100); color: var(--success-800); }
+.protocol-trojan { background: var(--warning-100); color: var(--warning-800); }
+.protocol-hysteria { background: #e0f2fe; color: #0277bd; }
+.protocol-hysteria2 { background: var(--neutral-100); color: var(--neutral-800); }
+.protocol-unknown { background: var(--neutral-100); color: var(--neutral-600); }
 
 .server-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-2);
 }
 
 .server-text {
-  color: #7f8c8d;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  font-size: 0.9rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.copy-btn {
+.copy-server-btn {
   background: none;
   border: none;
-  color: #95a5a6;
-  padding: 0.25rem;
-  border-radius: 4px;
+  color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  padding: var(--spacing-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
   opacity: 0;
 }
 
-.server-info:hover .copy-btn {
+.server-info:hover .copy-server-btn {
   opacity: 1;
 }
 
-.copy-btn:hover {
-  background: #ecf0f1;
-  color: #3498db;
-}
-
-.port-column {
-  width: 100px;
+.copy-server-btn:hover {
+  background: var(--surface-secondary);
+  color: var(--primary-500);
 }
 
 .port-text {
-  color: #7f8c8d;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  font-weight: 500;
+  font-family: var(--font-family-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.status-text {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.status-active .status-dot {
+  background: var(--success-500);
+}
+
+.status-active .status-text {
+  color: var(--success-600);
+}
+
+.status-inactive .status-dot {
+  background: var(--error-500);
+}
+
+.status-inactive .status-text {
+  color: var(--error-600);
 }
 
 /* 空状态 */
 .empty-state {
+  padding: var(--spacing-16) var(--spacing-8);
   text-align: center;
-  padding: 4rem 2rem;
-  color: #95a5a6;
+}
+
+.empty-content {
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1.5rem;
-  opacity: 0.5;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-4xl);
+  color: var(--text-tertiary);
+  margin: 0 auto var(--spacing-4);
 }
 
 /* 分页 */
-.pagination-wrapper {
+.pagination-container {
   display: flex;
-  justify-content: between;
   align-items: center;
-  padding: 1rem 1.5rem;
-  background: #f8f9fa;
-  border-top: 1px solid #ecf0f1;
+  justify-content: space-between;
+  padding: var(--spacing-6);
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-secondary);
 }
 
-.pagination-info {
-  color: #7f8c8d;
-  font-size: 0.9rem;
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
 }
 
-.modern-pagination {
-  margin: 0;
+.page-numbers {
+  display: flex;
+  gap: var(--spacing-1);
 }
 
-.modern-pagination .page-link {
+.page-btn {
+  min-width: 40px;
+  height: 40px;
   border: none;
-  color: #7f8c8d;
-  padding: 0.5rem 0.75rem;
-  margin: 0 0.125rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.modern-pagination .page-link:hover {
-  background: #3498db;
-  color: white;
+.page-btn:hover {
+  background: var(--surface-tertiary);
+  color: var(--text-primary);
 }
 
-.modern-pagination .page-item.active .page-link {
-  background: #3498db;
-  color: white;
-}
-
-.modern-pagination .page-item.disabled .page-link {
-  opacity: 0.5;
-  cursor: not-allowed;
+.page-btn.active {
+  background: var(--primary-500);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-sm);
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .nodes-view {
+    padding: var(--spacing-6);
+  }
+
+  .filters-container {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-6);
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .nodes-view {
-    padding: 1rem;
+    padding: var(--spacing-4);
   }
 
-  .page-title {
-    font-size: 2rem;
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
   }
 
-  .stats-cards {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .control-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  .premium-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+
+  .pagination-container {
+    flex-direction: column;
+    gap: var(--spacing-4);
+  }
+
+  .server-text {
+    max-width: 120px;
   }
 
   .action-buttons {
     flex-direction: row;
     flex-wrap: wrap;
   }
-
-  .pagination-wrapper {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-  }
-
-  .server-column,
-  .name-column {
-    min-width: auto;
-  }
-
-  .server-text,
-  .name-text {
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 @media (max-width: 480px) {
-  .modern-table th,
-  .modern-table td {
-    padding: 0.5rem;
-    font-size: 0.85rem;
+  .premium-stats-grid {
+    grid-template-columns: 1fr;
   }
 
-  .node-type-badge {
-    padding: 0.125rem 0.5rem;
-    font-size: 0.7rem;
+  .page-title {
+    font-size: var(--text-2xl);
   }
 
-  .btn-modern {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
+  .premium-table th,
+  .premium-table td {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--text-xs);
   }
 }
 </style>

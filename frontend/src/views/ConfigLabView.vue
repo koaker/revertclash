@@ -487,9 +487,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue';
 import { useConfigLabStore } from '@/stores/configLabStore';
 import { Modal } from 'bootstrap';
+import { onMounted, reactive, ref } from 'vue';
 
 const labStore = useConfigLabStore();
 
