@@ -293,7 +293,8 @@ class ConflictResolver {
                 const suffix = this.generateUniqueSuffix(node, i);
                 
                 // 创建重命名后的节点
-                const renamedNode = { ...node };
+                const renamedNode = Object.create(Object.getPrototypeOf(node));
+                Object.assign(renamedNode, node);
                 renamedNode.name = `${originalName} ${suffix}`;
                 renamedNode.metadata = {
                     ...node.metadata,
@@ -349,8 +350,16 @@ class ConflictResolver {
         const server = node.config.server;
         const sourceId = node.sourceId;
         
+        // 正则表达式，用于简单匹配 IPv4 地址格式
+        const ipv4Regex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
         // 尝试使用服务器信息
         if (server && server !== 'unknown') {
+            // 如果是 IP 地址，直接返回完整 IP
+            if (ipv4Regex.test(server)) {
+                return `[${server}]`;
+            }
+
             const serverParts = server.split('.');
             if (serverParts.length >= 2) {
                 return `[${serverParts[serverParts.length - 2]}.${serverParts[serverParts.length - 1]}]`;
