@@ -23,7 +23,7 @@
                   {{ authStore.isAdmin ? '系统管理员' : '普通用户' }}
                 </span>
               </div>
-              <div class="user-stats">
+              <!-- <div class="user-stats">
                 <div class="stat-item">
                   <i class="bi bi-clock"></i>
                   <span>最后登录：今天 14:32</span>
@@ -32,7 +32,7 @@
                   <i class="bi bi-calendar-check"></i>
                   <span>注册时间：2024年1月</span>
                 </div>
-              </div>
+              </div> -->
             </div>
           </div>
 
@@ -85,7 +85,7 @@
             </div>
           </div>
 
-          <div class="overview-card">
+          <!-- <div class="overview-card">
             <div class="overview-icon">
               <i class="bi bi-graph-up"></i>
             </div>
@@ -99,7 +99,7 @@
                 <i class="bi bi-arrow-right"></i>
               </button>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -170,7 +170,7 @@
           </div>
 
           <!-- 安全设置模块 -->
-          <div class="module-card" :class="{ 'active': activeModule === 'security' }">
+          <!-- <div class="module-card" :class="{ 'active': activeModule === 'security' }">
             <div class="module-header">
               <div class="module-icon security">
                 <i class="bi bi-shield-lock"></i>
@@ -224,11 +224,11 @@
                 </div>
               </div>
             </transition>
-          </div>
+          </div> -->
         </div>
 
         <!-- 最近活动 -->
-        <div class="activity-section">
+        <!-- <div class="activity-section">
           <div class="activity-header">
             <h3>最近活动</h3>
             <button class="view-all-btn">查看全部</button>
@@ -267,7 +267,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
     </div>
   </div>
@@ -281,7 +281,7 @@ import UserManagement from '@/components/UserManagement.vue';
 
 const authStore = useAuthStore();
 const activeModule = ref(null);
-const twoFactorEnabled = ref(false);
+// const twoFactorEnabled = ref(false);
 
 const setActiveModule = (module) => {
   activeModule.value = activeModule.value === module ? null : module;
