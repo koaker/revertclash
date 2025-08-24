@@ -558,6 +558,34 @@ const PROXY_RULES = [
             "DOMAIN-SUFFIX,deepseek.com",
         ]
     },
+    { 
+        name: "美国网站", 
+        gfw : true,
+        payload:  [
+            "GEOIP,US"
+        ]
+    },
+    { 
+        name: "日本网站", 
+        gfw : true,
+        payload:  [
+            "GEOIP,JP"
+        ]
+    },
+    { 
+        name: "香港网站", 
+        gfw : true,
+        payload:  [
+            "GEOIP,HK"
+        ]
+    },
+    { 
+        name: "台湾网站", 
+        gfw : true,
+        payload:  [
+            "GEOIP,TW"
+        ]
+    },
 ];
 
 /**
