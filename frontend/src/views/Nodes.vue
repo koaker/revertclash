@@ -458,7 +458,8 @@
 import { computed } from 'vue';
 import { useNodeStore } from '@/stores/nodeStore';
 import SourceManager from '@/components/SourceManager.vue';
-
+// 新增导入
+import { generateConfig, exportNodeLinks } from '@/services/nodeService';
 const nodeStore = useNodeStore();
 
 // 计算属性
@@ -513,6 +514,7 @@ const handleSelectAllFilteredChange = (e) => {
 
 const downloadSelectedConfig = async () => {
   try {
+    // 从 store 获取完整的已选节点对象
     const selectedNodes = nodeStore.filteredNodes.filter(node =>
       nodeStore.selectedNodeNames.has(node.name)
     );
@@ -522,12 +524,25 @@ const downloadSelectedConfig = async () => {
       return;
     }
 
-    console.log('下载选中的配置:', selectedNodes);
+    // 调用新的 service，processed 设置为 false
+    const blob = await generateConfig(selectedNodes, false);
+
+    // 创建并触发下载
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'selected-config.yaml';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
   } catch (error) {
     console.error('下载配置失败:', error);
     alert('下载失败: ' + error.message);
   }
 };
+
 
 const downloadProcessedConfig = async () => {
   try {
@@ -540,12 +555,25 @@ const downloadProcessedConfig = async () => {
       return;
     }
 
-    console.log('下载处理后的配置:', selectedNodes);
+    // 调用新的 service，processed 设置为 true
+    const blob = await generateConfig(selectedNodes, true);
+
+    // 创建并触发下载
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'processed-config.yaml';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
   } catch (error) {
     console.error('下载处理后配置失败:', error);
     alert('下载失败: ' + error.message);
   }
 };
+
 
 const getNodeStatusClass = (node) => {
   return node.server && node.port ? 'status-active' : 'status-inactive';

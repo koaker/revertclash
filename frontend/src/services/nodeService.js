@@ -19,65 +19,6 @@ export async function fetchNodes() {
   return data.nodes;
 }
 
-/**
- * 批量更新节点的选中状态。
- * 这是对旧代码中批处理逻辑的简化实现。
- * @param {string[]} nodesToSelect - 需要选中的节点名称数组。
- * @param {string[]} nodesToDeselect - 需要取消选中的节点名称数组。
- * @returns {Promise<void>}
- */
-export async function updateMultipleNodeSelection(nodesToSelect, nodesToDeselect) {
-  const promises = [];
-
-  if (nodesToSelect.length > 0) {
-    promises.push(
-      fetch(`${API_BASE_URL}/select-multiple`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodeNames: nodesToSelect })
-      })
-    );
-  }
-
-  if (nodesToDeselect.length > 0) {
-    promises.push(
-      fetch(`${API_BASE_URL}/deselect-multiple`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodeNames: nodesToDeselect })
-      })
-    );
-  }
-
-  const responses = await Promise.all(promises);
-  // 检查所有请求是否都成功
-  for (const response of responses) {
-    if (!response.ok) {
-      throw new Error(`批量更新节点状态失败: ${response.status}`);
-    }
-  }
-}
-
-/**
- * 请求全选所有节点
- * @returns {Promise<Object>}
- */
-export async function selectAllNodes() {
-    const response = await fetch(`${API_BASE_URL}/select-all`, { method: 'POST' });
-    if (!response.ok) throw new Error('全选操作失败');
-    return response.json();
-}
-
-/**
- * 请求取消全选所有节点
- * @returns {Promise<Object>}
- */
-export async function deselectAllNodes() {
-    const response = await fetch(`${API_BASE_URL}/deselect-all`, { method: 'POST' });
-    if (!response.ok) throw new Error('取消全选操作失败');
-    return response.json();
-}
-
 // 未来我们可以在这里添加更多函数，例如获取节点详情、导出配置等。
 
 /**
@@ -85,11 +26,11 @@ export async function deselectAllNodes() {
  * @param {string[]} nodeNames - 要导出的节点名称数组
  * @returns {Promise<Object>}
  */
-export async function exportNodeLinks(nodeNames) {
+export async function exportNodeLinks(nodes) {
   const response = await fetch(`${API_BASE_URL}/export-links`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodeNames })
+    body: JSON.stringify({ nodes: nodes })
   });
 
   const data = await response.json();
@@ -97,4 +38,28 @@ export async function exportNodeLinks(nodeNames) {
     throw new Error(data.error || '导出链接失败');
   }
   return data;
+}
+
+/**
+ * 将选中的节点列表发送到后端以生成配置文件。
+ * @param {Array<Object>} nodes - 包含完整节点配置的数组。
+ * @param {boolean} processed - 是否需要后端进行额外处理（对应 clash-configs.js）。
+ * @returns {Promise<Blob>} 返回一个可供下载的 Blob 对象。
+ */
+export async function generateConfig(nodes, processed = true) {
+  const response = await fetch(`${API_BASE_URL}/config/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodes, processed }) // 发送节点数组和处理标志
+  });
+
+  if (!response.ok) {
+    try {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `生成配置失败: ${response.status}`);
+    } catch (e) {
+        throw new Error(`生成配置失败: ${response.status}`);
+    }
+  }
+  return response.blob();
 }

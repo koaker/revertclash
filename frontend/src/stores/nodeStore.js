@@ -1,6 +1,6 @@
+import { exportNodeLinks, fetchNodes as fetchNodesFromApi } from '@/services/nodeService';
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import * as nodeService from '@/services/nodeService'; // 引入我们创建的 API 服务
+import { computed, ref } from 'vue';
 
 // 使用 defineStore 创建一个 store，'nodes' 是这个 store 的唯一 ID
 export const useNodeStore = defineStore('nodes', () => {
@@ -60,15 +60,11 @@ export const useNodeStore = defineStore('nodes', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const nodes = await nodeService.fetchNodes();
+      // 调用时不再需要 nodeService. 前缀
+      const nodes = await fetchNodesFromApi();
       allNodes.value = nodes;
-      const initialSelected = new Set();
-      nodes.forEach(node => {
-        if (node.selected) {
-          initialSelected.add(node.name);
-        }
-      });
-      selectedNodeNames.value = initialSelected;
+      // 清空旧的选择，因为节点列表已更新
+      selectedNodeNames.value.clear();
     } catch (e) {
       error.value = e.message;
       console.error('获取节点失败:', e);
@@ -77,119 +73,47 @@ export const useNodeStore = defineStore('nodes', () => {
     }
   }
 
-  async function toggleNodeSelection(nodeName) {
-    const newSelectedNames = new Set(selectedNodeNames.value);
-    let nodesToSelect = [];
-    let nodesToDeselect = [];
-    if (newSelectedNames.has(nodeName)) {
-      newSelectedNames.delete(nodeName);
-      nodesToDeselect.push(nodeName);
+  // 修改 toggleNodeSelection action
+  function toggleNodeSelection(nodeName) {
+    if (selectedNodeNames.value.has(nodeName)) {
+      selectedNodeNames.value.delete(nodeName);
     } else {
-      newSelectedNames.add(nodeName);
-      nodesToSelect.push(nodeName);
-    }
-    selectedNodeNames.value = newSelectedNames;
-    try {
-      await nodeService.updateMultipleNodeSelection(nodesToSelect, nodesToDeselect);
-    } catch (e) {
-      console.error('同步节点选择状态失败:', e);
+      selectedNodeNames.value.add(nodeName);
     }
   }
-
-  function selectNodes(nodeNames) {
-    const newSelectedNames = new Set([...selectedNodeNames.value, ...nodeNames]);
-    selectedNodeNames.value = newSelectedNames;
-    nodeService.updateMultipleNodeSelection(nodeNames, []).catch(e => {
-      console.error('批量选中同步失败:', e);
-    });
+  // 新增 clearSelection action
+  function clearSelection() {
+    selectedNodeNames.value.clear();
   }
 
-  function deselectNodes(nodeNames) {
-    const newSelectedNames = new Set(selectedNodeNames.value);
-    nodeNames.forEach(name => newSelectedNames.delete(name));
-    selectedNodeNames.value = newSelectedNames;
-    nodeService.updateMultipleNodeSelection([], nodeNames).catch(e => {
-      console.error('批量取消选中同步失败:', e);
-    });
-  }
-
-  async function selectAll() {
-    isLoading.value = true;
-    try {
-      await nodeService.selectAllNodes();
-      const allNodeNames = new Set(allNodes.value.map(n => n.name));
-      selectedNodeNames.value = allNodeNames;
-    } catch (e) {
-      error.value = e.message;
-      console.error('全选失败:', e);
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  async function deselectAll() {
-    isLoading.value = true;
-    try {
-      await nodeService.deselectAllNodes();
-      selectedNodeNames.value.clear();
-    } catch (e) {
-      error.value = e.message;
-      console.error('取消全选失败:', e);
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // 辅助函数：用于触发文本文件下载
-  function triggerTextDownload(content, filename) {
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+  // 新增 selectFilteredNodes action
+  function selectFilteredNodes() {
+    filteredNodes.value.forEach(node => selectedNodeNames.value.add(node.name));
   }
 
   async function exportSelectedLinks() {
-    if (selectedNodeNames.value.size === 0) {
-      alert('请至少选择一个节点');
+    try {
+    // 1. 过滤出完整的已选节点对象
+    const selectedNodes = filteredNodes.value.filter(node =>
+      selectedNodeNames.value.has(node.name)
+    );
+
+    if (selectedNodes.length === 0) {
+      alert('请先选择要导出的节点');
       return;
     }
-    isLoading.value = true;
-    try {
-      const nodeNames = Array.from(selectedNodeNames.value);
-      const result = await nodeService.exportNodeLinks(nodeNames);
-      const lines = [
-        `# Exported at: ${new Date().toISOString()}`,
-        `# Total selected: ${nodeNames.length}`,
-        `# Exported successful: ${result.exported}`,
-        `# Exported failed: ${result.failed}`,
-        ''
-      ];
-      if (result.links && result.links.length > 0) {
-        lines.push('--- SUCCESS ---');
-        result.links.forEach(link => {
-          lines.push(`# ${link.name}`);
-          lines.push(link.uri);
-          lines.push('');
-        });
-      }
-      if (result.errors && result.errors.length > 0) {
-        lines.push('--- FAILED ---');
-        result.errors.forEach(err => {
-          lines.push(`# ${err.name}: ${err.error}`);
-        });
-      }
-      triggerTextDownload(lines.join('\n'), `revertclash-nodes-${Date.now()}.txt`);
-    } catch (e) {
-      error.value = e.message;
-      console.error('导出链接失败:', e);
-      alert(`导出链接失败: ${e.message}`);
-    } finally {
-      isLoading.value = false;
-    }
+
+    // 2. 调用新的 service，传入节点对象数组
+    const result = await exportNodeLinks(selectedNodes);
+
+    // 3. 处理返回结果 (例如显示一个模态框或复制到剪贴板)
+    console.log('导出的链接:', result.links);
+    // 可以在这里添加 UI 提示
+
+  } catch (error) {
+    console.error('导出链接失败:', error);
+    alert('导出失败: ' + error.message);
+  }
   }
 
   return {
@@ -213,11 +137,9 @@ export const useNodeStore = defineStore('nodes', () => {
     // Actions
     fetchNodes,
     toggleNodeSelection,
-    selectAll,
-    deselectAll,
-    selectNodes,
-    deselectNodes,
     changePage,
     exportSelectedLinks,
+    clearSelection,
+    selectFilteredNodes,
   };
 });
