@@ -176,36 +176,35 @@ async function createToken(userId, name, configTypes, expiresAt = null) {
  * @returns {Array} 配置类型数组
  */
 function ensureConfigTypesArray(configTypes) {
-    // 如果已经是数组，直接返回
+    let parsedArray = [];
+
+    // 步骤 1: 将不同格式的输入统一解析为数组
     if (Array.isArray(configTypes)) {
-        return configTypes;
-    }
-    
-    // 如果是字符串，尝试解析
-    if (typeof configTypes === 'string') {
+        parsedArray = configTypes;
+    } else if (typeof configTypes === 'string') {
         try {
             const parsed = JSON.parse(configTypes);
-            return Array.isArray(parsed) ? parsed : ['config'];
+            parsedArray = Array.isArray(parsed) ? parsed : [];
         } catch (e) {
-            console.error('解析configTypes字符串失败:', e.message);
-            return ['config'];
+            // 解析失败则视为空数组
+            parsedArray = [];
         }
+    } else if (configTypes && typeof configTypes === 'object') {
+        parsedArray = Object.values(configTypes);
     }
-    
-    // 如果是对象但不是数组（如[object Object]），尝试获取可用的键值
-    if (configTypes && typeof configTypes === 'object') {
-        try {
-            // 尝试将对象转换为数组
-            const asArray = Object.values(configTypes);
-            return asArray.length > 0 ? asArray : ['config'];
-        } catch (e) {
-            console.error('处理configTypes对象失败:', e.message);
-            return ['config'];
-        }
+
+    // 如果解析后数组为空，可以设置一个默认值，例如 ['default']
+    if (parsedArray.length === 0) {
+        return ['default'];
     }
-    
-    // 默认值
-    return ['config'];
+
+    // 步骤 2: 核心！进行新旧名称的映射转换
+    const legacyTypeMap = {
+        'config': 'default',
+        'processed-config': 'computer-use'
+    };
+
+    return parsedArray.map(type => legacyTypeMap[type] || type);
 }
 
 /**
@@ -510,16 +509,16 @@ async function isTokenAuthorized(tokenString, configType, clientIp) {
             logSecurityEvent('TOKEN_INACTIVE', { tokenId: token.id, userId: token.userId });
             return false;
         }
-        
-        // 检查配置类型是否被允许
-        const configTypes = ensureConfigTypesArray(token.configTypes);
-        
-        if (!configTypes.includes(configType)) {
+
+
+        const allowedTypes = ensureConfigTypesArray(token.configTypes);
+
+        if (!allowedTypes.includes(configType)) {
             logSecurityEvent('CONFIG_TYPE_NOT_ALLOWED', { 
                 tokenId: token.id, 
                 userId: token.userId,
                 requestedType: configType,
-                allowedTypes: configTypes
+                allowedTypes: allowedTypes
             });
             return false;
         }

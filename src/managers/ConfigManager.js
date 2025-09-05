@@ -54,7 +54,6 @@ class ConfigManager {
                 timestamp: startTime,
                 duration: Date.now() - startTime.getTime(),
                 processedConfig: result.processedConfigContent,
-                mergedConfig: result.mergedConfigContent,
                 stats: {
                     sources: {
                         total: updateResults.size,
@@ -236,9 +235,6 @@ class ConfigManager {
      */
     async generateConfigContent(nodes, options) {
     const result = {
-        mergedFile: null,
-        processedFile: null,
-        mergedConfigContent: null,
         processedConfigContent: null
     };
     
@@ -252,11 +248,6 @@ class ConfigManager {
         // 生成代理组
         baseConfig['proxy-groups'] = this.generateProxyGroups(nodes);
         
-        // 保存合并后的配置 (未经任何策略处理的原始配置)
-        const mergedConfigYaml = YAML.stringify(baseConfig);
-        result.mergedConfigContent = mergedConfigYaml;
-
-        // ==================== 核心修改点 ====================
         // 从 options 中获取 scenario，如果未提供，则默认为 'computer-use'
         const scenario = options.scenario || 'computer-use';
 
@@ -304,7 +295,6 @@ class ConfigManager {
      */
     generateProxyGroups(nodes) {
         // 简化配置：只生成基础的手动选择策略组
-        // 复杂的策略组配置由 clash-configs.js 处理
         const groups = [
             {
                 name: '手动选择所有节点',

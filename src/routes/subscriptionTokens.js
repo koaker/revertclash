@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const subscriptionTokenService = require('../services/subscriptionTokenService');
+const ConfigProcessorManager = require('../managers/ConfigProcessorManager');
 
 /**
  * 安全地验证和清理输入
@@ -36,18 +37,20 @@ function isValidTokenName(name) {
 }
 
 /**
- * 验证配置类型列表
- * @param {string[]} configTypes - 配置类型列表
- * @returns {boolean} 是否有效
+ * 验证配置类型列表是否都是有效的、存在的策略
+ * @param {string[]} configTypes - 配置类型/策略名称列表
+ * @returns {Promise<boolean>} 是否有效
  */
-function hasValidConfigTypes(configTypes) {
-    const validTypes = ['config', 'processed-config', 'selected-config', 'merged-config'];
-    
+async function hasValidConfigTypes(configTypes) {
     if (!Array.isArray(configTypes) || configTypes.length === 0) {
         return false;
     }
     
-    return configTypes.every(type => validTypes.includes(type));
+    // 动态获取当前所有可用的策略
+    const availableScenarios = await ConfigProcessorManager.getAvailableScenarios();
+    
+    // 检查前端传入的每个类型，是否都存在于可用策略列表中
+    return configTypes.every(type => availableScenarios.includes(type));
 }
 
 /**
@@ -104,7 +107,7 @@ router.post('/', async (req, res) => {
         }
         
         // 验证配置类型是否有效
-        if (!hasValidConfigTypes(configTypes)) {
+        if (!(await hasValidConfigTypes(configTypes))) {
             const validConfigTypes = ['config', 'processed-config', 'selected-config', 'merged-config'];
             return res.status(400).json({ 
                 error: `无效的配置类型，必须是非空数组且包含有效的类型`,
@@ -175,7 +178,7 @@ router.put('/:id', async (req, res) => {
             });
         }
         
-        if (updates.configTypes && !hasValidConfigTypes(updates.configTypes)) {
+        if (updates.configTypes && !(await hasValidConfigTypes(updates.configTypes))) {
             const validConfigTypes = ['config', 'processed-config', 'selected-config', 'merged-config'];
             return res.status(400).json({ 
                 error: `无效的配置类型，必须是非空数组且包含有效的类型`,
@@ -301,6 +304,16 @@ router.post('/:id/regenerate', async (req, res) => {
     } catch (err) {
         console.error('重新生成Token失败:', err);
         res.status(500).json({ error: '重新生成Token失败: ' + sanitizeInput(err.message) });
+    }
+});
+
+router.get('/scenarios', async (req, res) => {
+    try {
+        const scenarios = await ConfigProcessorManager.getAvailableScenarios();
+        res.json(scenarios);
+    } catch (err) {
+        console.error('获取可用策略失败:', err);
+        res.status(500).json({ error: '获取可用策略失败' });
     }
 });
 

@@ -6,6 +6,7 @@ const UrlManager = require('../managers/UrlManager');
 const UserContentManager = require('../managers/UserContentManager');
 const ConfigManager = require('../managers/ConfigManager');
 const { SourceType } = require('../models/ConfigSource');
+const ConfigProcessorManager = require('../managers/ConfigProcessorManager');
 /**
  * 安全地验证和清理输入
  * @param {string} input - 输入字符串
@@ -42,11 +43,14 @@ function isValidTokenString(token) {
 /**
  * 验证配置类型是否有效
  * @param {string} configType - 配置类型
- * @returns {boolean} 是否有效
+ * @returns {Promise<boolean>} 是否有效
  */
-function isValidConfigType(configType) {
-    const validTypes = ['config', 'processed-config', 'selected-config', 'merged-config'];
-    return validTypes.includes(configType);
+async function isValidConfigType(configType) {
+    
+    const availableScenarios = await ConfigProcessorManager.getAvailableScenarios();
+    
+    // 检查传入的类型是否存在于可用的策略列表中
+    return availableScenarios.includes(configType);
 }
 
 /**
@@ -56,16 +60,21 @@ function isValidConfigType(configType) {
 router.get('/:token/:type', async (req, res) => {
     try {
         const tokenString = req.params.token;
-        const configType = req.params.type;
+        let configType = req.params.type;
         const clientIp = req.clientIp || req.ip;
         
         // 验证Token格式
         if (!isValidTokenString(tokenString)) {
             return res.status(400).json({ error: '无效的订阅Token格式' });
         }
-        
+        if (configType === 'config') {
+            configType = "default"
+        }
+        if (configType === 'processed-config') {
+            configType = "computer-use"
+        }
         // 验证配置类型
-        if (!isValidConfigType(configType)) {
+        if (!(await isValidConfigType(configType))) {
             return res.status(400).json({ error: '无效的配置类型' });
         }
 
@@ -112,16 +121,12 @@ router.get('/:token/:type', async (req, res) => {
         }
 
         const configManager = new ConfigManager();
-        const result = await configManager.process(sources);
+        const result = await configManager.process(sources, { scenario: configType });
         if (!result || !result.processedConfig) {
             return res.status(500).json({ error: '配置处理失败' });
         }
         let configContent;
-        if (configType === 'config') {
-            configContent = result.mergedConfig;
-        } else if (configType === 'processed-config') {
-            configContent = result.processedConfig;
-        }
+        configContent = result.processedConfig;
         if (!configContent) {
             return res.status(500).json({ error: '处理后的配置内容为空' });
         }

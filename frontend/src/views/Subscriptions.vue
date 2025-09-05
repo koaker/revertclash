@@ -350,6 +350,33 @@
                   给订阅链接起一个便于识别的名称
                 </div>
               </div>
+              <!-- 新增：选择配置策略 -->
+              <div class="premium-form-group">
+                <label class="premium-form-label">
+                  <i class="bi bi-check2-square"></i>
+                  授权策略
+                </label>
+                <div class="scenario-checkbox-group">
+                  <div v-if="availableScenarios.length === 0" class="ds-text-tertiary ds-text-sm">
+                    正在加载可用策略...
+                  </div>
+                  <div v-for="scenario in availableScenarios" :key="scenario" class="premium-radio-wrapper">
+                    <input
+                      type="radio"
+                      :id="'scenario-' + scenario"
+                      :value="scenario"
+                      v-model="selectedScenario"
+                      name="scenario-option"
+                      class="premium-radio"
+                    >
+                    <label :for="'scenario-' + scenario" class="premium-radio-label">{{ scenario }}</label>
+                  </div>
+                </div>
+                <div class="ds-text-xs ds-text-tertiary mt-2">
+                  <i class="bi bi-info-circle me-1"></i>
+                  选择该订阅链接可以访问哪些配置处理策略。
+                </div>
+              </div>
 
               <div class="premium-form-group">
                 <label class="premium-form-label">
@@ -414,11 +441,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { getAvailableScenarios } from '@/services/subscriptionService';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { Modal } from 'bootstrap';
-
+import { onMounted, ref } from 'vue';
 const store = useSubscriptionStore();
+
+const availableScenarios = ref([]); // 存储所有可用策略
+const selectedScenario = ref('');  // 绑定用户选择的策略
 
 // 响应式变量
 const newTokenName = ref('');
@@ -427,24 +457,39 @@ const messageText = ref('');
 const messageType = ref('success');
 
 // 生命周期钩子
-onMounted(() => {
+onMounted(async () => {
   store.fetchTokens();
+  try {
+    availableScenarios.value = await getAvailableScenarios();
+  } catch (error) {
+    showGlobalMessage('加载可用策略失败', 'error');
+  }
 });
 
 // 方法
 const openCreateModal = () => {
   newTokenName.value = '';
+  selectedScenario.value = ''; // 清空选项
   new Modal(document.getElementById('createTokenModal')).show();
 };
 
 const createToken = async () => {
-  if (!newTokenName.value.trim()) return;
+  // 校验名称和是否已选择策略
+  if (!newTokenName.value.trim() || !selectedScenario.value) {
+    showGlobalMessage('请填写订阅名称并选择一个授权策略', 'error');
+    return;
+  }
 
   try {
-    await store.createToken(newTokenName.value.trim());
+    const tokenData = {
+      name: newTokenName.value.trim(),
+      // 后端需要的是一个数组，所以我们将单个选项放入数组中
+      configTypes: [selectedScenario.value]
+    };
+
+    await store.createToken(tokenData);
     Modal.getInstance(document.getElementById('createTokenModal')).hide();
     showGlobalMessage('订阅链接创建成功！', 'success');
-    newTokenName.value = '';
   } catch {
     showGlobalMessage('创建失败，请稍后重试', 'error');
   }
@@ -1249,4 +1294,11 @@ const showGlobalMessage = (text, type = 'success') => {
     grid-template-columns: 1fr;
   }
 }
+
+.scenario-checkbox-group {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  padding: 12px; background: #f8f9fa; border-radius: 8px;
+}
+.premium-checkbox-wrapper { display: flex; align-items: center; gap: 8px; }
+.premium-checkbox-label { cursor: pointer; }
 </style>

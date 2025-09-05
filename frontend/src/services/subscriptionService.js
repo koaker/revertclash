@@ -59,3 +59,18 @@ export const regenerateToken = async (tokenId) => {
         throw error.response?.data || error;
     }
 };
+
+/**
+ * 获取所有可用的配置处理策略（场景）
+ * @returns {Promise<Array<string>>} 策略名称数组
+ */
+export const getAvailableScenarios = async () => {
+    try {
+        // 调用我们新创建的后端接口
+        const response = await axios.get(`${API_URL}/scenarios`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching available scenarios:', error.response?.data?.error || error.message);
+        throw error.response?.data || error;
+    }
+};
