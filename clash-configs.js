@@ -196,6 +196,13 @@ const PROXY_RULES = [
         ],
     },
     {
+        name: "UDP流量",
+        gfw : false,
+        payload : [
+            "NETWORK,UDP",
+        ]
+    },
+    {
         name: "建议走低质量节点：IDM 、 ytdlp、包括各种游戏下载， 下载服务器列表",
         gfw : false,
         payload : [
