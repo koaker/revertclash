@@ -1,7 +1,6 @@
 const express = require('express');
 const NodeManager = require('../services/nodeManager');
-const ConfigProcessor = require('../services/configProcessor');
-
+const ConfigManager = require('../managers/ConfigManager');
 const UrlManager = require('../managers/UrlManager');
 const UserContentManager =require('../managers/UserContentManager');
 const { SourceType } = require('../models');
@@ -11,7 +10,6 @@ const router = express.Router();
 
 // 创建节点管理器实例并连接到ConfigManager
 const nodeManager = new NodeManager();
-const configProcessor = new ConfigProcessor(nodeManager);
 
 // ========== 节点查询API ==========
 
@@ -262,11 +260,36 @@ router.get('/sources/stats', async (req, res) => {
 // 获取选中节点的配置
 router.get('/config/selected', async (req, res) => {
     try {
-        const config = await configProcessor.generateSelectedConfig();
+        const selectedProxyNodes = nodeManager.getSelectedProxyNodes();
+
+        if (selectedProxyNodes.length === 0) {
+            return res.status(400).send('没有选中任何节点');
+        }
+
+        const YAML = require('yaml');
+        const proxiesYaml = YAML.stringify({
+            proxies: selectedProxyNodes.map(node => node.toClashConfig())
+        });
+
+        const sources = [{
+            name: 'selected-nodes',
+            type: 'MANUAL',
+            data: proxiesYaml
+        }];
+
+        const configManager = new ConfigManager();
+        const result = await configManager.process(sources);
+
+        if (!result || !result.success) {
+            throw new Error('使用 ConfigManager 生成配置失败');
+        }
+
         res.setHeader('Content-Type', 'text/yaml');
         res.setHeader('Content-Disposition', 'attachment; filename="selected-config.yaml"');
-        res.send(config);
+        res.send(result.mergedConfig); // 注意：这里是 mergedConfig
+
     } catch (err) {
+        console.error('[API /config/selected] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -274,11 +297,41 @@ router.get('/config/selected', async (req, res) => {
 // 获取处理后的选中节点配置
 router.get('/config/processed', async (req, res) => {
     try {
-        const config = await configProcessor.processSelectedConfig();
+        // 1. 获取选中的节点对象
+        const selectedProxyNodes = nodeManager.getSelectedProxyNodes();
+
+        if (selectedProxyNodes.length === 0) {
+            return res.status(400).send('没有选中任何节点');
+        }
+
+        // 2. 将节点对象转换为 YAML 字符串
+        const YAML = require('yaml');
+        const proxiesYaml = YAML.stringify({
+            proxies: selectedProxyNodes.map(node => node.toClashConfig())
+        });
+
+        // 3. 构造 ConfigManager 需要的 sources 格式
+        const sources = [{
+            name: 'selected-nodes',
+            type: 'MANUAL', // SourceType.MANUAL
+            data: proxiesYaml
+        }];
+
+        // 4. 创建实例并处理
+        const configManager = new ConfigManager();
+        const result = await configManager.process(sources);
+
+        if (!result || !result.success) {
+            throw new Error('使用 ConfigManager 生成配置失败');
+        }
+
+        // 5. 发送处理后的配置
         res.setHeader('Content-Type', 'text/yaml');
         res.setHeader('Content-Disposition', 'attachment; filename="processed-selected-config.yaml"');
-        res.send(config);
+        res.send(result.processedConfig); // 注意：这里是 processedConfig
+
     } catch (err) {
+        console.error('[API /config/processed] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
