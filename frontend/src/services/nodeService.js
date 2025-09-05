@@ -43,14 +43,14 @@ export async function exportNodeLinks(nodes) {
 /**
  * 将选中的节点列表发送到后端以生成配置文件。
  * @param {Array<Object>} nodes - 包含完整节点配置的数组。
- * @param {boolean} processed - 是否需要后端进行额外处理（对应 clash-configs.js）。
+ * @param {string} scenario - 是否需要后端进行额外处理（对应 clash-configs.js）。
  * @returns {Promise<Blob>} 返回一个可供下载的 Blob 对象。
  */
-export async function generateConfig(nodes, processed = true) {
+export async function generateConfig(nodes, scenario) {
   const response = await fetch(`${API_BASE_URL}/config/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodes, processed }) // 发送节点数组和处理标志
+    body: JSON.stringify({ nodes, scenario }) // <--- 修改点 2：发送 scenario
   });
 
   if (!response.ok) {
@@ -62,4 +62,20 @@ export async function generateConfig(nodes, processed = true) {
     }
   }
   return response.blob();
+}
+
+/**
+ * 从服务器获取所有可用的处理场景。
+ * @returns {Promise<Array<string>>} 返回一个包含场景名称的字符串数组。
+ */
+export async function fetchScenarios() {
+  const response = await fetch(`${API_BASE_URL}/scenarios`);
+  if (!response.ok) {
+    throw new Error(`网络错误: ${response.status}`);
+  }
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || '获取场景列表失败');
+  }
+  return data.scenarios;
 }

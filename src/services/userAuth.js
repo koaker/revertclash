@@ -135,7 +135,7 @@ async function getUserList() {
 
 // 检查系统中是否有初始管理员
 async function hasInitialAdmin() {
-    console.log(`[userAuth] 检查系统是否有用户`);
+    // console.log(`[userAuth] 检查系统是否有用户`);
     try {
         // 检查数据库表是否存在
         if (!UserManager.checkTableExists()) {

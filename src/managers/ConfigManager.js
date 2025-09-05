@@ -4,7 +4,7 @@ const YAML = require('yaml');
 const { SourceType, ProxyNode } = require('../models');
 const ConfigSourceManager = require('./ConfigSourceManager');
 const { NodeAggregator } = require('../aggregators');
-
+const ConfigProcessorManager = require('./ConfigProcessorManager');
 /**
  * 主配置管理器
  * 整合所有组件，提供统一的配置处理接口
@@ -235,48 +235,48 @@ class ConfigManager {
      * @private
      */
     async generateConfigContent(nodes, options) {
-        const result = {
-            mergedFile: null,
-            processedFile: null,
-            mergedConfigContent: null,
-            processedConfigContent: null
-        };
-        
-        try {
-            // 创建基础Clash配置
-            const baseConfig = this.createBaseClashConfig();
-            
-            // 添加节点
-            baseConfig.proxies = nodes.map(node => node.toClashConfig());
-            
-            // 生成代理组
-            baseConfig['proxy-groups'] = this.generateProxyGroups(nodes);
-            
-            // 保存合并后的配置
-            const mergedConfigYaml = YAML.stringify(baseConfig);
-            result.mergedConfigContent = mergedConfigYaml;
-
-            // 应用clash-configs处理（如果存在）
-            let processedConfig = baseConfig;
-            try {
-                const clashConfigProcessor = require('../../clash-configs.js');
-                processedConfig = clashConfigProcessor.main(baseConfig);
-                console.log('已使用 clash-configs.js 处理配置');
-            } catch (err) {
-                console.warn('clash-configs.js 处理失败，使用原始配置:', err.message);
-            }
+    const result = {
+        mergedFile: null,
+        processedFile: null,
+        mergedConfigContent: null,
+        processedConfigContent: null
+    };
     
-            // 保存处理后的配置
-            const processedConfigYaml = YAML.stringify(processedConfig);
-            result.processedConfigContent = processedConfigYaml;
-
-        } catch (error) {
-            console.error('生成配置文件失败:', error.message);
-            throw error;
-        }
+    try {
+        // 创建基础Clash配置
+        const baseConfig = this.createBaseClashConfig();
         
-        return result;
+        // 添加节点
+        baseConfig.proxies = nodes.map(node => node.toClashConfig());
+        
+        // 生成代理组
+        baseConfig['proxy-groups'] = this.generateProxyGroups(nodes);
+        
+        // 保存合并后的配置 (未经任何策略处理的原始配置)
+        const mergedConfigYaml = YAML.stringify(baseConfig);
+        result.mergedConfigContent = mergedConfigYaml;
+
+        // ==================== 核心修改点 ====================
+        // 从 options 中获取 scenario，如果未提供，则默认为 'computer-use'
+        const scenario = options.scenario || 'computer-use';
+
+        // 调用 ConfigProcessorManager 来动态处理配置
+        // 我们传递 proxies 数组，而不是完整的 baseConfig
+        const processedConfig = await ConfigProcessorManager.processNodes(baseConfig.proxies, scenario);
+        console.log(`已使用场景 '${scenario}' 处理配置`);
+        // ====================================================
+
+        // 保存处理后的配置
+        const processedConfigYaml = YAML.stringify(processedConfig);
+        result.processedConfigContent = processedConfigYaml;
+
+    } catch (error) {
+        console.error('生成配置文件失败:', error.message);
+        throw error;
     }
+    
+    return result;
+}
     
     /**
      * 创建基础Clash配置

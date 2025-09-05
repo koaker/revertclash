@@ -4,6 +4,7 @@ const ConfigManager = require('../managers/ConfigManager');
 const UrlManager = require('../managers/UrlManager');
 const UserContentManager =require('../managers/UserContentManager');
 const { SourceType } = require('../models');
+const ConfigProcessorManager = require('../managers/ConfigProcessorManager');
 
 module.exports = () => {
 const router = express.Router();
@@ -61,7 +62,7 @@ router.get('/', async (req, res) => {
 // 新增：无状态配置生成 API
 router.post('/config/generate', async (req, res) => {
     try {
-        const { nodes, processed = true } = req.body; // 从请求体获取节点和处理标志
+        const { nodes, scenario } = req.body; // 从请求体获取节点和处理标志
 
         if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
             return res.status(400).json({ error: '请求体中必须包含有效的节点数组' });
@@ -82,20 +83,19 @@ router.post('/config/generate', async (req, res) => {
 
         // 3. 创建实例并处理
         const configManager = new ConfigManager();
-        const result = await configManager.process(sources);
+        const result = await configManager.process(sources, { scenario: scenario });
 
         if (!result || !result.success) {
             throw new Error('使用 ConfigManager 生成配置失败');
         }
 
         // 4. 根据 processed 标志决定返回哪个配置
-        const configContent = processed ? result.processedConfig : result.mergedConfig;
-        const filename = processed ? 'processed-config.yaml' : 'selected-config.yaml';
+        const filename = `config-${scenario || 'default'}.yaml`;
 
         // 5. 发送配置
         res.setHeader('Content-Type', 'text/yaml');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.send(configContent);
+        res.send(result.processedConfig);
 
     } catch (err) {
         console.error('[API /config/generate] Error:', err);
@@ -143,5 +143,21 @@ router.post('/export-links', async (req, res) => {
     }
 });
 
+// 新增：获取所有可用的处理场景
+router.get('/scenarios', async (req, res) => {
+  try {
+    // 直接调用我们之前在 ConfigProcessorManager 中创建的函数
+    const scenarios = await ConfigProcessorManager.getAvailableScenarios();
+    res.json({
+      success: true,
+      scenarios: scenarios
+    });
+  } catch (err) {
+    console.error('[API /scenarios] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 return router
 }
+

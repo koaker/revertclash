@@ -157,38 +157,48 @@
           </div>
 
           <!-- 操作区域 -->
-          <div class="actions-section">
-            <div class="action-group">
-              <h4 class="ds-text-sm ds-font-semibold ds-text-secondary mb-3">
-                <i class="bi bi-gear me-2"></i>
-                批量操作
-              </h4>
-              <div class="action-buttons">
-                <button
-                  class="premium-btn premium-btn-outline premium-btn-sm"
-                  @click="nodeStore.exportSelectedLinks"
-                  :disabled="nodeStore.selectedCount === 0"
-                >
-                  <i class="bi bi-link-45deg"></i>
-                  <span>导出链接 ({{ nodeStore.selectedCount }})</span>
-                </button>
-                <button
-                  class="premium-btn premium-btn-success premium-btn-sm"
-                  @click="downloadSelectedConfig"
-                  :disabled="nodeStore.selectedCount === 0"
-                >
-                  <i class="bi bi-download"></i>
-                  <span>下载配置</span>
-                </button>
-                <button
-                  class="premium-btn premium-btn-warning premium-btn-sm"
-                  @click="downloadProcessedConfig"
-                  :disabled="nodeStore.selectedCount === 0"
-                >
-                  <i class="bi bi-gear-wide-connected"></i>
-                  <span>处理后配置</span>
-                </button>
+          <div class="action-group">
+            <h4 class="ds-text-sm ds-font-semibold ds-text-secondary mb-3">
+              <i class="bi bi-gear me-2"></i>
+              配置导出
+            </h4>
+
+            <!-- 新增的场景选择下拉框 -->
+            <div class="premium-form-group mb-3">
+              <label class="premium-form-label">
+                <i class="bi bi-palette"></i>
+                选择处理场景
+              </label>
+              <div class="premium-input-wrapper">
+                <select class="premium-input" v-model="selectedScenario">
+                  <option v-for="scenario in availableScenarios" :key="scenario" :value="scenario">
+                    {{ scenario }}
+                  </option>
+                </select>
               </div>
+            </div>
+
+            <div class="action-buttons">
+              <!-- “导出链接”按钮保持不变 -->
+              <button
+                class="premium-btn premium-btn-outline premium-btn-sm"
+                @click="nodeStore.exportSelectedLinks"
+                :disabled="nodeStore.selectedCount === 0"
+              >
+                <i class="bi bi-link-45deg"></i>
+                <span>导出链接 ({{ nodeStore.selectedCount }})</span>
+              </button>
+
+              <!-- 整合后的唯一下载按钮 -->
+              <button
+                class="premium-btn premium-btn-success premium-btn-sm"
+                @click="downloadConfig"
+                :disabled="nodeStore.selectedCount === 0"
+              >
+                <i class="bi bi-download"></i>
+                <!-- 按钮文本会动态显示当前选择的场景 -->
+                <span>下载配置 ({{ selectedScenario }})</span>
+              </button>
             </div>
           </div>
         </div>
@@ -455,12 +465,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useNodeStore } from '@/stores/nodeStore';
 import SourceManager from '@/components/SourceManager.vue';
+import { useNodeStore } from '@/stores/nodeStore';
+import { computed, onMounted, ref } from 'vue';
 // 新增导入
-import { generateConfig, exportNodeLinks } from '@/services/nodeService';
+import { fetchScenarios, generateConfig } from '@/services/nodeService'; // <-- 修改点
 const nodeStore = useNodeStore();
+
+// vvvvvvvv 在这里添加下面的代码 vvvvvvvv
+const availableScenarios = ref([]); // 用于存储从后端获取的场景列表
+const selectedScenario = ref('default'); // 用于绑定下拉框的选中值，默认为 'default'
 
 // 计算属性
 const selectedInFilterCount = computed(() => {
@@ -511,10 +525,9 @@ const handleSelectAllFilteredChange = (e) => {
     });
   }
 };
-
-const downloadSelectedConfig = async () => {
+const downloadConfig = async () => {
   try {
-    // 从 store 获取完整的已选节点对象
+    // 1. 获取当前已选择的节点对象
     const selectedNodes = nodeStore.filteredNodes.filter(node =>
       nodeStore.selectedNodeNames.has(node.name)
     );
@@ -524,14 +537,15 @@ const downloadSelectedConfig = async () => {
       return;
     }
 
-    // 调用新的 service，processed 设置为 false
-    const blob = await generateConfig(selectedNodes, false);
+    // 2. 调用我们更新后的 service 函数，传入节点和当前选中的场景
+    const blob = await generateConfig(selectedNodes, selectedScenario.value);
 
-    // 创建并触发下载
+    // 3. 创建一个隐藏的 <a> 标签来触发浏览器下载
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'selected-config.yaml';
+    // 4. 根据选择的场景动态生成文件名
+    a.download = `config-${selectedScenario.value}.yaml`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -539,37 +553,6 @@ const downloadSelectedConfig = async () => {
 
   } catch (error) {
     console.error('下载配置失败:', error);
-    alert('下载失败: ' + error.message);
-  }
-};
-
-
-const downloadProcessedConfig = async () => {
-  try {
-    const selectedNodes = nodeStore.filteredNodes.filter(node =>
-      nodeStore.selectedNodeNames.has(node.name)
-    );
-
-    if (selectedNodes.length === 0) {
-      alert('请先选择要处理的节点');
-      return;
-    }
-
-    // 调用新的 service，processed 设置为 true
-    const blob = await generateConfig(selectedNodes, true);
-
-    // 创建并触发下载
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'processed-config.yaml';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-  } catch (error) {
-    console.error('下载处理后配置失败:', error);
     alert('下载失败: ' + error.message);
   }
 };
@@ -610,6 +593,23 @@ const resetFilters = () => {
   nodeStore.selectedType = 'all';
   nodeStore.searchKeyword = '';
 };
+
+// 使用 onMounted 生命周期钩子，确保在组件挂载后执行
+onMounted(async () => {
+  try {
+    // 调用 service 函数获取场景列表
+    availableScenarios.value = await fetchScenarios();
+
+    // 一个健壮性检查：如果获取到的列表中不包含 'default'，
+    // 并且列表不为空，则自动选择第一个作为默认值
+    if (!availableScenarios.value.includes('default') && availableScenarios.value.length > 0) {
+      selectedScenario.value = availableScenarios.value[0];
+    }
+  } catch (error) {
+    console.error('获取场景列表失败:', error);
+    // 可以在这里添加一个用户提示，例如使用 alert 或更优雅的通知组件
+  }
+});
 
 // 初始化时获取节点数据
 nodeStore.fetchNodes();
